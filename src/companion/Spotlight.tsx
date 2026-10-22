@@ -3,7 +3,7 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { Room } from './room'
 import { DEFAULT_LOOK, type Form } from './look'
 import { load, mood, settle, stageOf, type Need } from './care'
-import { H, W } from './scene'
+import { CH, CW } from './scene'
 
 const NEEDS: [Need, string][] = [['food', 'Food'], ['fun', 'Fun'], ['energy', 'Energy']]
 
@@ -19,7 +19,7 @@ export function Spotlight() {
   live.current = { pet, form }
   const canvas = useRef<HTMLCanvasElement>(null)
 
-  // no Cozmling yet: the two starter aliens take turns in their homes
+  // no Cozmling yet: the two starter aliens take turns in the Star Loft
   useEffect(() => { if (pet) return; const t = setInterval(() => setForm(f => (f === 'boy' ? 'girl' : 'boy')), 6000); return () => clearInterval(t) }, [!!pet])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const room = new Room(canvas.current!)
@@ -27,7 +27,7 @@ export function Spotlight() {
     const loop = () => {
       const { pet: p, form: f } = live.current
       if (p) { const m = mood(p); room.draw({ home: p.home, look: p.look, stage: stageOf(p), asleep: !!p.asleep, low: m.mood === 'low', need: m.need, crack: 0 }) }
-      else room.draw({ home: f === 'boy' ? 'moonbase' : 'grove', look: DEFAULT_LOOK[f], stage: 'cadet', asleep: false, low: false, need: null, crack: 0 })
+      else room.draw({ home: 'loft', look: DEFAULT_LOOK[f], stage: 'cadet', asleep: false, low: false, need: null, crack: 0 })
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
@@ -37,7 +37,7 @@ export function Spotlight() {
   return (
     <section className="spot" aria-labelledby="spot-h">
       <a className="spot__screen" href="#/cozmling" aria-label={pet ? `Visit ${pet.name}` : 'Meet the Cozmlings'}>
-        <canvas ref={canvas} width={W} height={H} />
+        <canvas ref={canvas} width={CW} height={CH} />
       </a>
       <div className="spot__copy">
         <p className="kicker"><span className="dot" /> {pet ? 'Your Cozmling' : 'New on COZMC'}</p>

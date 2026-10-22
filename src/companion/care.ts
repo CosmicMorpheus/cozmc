@@ -4,8 +4,9 @@
    ============================================================ */
 import { DEFAULT_LOOK, type Look, type Stage } from './look'
 
-export type HomeId = 'moonbase' | 'grove'
+export type HomeId = 'loft' | 'moonbase' | 'grove'
 export const HOMES: Record<HomeId, { name: string; blurb: string }> = {
+  loft: { name: 'Star Loft', blurb: 'A cosy observatory loft with a window on the rings.' },
   moonbase: { name: 'Moon Base', blurb: 'A cosy dome on the Moon with a window on the Earth.' },
   grove: { name: 'Cosmic Grove', blurb: 'A glowing forest clearing under a big moon.' },
 }
@@ -70,7 +71,7 @@ export const utcDay = (t = Date.now()) => Math.floor(t / 86_400_000)
 /** The note's fields. A daily check-in adds the day ("d") and backs up the care counts. */
 export const toNote = (p: Pet, checkin = false) => ({
   n: p.name, f: p.look.form === 'girl' ? 'g' : 'b', b: p.look.body, g: p.look.glow, e: p.look.eyes,
-  h: p.home === 'grove' ? 'g' : 'm', s: Math.floor(p.born / 1000),
+  h: p.home === 'grove' ? 'g' : p.home === 'loft' ? 'l' : 'm', s: Math.floor(p.born / 1000),
   m: p.fed, p: p.played, t: p.pets,
   ...(checkin ? { d: utcDay() } : {}),
 })
@@ -84,7 +85,7 @@ export function fromNote(j: any): Saved | null {
   return {
     name,
     look: { form: j.f === 'g' ? 'girl' : 'boy', body: int(j.b), glow: int(j.g), eyes: int(j.e) },
-    home: j.h === 'g' ? 'grove' : 'moonbase',
+    home: j.h === 'g' ? 'grove' : j.h === 'l' ? 'loft' : 'moonbase',
     born: Number.isInteger(j.s) && j.s > 1_600_000_000 ? j.s * 1000 : Date.now(),
     fed: count(j.m), played: count(j.p), pets: count(j.t),
   }

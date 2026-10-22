@@ -886,7 +886,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .cz { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 22px; align-items: start }
 .cz__screen { position: relative; border: 2px solid var(--line-3); background: #000; box-shadow: 8px 8px 0 #141414; transition: border-color .4s }
 .cz__screen.is-night { border-color: #232a42 }
-.cz__screen canvas { width: 100%; height: auto; aspect-ratio: 3 / 2; image-rendering: pixelated; cursor: pointer; touch-action: manipulation }
+.cz__screen canvas { width: 100%; height: auto; aspect-ratio: 3 / 2; cursor: pointer; touch-action: manipulation }
 .cz__say { position: absolute; left: 12px; bottom: 12px; max-width: calc(100% - 24px); padding: 7px 11px; background: rgba(0,0,0,.78); border: 1px solid var(--line-3); font: 700 11px/1.4 var(--pixel); color: var(--text); pointer-events: none }
 .cz__say:empty { display: none }
 .cz__tag { position: absolute; left: 12px; top: 10px; font: 700 11px var(--pixel); color: var(--phos); text-shadow: 1px 1px #000 }
@@ -921,9 +921,9 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 @keyframes cz-low { 50% { opacity: .45 } }
 .cz__fine { color: var(--dim); font-size: 13px; margin-top: 12px; text-wrap: pretty }
 
-.cz__homes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.cz__homes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
 .cz__hb { display: grid; gap: 7px; padding: 6px 6px 8px; border: 2px solid var(--line-2); background: var(--bg-2); font: 700 10px var(--pixel); color: var(--mist); transition: border-color .15s, color .15s }
-.cz__hb canvas { width: 100%; height: auto; image-rendering: pixelated }
+.cz__hb canvas { width: 100%; height: auto; aspect-ratio: 3 / 2 }
 .cz__hb:hover { border-color: var(--line-3); color: var(--text) }
 .cz__hb.on { border-color: var(--phos); color: var(--text) }
 .cz__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line) }
@@ -991,7 +991,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .spot--wait { min-height: 280px }
 .spot__screen { display: block; border: 2px solid var(--line-3); background: #000; box-shadow: 8px 8px 0 #141414; transition: border-color .2s }
 .spot__screen:hover, .spot__screen:focus-visible { border-color: #ff8ad8 }
-.spot__screen canvas { width: 100%; height: auto; aspect-ratio: 3 / 2; image-rendering: pixelated }
+.spot__screen canvas { width: 100%; height: auto; aspect-ratio: 3 / 2 }
 .spot .kicker { color: #ff8ad8 }
 .spot .kicker .dot { background: #ff8ad8; box-shadow: 0 0 8px #ff8ad8 }
 .spot__title { margin: 12px 0 14px; font: 800 clamp(2.4rem, 5.4vw, 3.8rem)/.88 var(--sans); font-stretch: 70%; text-transform: uppercase }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Poin
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Room, ART } from '../companion/room'
 import { BODIES, DEFAULT_LOOK, drawBulbGlow, drawCozmling, EYES, GLOWS, STAGE_NAME, STAGES, type Form, type Look, type Stage } from '../companion/look'
-import { drawHome, homeThumb, FLOOR_Y, H, W } from '../companion/scene'
+import { CH, CW, homeThumb, THUMB_H, THUMB_W } from '../companion/scene'
 import { adopt, ageText, clamp, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
 import { buildPetTxn, fetchPetNote, signSendConfirm } from '../lib/chain'
 import { useChain } from '../lib/data'
@@ -118,7 +118,7 @@ function Gate() {
     <>
       <Head />
       <section className="cz">
-        <div className="cz__stage"><Preview look={DEFAULT_LOOK[form]} home={form === 'boy' ? 'moonbase' : 'grove'} /></div>
+        <div className="cz__stage"><Preview look={DEFAULT_LOOK[form]} home="loft" /></div>
         <div className="panel cz-gate">
           <h2>Adopt one, free</h2>
           <p>Connect a wallet to adopt your Cozmling, or to find the one you already have. It’s saved to your wallet on Algorand, so it comes back on any device, even if this browser forgets it.</p>
@@ -187,8 +187,7 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
   }
   const tap = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     const b = e.currentTarget.getBoundingClientRect()
-    const sx = ((e.clientX - b.left) / b.width) * W, sy = ((e.clientY - b.top) / b.height) * H
-    if (!room.current?.hit(sx, sy)) return
+    if (!room.current?.hit((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height)) return
     if (!now.hatched) warmEgg(); else doPat()
   }
 
@@ -202,7 +201,7 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
       <section className="cz">
         <div className="cz__stage">
           <div className={`cz__screen${now.asleep ? ' is-night' : ''}`}>
-            <canvas ref={canvas} width={W} height={H} onPointerDown={tap} role="img" aria-label={`${pet.name} in the ${HOMES[pet.home].name}. ${m.line}`} />
+            <canvas ref={canvas} width={CW} height={CH} onPointerDown={tap} role="img" aria-label={`${pet.name} in the ${HOMES[pet.home].name}. ${m.line}`} />
             <p className="cz__say" aria-live="polite">{say}</p>
           </div>
 
@@ -316,7 +315,7 @@ function Need({ label, value, kind, dim }: { label: string; value: number; kind:
 function HomeThumb({ id }: { id: HomeId }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => { if (ref.current) homeThumb(ref.current, id) }, [id])
-  return <canvas ref={ref} width={W} height={H} aria-hidden="true" />
+  return <canvas ref={ref} width={THUMB_W} height={THUMB_H} aria-hidden="true" />
 }
 
 /* Phase 1 is a prototype for sign-off: these controls let you see every stage and fast-forward time. */
@@ -348,7 +347,7 @@ function Adopt({ pet, claim, busy, onDone, onCancel }: { pet?: Pet; claim?: Pet 
   const from = pet ?? claim
   const [look, setLook] = useState<Look>(from?.look ?? DEFAULT_LOOK.boy)
   const [name, setName] = useState(from?.name ?? pick(NAMES.boy))
-  const [home, setHome] = useState<HomeId>(from?.home ?? 'moonbase')
+  const [home, setHome] = useState<HomeId>(from?.home ?? 'loft')
   const [typed, setTyped] = useState(!!from)
   const set = (k: keyof Look, v: number | Form) => setLook(l => ({ ...l, [k]: v }))
   const chooseForm = (f: Form) => {
@@ -441,13 +440,10 @@ function Preview({ look, home }: { look: Look; home: HomeId }) {
   }, [])
   const st = useRef(stage); st.current = stage
   useEffect(() => {
-    const c = ref.current!, ctx = c.getContext('2d')!
-    ctx.imageSmoothingEnabled = false
+    const room = new Room(ref.current!)
     let raf = 0
     const loop = () => {
-      const t = performance.now() / 1000
-      drawHome(ctx, live.current.home, t)
-      drawBulbGlow(ctx, drawCozmling(ctx, W / 2, FLOOR_Y, live.current.look, st.current, 'idle', t), t)
+      room.draw({ home: live.current.home, look: live.current.look, stage: st.current, asleep: false, low: false, need: null, crack: 0 })
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
@@ -455,7 +451,7 @@ function Preview({ look, home }: { look: Look; home: HomeId }) {
   }, [])
   return (
     <div className="cz__screen">
-      <canvas ref={ref} width={W} height={H} role="img" aria-label={`Your Cozmling as a ${STAGE_NAME[stage]}`} />
+      <canvas ref={ref} width={CW} height={CH} role="img" aria-label={`Your Cozmling as a ${STAGE_NAME[stage]}`} />
       <p className="cz__tag">{STAGE_NAME[stage]}</p>
     </div>
   )

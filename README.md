@@ -11,7 +11,7 @@ Five tabs: **Home · Cozmling · Arcade · Community · About**. Arcade and Comm
 | Tab | Page | What it does |
 |---|---|---|
 | **Home** | | The holographic card hero, the **Cozmling spotlight** (your Cozmling live in its room, or an invite to adopt one), the three paths, the arcade shelf, live numbers, the giveaway strip and the community section |
-| **Cozmling** | | The companion game (prototype): adopt a little alien, boy or girl, free with a wallet. Feed it, play, pat it, put it to bed; it grows from a Star Egg to a Guardian. Saved to the wallet as a 0-ALGO note (`cozmc:pet:v1:`), so it comes back on any device |
+| **Cozmling** | | The companion game (prototype): adopt a little alien, boy or girl, free with a wallet. Feed it, play, pat it, put it to bed; it grows from a Star Egg to a Guardian. Saved to the wallet as a 0-ALGO note (`cozmc:pet:v1:`), so it comes back on any device. Its home is the **Star Loft**, a painted room with animated stars, lanterns and a jellyfish tank, or the Moon Base or Cosmic Grove |
 | **Arcade** | Games | Game cabinets: **Moon Bounce** (stomp aliens on a moon trampoline, chain for combos; inspired by Sunflat's PapiTrampoline) **Brick by Brick** (a falling-block puzzle: stack, clear lines, don't top out) and **Moonshot** (a Kitten Cannon-style launch game: lock the angle, lock the power, fire the astronaut across the moon; fuel cans and pads boost you, black holes swallow you unless you skim them for a slingshot, octos grab you). Free to play with no wallet. Each game has **Free play** and the **Daily Challenge**. Connect a wallet to post your run on-chain and to unlock tier skins |
 | | Leaderboards | One board per game (each wallet's best run), switchable between all-time and today's Daily, plus **Top Burners** |
 | | Giveaway | The weekly giveaway (see below) |
@@ -168,6 +168,14 @@ High scores (game over plus any leaderboard row), Daily Challenge runs ("COZMC D
 - X's share links can carry text but not images, so **Post on X** copies the graphic to the clipboard and opens X; paste it into the post.
 - On phones, **Share…** uses the native share sheet, which attaches the image directly.
 - The site URL used in posts is `SITE_URL` in `src/config.ts`.
+
+## Add a Cozmling room
+
+Painted rooms are images with animation drawn on top.
+1. Put a 3:2 image (1536×1024 works well) in `public/assets/rooms/`.
+2. Add the room to `HOMES` in `src/companion/care.ts` with its name, and to `SPEC` in `src/companion/scene.ts`. `SPEC` sets the Cozmling's grid: use 192×128 so the canvas is exactly 6× the grid. It also sets where its feet touch the floor (`floorY`), how far it wanders (`walk`), and an optional light `tint`.
+3. In `scene.ts`, draw it the way the Star Loft is drawn (`loft()`). The animations are placed in the image's own pixel coordinates.
+4. Give it a one-letter code in `toNote` / `fromNote`, so it's saved with the Cozmling.
 
 ## Add a quote
 

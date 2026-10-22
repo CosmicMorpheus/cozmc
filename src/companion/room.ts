@@ -5,7 +5,7 @@
    only animates what they allow.
    ============================================================ */
 import { ANCHOR, drawBulbGlow, drawCozmling, type Look, type Pose, type Stage } from './look'
-import { drawHome, drawNight, FLOOR_Y, H, W } from './scene'
+import { CH, CW, drawHome, drawNight, SPEC, type Spec } from './scene'
 import type { HomeId, Need } from './care'
 import { sfx } from '../arcade/sfx'
 
@@ -37,7 +37,7 @@ function stamp(ctx: CanvasRenderingContext2D, a: Art, x: number, y: number, tint
 }
 
 export class Room {
-  x = W / 2 + 8
+  x = SPEC.loft.w / 2 + 8
   dir: 1 | -1 = -1
   private goal = this.x
   private rest = 1.5
@@ -50,11 +50,12 @@ export class Room {
   private zAt = 0
   private chewAt = 0
   private stage: Stage = 'egg'
+  private sp: Spec = SPEC.loft
   private ctx: CanvasRenderingContext2D
-  private layer = Object.assign(document.createElement('canvas'), { width: W, height: H })   // the Cozmling, dimmed on its own at night
+  private layer = Object.assign(document.createElement('canvas'), { width: CW, height: CH })   // the Cozmling, dimmed on its own at night
 
   constructor(canvas: HTMLCanvasElement) {
-    canvas.width = W; canvas.height = H
+    canvas.width = CW; canvas.height = CH
     this.ctx = canvas.getContext('2d')!
     this.ctx.imageSmoothingEnabled = false
   }
@@ -84,7 +85,7 @@ export class Room {
   pat() {
     this.hold()
     this.act = { pose: 'happy', until: this.now() + 1.3 }
-    this.burst(3, this.x, FLOOR_Y - HEAD(this.stage) - 2, 'heart', { speed: 10, up: 22, life: 1.1 })
+    this.burst(3, this.x, this.sp.floorY - HEAD(this.stage) - 2, 'heart', { speed: 10, up: 22, life: 1.1 })
     sfx.tone(880, 0.07, 'triangle', 0.05); setTimeout(() => sfx.tone(1175, 0.09, 'triangle', 0.05), 80)
   }
   refuse() {
@@ -99,39 +100,42 @@ export class Room {
   }
   crack() {
     this.shake = 0.35
-    this.burst(4, W / 2, FLOOR_Y - 14, 'spark', { speed: 26, life: 0.4 })
+    this.burst(4, this.sp.w / 2, this.sp.floorY - 14, 'spark', { speed: 26, life: 0.4 })
     sfx.noise(0.08, 0.05); sfx.tone(240, 0.06, 'square', 0.04)
   }
   hatch(glow: string) {
     this.flash = 1
     this.act = { pose: 'happy', until: this.now() + 2 }
-    this.burst(26, W / 2, FLOOR_Y - 16, 'spark', { speed: 60, life: 1.2, tints: ['#ffffff', '#ffd13a', glow] })
+    this.burst(26, this.sp.w / 2, this.sp.floorY - 16, 'spark', { speed: 60, life: 1.2, tints: ['#ffffff', '#ffd13a', glow] })
     sfx.start(); setTimeout(() => sfx.pickup(), 320)
   }
 
-  /** Is this point (in room pixels) on the Cozmling? */
-  hit(sx: number, sy: number) {
-    return Math.abs(sx - this.x) < 12 && sy > FLOOR_Y - HEAD(this.stage) - 2 && sy < FLOOR_Y + 3
+  /** Is this point (as a fraction of the canvas, 0 to 1 across and down) on the Cozmling? */
+  hit(fx: number, fy: number) {
+    const sx = fx * this.sp.w, sy = fy * this.sp.h
+    return Math.abs(sx - this.x) < 12 && sy > this.sp.floorY - HEAD(this.stage) - 2 && sy < this.sp.floorY + 3
   }
 
   draw(f: Frame) {
     const t = this.now(), dt = this.last ? Math.min(0.05, t - this.last) : 0
     this.last = t
     this.stage = f.stage
+    const sp = this.sp = SPEC[f.home], S = CW / sp.w, FLOOR_Y = sp.floorY
     const ctx = this.ctx
     if (this.act && t > this.act.until) this.act = null
     const pose: Pose = this.act?.pose ?? (f.asleep ? 'sleep' : f.low ? 'sad' : 'idle')
 
     // wander about when nothing is going on
     let moving = false
-    if (f.stage === 'egg') this.x = W / 2
+    if (f.stage === 'egg') this.x = sp.w / 2
+    else if (this.x < sp.walk[0] - 2 || this.x > sp.walk[1] + 2) this.goal = this.x = Math.min(sp.walk[1], Math.max(sp.walk[0], this.x))   // moved house
     else if (!this.act && !f.asleep && !this.item) {
       if (Math.abs(this.goal - this.x) > 0.6) {
         this.dir = this.goal > this.x ? 1 : -1
         this.x += this.dir * (f.low ? 6 : 11) * dt
         moving = true
       } else if ((this.rest -= dt) <= 0) {
-        this.goal = 34 + Math.random() * (W - 68)
+        this.goal = sp.walk[0] + Math.random() * (sp.walk[1] - sp.walk[0])
         this.rest = (f.low ? 6 : 2) + Math.random() * 4
       }
     }
@@ -139,19 +143,27 @@ export class Room {
     this.shake = Math.max(0, this.shake - dt)
     const y = FLOOR_Y - (moving && Math.floor(t * 8) % 2 ? 1 : 0)
 
+    // the room fills the canvas; the Cozmling and everything around it use the home's grid, scaled S×
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
     drawHome(ctx, f.home, t)
     let bulb
-    if (f.asleep) {
-      // lights out: the room dims (its own lights still glow), then the Cozmling, dimmed the same, on top
-      drawNight(ctx, f.home, t)
+    // lights out dims the room (its own lights still glow); the Cozmling gets the same shade on its own layer.
+    // Painted rooms also tint it with their light, so it sits in the scene.
+    const shade = f.asleep ? 'rgba(3,2,14,.62)' : sp.tint
+    if (f.asleep) drawNight(ctx, f.home, t)
+    if (shade) {
       const l = this.layer.getContext('2d')!
-      l.clearRect(0, 0, W, H)
+      l.setTransform(1, 0, 0, 1, 0, 0); l.clearRect(0, 0, CW, CH)
+      l.setTransform(S, 0, 0, S, 0, 0); l.imageSmoothingEnabled = false
       bulb = drawCozmling(l, this.x + shakeX, y, f.look, f.stage, pose, t, { flip: this.dir < 0, crack: f.crack })
-      l.globalCompositeOperation = 'source-atop'; l.fillStyle = 'rgba(3,2,14,.62)'; l.fillRect(0, 0, W, H)
+      l.setTransform(1, 0, 0, 1, 0, 0)
+      l.globalCompositeOperation = 'source-atop'; l.fillStyle = shade; l.fillRect(0, 0, CW, CH)
       l.globalCompositeOperation = 'source-over'
       ctx.drawImage(this.layer, 0, 0)
-      drawBulbGlow(ctx, bulb, t, 1.5, true)      // its antenna is a night light
+      ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = false
+      drawBulbGlow(ctx, bulb, t, f.asleep ? 1.5 : 1, f.asleep)      // asleep, its antenna is a night light
     } else {
+      ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = false
       bulb = drawCozmling(ctx, this.x + shakeX, y, f.look, f.stage, pose, t, { flip: this.dir < 0, crack: f.crack })
       drawBulbGlow(ctx, bulb, t)
     }
@@ -206,6 +218,7 @@ export class Room {
     }
     ctx.globalAlpha = 1
 
-    if (this.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${this.flash.toFixed(3)})`; ctx.fillRect(0, 0, W, H); this.flash = Math.max(0, this.flash - dt * 1.3) }
+    if (this.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${this.flash.toFixed(3)})`; ctx.fillRect(0, 0, sp.w, sp.h); this.flash = Math.max(0, this.flash - dt * 1.3) }
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
   }
 }

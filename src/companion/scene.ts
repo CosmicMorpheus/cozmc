@@ -1,11 +1,23 @@
 /* ============================================================
-   COZMLING HOMES — 144×96 pixel rooms. The still parts are painted
-   once and cached; stars, lights and fireflies animate on top.
+   COZMLING HOMES. Every room canvas is CW×CH. Each home has its own
+   pixel grid for the Cozmling (SPEC), always an exact multiple of the
+   canvas so the alien stays crisp:
+   - Star Loft: a painted room (an image) with animated touches on top.
+   - Moon Base and Cosmic Grove: 144×96 rooms drawn in code, scaled 8×.
    ============================================================ */
 import type { HomeId } from './care'
 
-export const W = 144, H = 96
-export const FLOOR_Y = 86          // where a Cozmling's feet touch the ground
+export const CW = 1152, CH = 768
+export interface Spec { w: number; h: number; floorY: number; walk: [number, number]; tint?: string }
+/** The Cozmling's grid per home: size, where its feet touch the floor, how far it wanders, and the room's light on it. */
+export const SPEC: Record<HomeId, Spec> = {
+  loft: { w: 192, h: 128, floorY: 107, walk: [50, 142], tint: 'rgba(38,46,150,.16)' },
+  moonbase: { w: 144, h: 96, floorY: 86, walk: [34, 110] },
+  grove: { w: 144, h: 96, floorY: 86, walk: [34, 110] },
+}
+
+/* the pixel rooms below are drawn on their own 144×96 grid */
+const W = 144, H = 96, FLOOR_Y = 86
 
 const rnd = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296)
 const disc = (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, c: string) => {
@@ -146,6 +158,117 @@ function groveLive(ctx: CanvasRenderingContext2D, t: number, glowOnly = false) {
   }
 }
 
+/* ---------------- Star Loft (painted) ----------------
+   The art is 1536×1024; everything animated below is placed in those
+   coordinates, so it lines up with the picture. */
+const ART_W = 1536, ART_H = 1024
+let loftImg: HTMLImageElement | null = null
+const whenLoaded: (() => void)[] = []
+function loftArt() {
+  if (!loftImg) {
+    loftImg = new Image()
+    loftImg.decoding = 'async'
+    loftImg.onload = () => whenLoaded.splice(0).forEach(f => f())
+    loftImg.src = '/assets/rooms/star-loft.webp'
+  }
+  return loftImg.complete && loftImg.naturalWidth ? loftImg : null
+}
+/** Run `cb` once the painted rooms have loaded (right away if they already have). */
+export function onHomeArt(cb: () => void) { if (loftArt()) cb(); else whenLoaded.push(cb) }
+
+const PLANETS: [number, number, number][] = [[1290, 760, 565], [630, 278, 74], [748, 278, 18], [1270, 215, 40], [1240, 395, 54]]
+const inSky = (x: number, y: number) => {
+  const window = x > 480 && x < 1360 && y > 105 && y < 515 && y > 400 - (x - 455) * 1.75   // the big window (its left edge is a strut)
+  const corner = x > 250 && x < 450 && y > 25 && y < 300                                    // behind the orrery
+  return (window || corner) && !PLANETS.some(([px, py, r]) => (x - px) ** 2 + (y - py) ** 2 < r * r)
+}
+const STARS = (() => {
+  const r = rnd(42), out: { x: number; y: number; ph: number; sp: number; big: boolean; c: string }[] = []
+  while (out.length < 46) {
+    const x = 250 + r() * 1110, y = 25 + r() * 490
+    if (inSky(x, y)) out.push({ x, y, ph: r() * 6.28, sp: 0.8 + r() * 1.6, big: r() > 0.8, c: r() > 0.6 ? '#bcd4ff' : '#ffffff' })
+  }
+  return out
+})()
+const LANTERNS: [number, number, number][] = [[70, 612, 95], [318, 520, 55], [1288, 572, 70]]
+const JELLIES: [number, number][] = [[1465, 290], [1500, 348], [1435, 388]]
+const MOTES = Array.from({ length: 26 }, (_, i) => ({ x: (i * 397) % 1500, y: 300 + ((i * 211) % 620), ph: i * 0.77, sp: 6 + (i % 5) * 3 }))
+const BUBBLES = Array.from({ length: 14 }, (_, i) => ({ x: 1396 + ((i * 41) % 118), off: (i * 0.137) % 1, sp: 38 + (i % 4) * 14, r: 2 + (i % 3) }))
+
+function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, a: number) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1
+}
+const sparkle = (ctx: CanvasRenderingContext2D, x: number, y: number, s: number, c: string) => {
+  ctx.fillStyle = c; ctx.fillRect(x - s, y - 1, s * 2 + 1, 3); ctx.fillRect(x - 1, y - s, 3, s * 2 + 1)
+}
+
+function loft(ctx: CanvasRenderingContext2D, t: number, night: boolean) {
+  ctx.save()
+  ctx.scale(CW / ART_W, CH / ART_H)
+  if (night) { ctx.fillStyle = 'rgba(4,3,22,.6)'; ctx.fillRect(0, 0, ART_W, ART_H) }
+  else {
+    const img = loftArt()
+    ctx.imageSmoothingEnabled = true
+    if (img) ctx.drawImage(img, 0, 0, ART_W, ART_H)
+    else { ctx.fillStyle = '#0b0b2a'; ctx.fillRect(0, 0, ART_W, ART_H) }
+  }
+
+  // twinkling stars in the windows, and now and then a shooting star
+  for (const st of STARS) {
+    const k = Math.sin(t * st.sp + st.ph)
+    if (k < 0.2) continue
+    ctx.globalAlpha = (k - 0.2) * (night ? 1.2 : 0.9)
+    sparkle(ctx, Math.round(st.x), Math.round(st.y), st.big ? 6 : 3, st.c)
+  }
+  ctx.globalAlpha = 1
+  const cycle = 11, k = t % cycle, n = Math.floor(t / cycle)
+  if (k < 0.9) {
+    const r = rnd(n * 7 + 3), x0 = 560 + r() * 360, y0 = 120 + r() * 70, f = k / 0.9
+    const x = x0 + f * 260, y = y0 + f * 95
+    const g = ctx.createLinearGradient(x - 110, y - 40, x, y)
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,.95)')
+    ctx.globalAlpha = Math.sin(f * Math.PI)
+    ctx.strokeStyle = g; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 110, y - 40); ctx.lineTo(x, y); ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+
+  // lanterns flicker; with the lights out they're just embers
+  for (const [x, y, r] of LANTERNS) {
+    const fl = 0.75 + 0.15 * Math.sin(t * 9 + x) + 0.1 * Math.sin(t * 23 + y)
+    glow(ctx, x, y, r * (night ? 0.55 : 1.4), '#ffb347', (night ? 0.22 : 0.32) * fl)
+  }
+
+  // the jellyfish tank: rising bubbles, jellies that pulse
+  for (const [x, y] of JELLIES) glow(ctx, x, y, 42, '#7fe6ff', (night ? 0.38 : 0.22) * (0.6 + 0.4 * Math.sin(t * 1.7 + x)))
+  ctx.strokeStyle = '#c9f6ff'; ctx.lineWidth = 2
+  for (const b of BUBBLES) {
+    const f = (t * b.sp / 370 + b.off) % 1, y = 585 - f * 370, x = b.x + Math.sin(t * 2 + b.off * 9) * 4
+    ctx.globalAlpha = (night ? 0.8 : 0.6) * Math.min(1, (1 - f) * 4)
+    ctx.beginPath(); ctx.arc(x, y, b.r, 0, Math.PI * 2); ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+
+  if (!night) {
+    // a bead orbits the hanging orrery
+    const a = t * 0.7, bx = 375 + Math.cos(a) * 112, by = 142 + Math.sin(a) * 40
+    ctx.globalAlpha = Math.sin(a) > 0 ? 1 : 0.55
+    glow(ctx, bx, by, 16, '#ffd58a', 0.5)
+    ctx.fillStyle = '#e8b45c'; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = '#fff3cf'; ctx.fillRect(bx - 3, by - 3, 3, 3)
+    ctx.globalAlpha = 1
+    // dust drifting in the lamplight
+    for (const m of MOTES) {
+      const x = (m.x + Math.sin(t * 0.3 + m.ph) * 30 + t * m.sp) % ART_W, y = m.y + Math.sin(t * 0.5 + m.ph * 2) * 18
+      ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * 1.3 + m.ph)
+      ctx.fillStyle = '#ffd9a0'; ctx.fillRect(Math.round(x), Math.round(y), 3, 3)
+    }
+    ctx.globalAlpha = 1
+  }
+  ctx.restore()
+}
+
 /* ---------------- public ---------------- */
 const cache = new Map<HomeId, HTMLCanvasElement>()
 function still(id: HomeId) {
@@ -159,14 +282,22 @@ function still(id: HomeId) {
   return c
 }
 
-/** The room behind the Cozmling. */
+/** The room behind the Cozmling, filling a CW×CH canvas. */
 export function drawHome(ctx: CanvasRenderingContext2D, id: HomeId, t: number) {
+  if (id === 'loft') return loft(ctx, t, false)
+  ctx.save()
+  ctx.scale(CW / W, CH / H)
+  ctx.imageSmoothingEnabled = false
   ctx.drawImage(still(id), 0, 0)
   if (id === 'grove') groveLive(ctx, t); else moonBaseLive(ctx, t)
+  ctx.restore()
 }
 
 /** Lights out: dims the room, then lets the things that glow shine through. */
 export function drawNight(ctx: CanvasRenderingContext2D, id: HomeId, t: number) {
+  if (id === 'loft') return loft(ctx, t, true)
+  ctx.save()
+  ctx.scale(CW / W, CH / H)
   ctx.fillStyle = 'rgba(3,2,14,.62)'; ctx.fillRect(0, 0, W, H)
   if (id === 'grove') groveLive(ctx, t, true)
   else {
@@ -174,12 +305,15 @@ export function drawNight(ctx: CanvasRenderingContext2D, id: HomeId, t: number) 
     const leds = ['#ff5a6a', '#ffb020', '#8dff6a', '#59e6ff']
     for (let i = 0; i < 8; i++) if (Math.sin(t * (1.3 + i * 0.37) + i) > 0) R(ctx, 102 + i * 4, 66, 2, 2, leds[i % 4])
   }
+  ctx.restore()
 }
 
-/** A small preview of a home for the picker. */
+export const THUMB_W = 288, THUMB_H = 192
+/** A small preview of a home for the picker (painted rooms fill in once loaded). */
 export function homeThumb(canvas: HTMLCanvasElement, id: HomeId) {
-  canvas.width = W; canvas.height = H
+  canvas.width = THUMB_W; canvas.height = THUMB_H
   const ctx = canvas.getContext('2d')!
-  ctx.imageSmoothingEnabled = false
-  drawHome(ctx, id, 1.3)
+  const paint = () => { ctx.save(); ctx.scale(THUMB_W / CW, THUMB_H / CH); drawHome(ctx, id, 1.3); ctx.restore() }
+  paint()
+  if (id === 'loft') onHomeArt(paint)
 }
