@@ -137,6 +137,7 @@ Names, thresholds and the pixel badges can all be edited there.
 **Entering.**
 - Every score posted in the arcade during the week is one ticket, with no limit per wallet.
 - Every wallet can also claim **one free ticket per week**: a 0-ALGO note, network fee only. That's the "no purchase necessary" route.
+- **Cozmling bonus.** A wallet whose Cozmling checks in on 5 different UTC days in a week gets **one bonus ticket**, at most one per wallet per week. Each check-in is a 0-ALGO `cozmc:pet:v1:` note with a day field, and days are counted by block time. The check-in also backs up the Cozmling's stats to the wallet.
 - Weeks run Monday 00:00 UTC to the next Monday, and tickets reset each week.
 
 **The draw is automatic and anyone can check it.**
@@ -144,6 +145,8 @@ Names, thresholds and the pixel badges can all be edited there.
 - It hashes that block's random seed with the week number and picks the winning ticket from the result.
 - The Past winners list shows the block, the seed and the winning ticket, so anyone can re-check it.
 - Nobody, including you, can choose or predict the winner.
+
+**Where it shows.** The gold chip in the header, a banner with a live countdown on Home, the gold Giveaway button under Arcade, and the check-in panel on the Cozmling page.
 
 **Paying the winner.**
 1. Connect the creator wallet (`GIVEAWAY.payer`) and open Arcade › Giveaway.
@@ -155,6 +158,7 @@ Names, thresholds and the pixel badges can all be edited there.
 - `prizes: { 4: 250_000 }` overrides one week.
 - `extras: { 4: 'plus a custom Moonshot skin' }` adds bonus text to a week.
 - `start` is the Monday that week 1 begins.
+- `checkinDays` is how many check-in days earn the Cozmling bonus (5).
 
 **A caution.** Paid tickets plus a random prize can count as a lottery in some places. The free weekly ticket and the "void where prohibited" rules on the page are there to reduce that, but check what applies where you are.
 

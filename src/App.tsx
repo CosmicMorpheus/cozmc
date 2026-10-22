@@ -8,6 +8,7 @@ import { Ticker } from './components/Ticker'
 import { Unlocks } from './components/Unlocks'
 import { InstallButton } from './components/Install'
 import { CommunityButtons, PactButton, Social } from './components/Community'
+import { GiveawayChip } from './components/GiveawayStrip'
 import { Home } from './tabs/Home'
 import { ASA_ID, HAYSTACK_INVITE } from './config'
 import { GAMES } from './arcade/games'
@@ -72,7 +73,7 @@ function SubNav({ tab, active }: { tab: TabId; active: string }) {
     <nav className="subnav" aria-label={`${TABS.find(t => t.id === tab)?.label} pages`}>
       <div className="subnav__links">
         {items.map(s => (
-          <a key={s.id} href={`#/${tab}${s.id ? `/${s.id}` : ''}`} aria-current={active === s.id ? 'page' : undefined}>
+          <a key={s.id} href={`#/${tab}${s.id ? `/${s.id}` : ''}`} className={s.id === 'giveaway' ? 'is-gold' : undefined} aria-current={active === s.id ? 'page' : undefined}>
             <Icon name={s.icon} size={11} /><span>{s.label}</span>
           </a>
         ))}
@@ -147,6 +148,7 @@ export function App() {
               </a>
             ))}
           </nav>
+          <GiveawayChip />
           <Social className="top__social" />
           <WalletButton />
         </div>

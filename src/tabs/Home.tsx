@@ -7,7 +7,7 @@ import { compact, fmt } from '../lib/format'
 import { GAMES } from '../arcade/games'
 import { ASA_ID, HAYSTACK_INVITE } from '../config'
 import type { TabId } from '../App'
-import { GiveawayStrip } from '../components/GiveawayStrip'
+import { GiveawayBanner } from '../components/GiveawayStrip'
 import { GameThumb } from '../components/GameThumb'
 import { CommunityButtons, HaystackPanel, PactPanel, SocialIcon, socialLinks } from '../components/Community'
 import { dailyNo } from '../lib/daily'
@@ -38,6 +38,8 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         </div>
         <div className="hero__card"><HoloCard /><p className="hint">Move to tilt · click to flip</p></div>
       </section>
+
+      <GiveawayBanner />
 
       <Suspense fallback={<div className="spot spot--wait" aria-hidden="true" />}><Spotlight /></Suspense>
 
@@ -92,7 +94,6 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         <button onClick={() => go('arcade', 'boards')}><span className="sb__num">{scores.data ? runs : '…'}</span><span className="sb__lbl">{runs === 1 ? 'Run on-chain' : 'Runs on-chain'}</span></button>
       </section>
 
-      <GiveawayStrip />
 
       <section className="together" aria-labelledby="together-h">
         <div className="together__copy">

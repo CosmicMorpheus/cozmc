@@ -29,7 +29,7 @@ function useDraw(n: number) {
 }
 
 export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
-  const { scores, tickets, prizes, reload } = useChain()
+  const { scores, tickets, pets, prizes, reload } = useChain()
   const { activeAddress, algodClient, signTransactions } = useWallet()
   const { openConnect } = useMe()
   const toast = useToast()
@@ -37,10 +37,10 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(t) }, [])
 
-  if (!scores.data || !tickets.data) return <><Head /><Loading what="this week’s tickets" /></>
+  if (!scores.data || !tickets.data || !pets.data) return <><Head /><Loading what="this week’s tickets" /></>
 
   const week = Math.max(1, weekOf())
-  const all = weekTickets(week, scores.data, tickets.data)
+  const all = weekTickets(week, scores.data, tickets.data, pets.data)
   const people = entrants(all)
   const mine = activeAddress ? all.filter(t => t.address === activeAddress) : []
   const claimed = mine.some(t => t.kind === 'free') || (!!activeAddress && tickets.data.some(t => t.address === activeAddress && t.week === week))
@@ -75,11 +75,12 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
         </dl>
         <div className="gw__actions">
           <button className="btn btn--phos" onClick={() => go('arcade')}><Icon name="play" size={10} /> Play and post a score</button>
+          <a className="btn btn--ghost" href="#/cozmling"><Icon name="cozmling" size={12} /> Check in with your Cozmling</a>
           {!activeAddress ? <button className="btn btn--ghost" onClick={openConnect}>Connect to claim a free ticket</button>
             : !eligible(activeAddress) ? <span className="muted small">The giveaway wallet can’t enter.</span>
             : claimed ? <span className="gw__claimed">Free ticket claimed for week {week}</span>
             : <button className="btn btn--gold" disabled={busy} onClick={claim}>{busy ? 'Claiming…' : 'Claim your free ticket'}</button>}
-          <p className="gw__fine">Every score you post is one ticket. No purchase necessary: every wallet also gets one free ticket each week (network fee only).</p>
+          <p className="gw__fine">Every score you post is one ticket. Check in with your Cozmling on {GIVEAWAY.checkinDays} different days in a week for a bonus ticket. No purchase necessary: every wallet also gets one free ticket each week (network fee only).</p>
         </div>
       </section>
 
@@ -100,7 +101,7 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
         </div>
         <div className="panel">
           <header className="panel__head"><h2>Past winners</h2></header>
-          {past.length ? <ul className="gw__past">{past.map(n => <PastWeek key={n} n={n} all={weekTickets(n, scores.data!, tickets.data!)} />)}</ul>
+          {past.length ? <ul className="gw__past">{past.map(n => <PastWeek key={n} n={n} all={weekTickets(n, scores.data!, tickets.data!, pets.data!)} />)}</ul>
             : <p className="muted small">The first winner is drawn on {day(weekEnd(week))}.</p>}
         </div>
       </section>
@@ -109,6 +110,7 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
         <summary>How it works and the rules<span className="pm" aria-hidden="true" /></summary>
         <ul>
           <li><b>Tickets.</b> Each score you post in the arcade during the week is one ticket (posting costs 0.1 ALGO, which buys and burns COZMC). Every wallet can also claim one free ticket per week by signing a 0-ALGO note; you only pay the 0.001 ALGO network fee.</li>
+          <li><b>Cozmling bonus.</b> If your wallet’s Cozmling checks in on {GIVEAWAY.checkinDays} different days (UTC) in a week, you get one bonus ticket for that week. Each check-in is a 0-ALGO note from your wallet to itself; days count by the time of the block it lands in.</li>
           <li><b>Weeks</b> run Monday 00:00 UTC to the next Monday 00:00 UTC. Tickets reset each week.</li>
           <li><b>The draw</b> uses the first Algorand block stamped at or after the deadline. Tickets are numbered in block order, and the winning number is SHA-256 of that block’s seed plus “cozmc-giveaway-week-N”, taken modulo the ticket count. Nobody can pick or predict it, and anyone can check it.</li>
           <li><b>The prize</b> is sent by the COZMC team from {GIVEAWAY.payer.slice(0, 5)}…{GIVEAWAY.payer.slice(-4)} and shows here as paid. Winners need COZMC opted in to receive it. The prize can change from week to week.</li>
@@ -160,7 +162,7 @@ function PastWeek({ n, all }: { n: number; all: Ticket[] }) {
               <summary>Verify the draw</summary>
               <p>Draw block <a href={`https://allo.info/block/${draw.round}`} target="_blank" rel="noopener">#{fmt(draw.round)} ↗</a>, stamped {new Date(draw.time * 1000).toISOString().replace('T', ' ').slice(0, 19)} UTC</p>
               <p>Seed <code>{draw.seed}</code></p>
-              <p>SHA-256(seed ‖ “cozmc-giveaway-week-{n}”) mod {all.length} = ticket #{win.no}, <a href={EXPLORER_TX(win.txid)} target="_blank" rel="noopener">{win.kind === 'free' ? 'a free ticket' : 'a posted score'} ↗</a></p>
+              <p>SHA-256(seed ‖ “cozmc-giveaway-week-{n}”) mod {all.length} = ticket #{win.no}, <a href={EXPLORER_TX(win.txid)} target="_blank" rel="noopener">{win.kind === 'free' ? 'a free ticket' : win.kind === 'checkin' ? 'a Cozmling check-in bonus' : 'a posted score'} ↗</a></p>
             </details>
           </>
         )}
@@ -172,7 +174,7 @@ function Head() {
   return (
     <header className="page-head">
       <h1>Weekly giveaway</h1>
-      <p>Every score you post is a ticket. Every wallet gets one free ticket too. One winner every Monday, drawn in the open on Algorand.</p>
+      <p>Every score you post is a ticket, every wallet gets a free one, and Cozmling check-ins earn a bonus. One winner every Monday, drawn in the open on Algorand.</p>
     </header>
   )
 }

@@ -3,8 +3,11 @@
    Everything here is a pure function of on-chain data, so anyone
    can recompute the same winner:
      1. Tickets for week N = every valid score posted that week, plus
-        each wallet's first free-ticket note for week N, in block
-        order (round, then transaction id). Ticket #1 is the earliest.
+        each wallet's first free-ticket note for week N, plus one bonus
+        ticket for each wallet whose Cozmling checked in on
+        GIVEAWAY.checkinDays different UTC days that week (stamped at the
+        check-in that reached it), in block order (round, then
+        transaction id). Ticket #1 is the earliest.
      2. Draw block = the first Algorand block stamped at or after the
         week's deadline (next Monday 00:00 UTC).
      3. Winning ticket = SHA-256( draw block seed bytes ‖ "cozmc-giveaway-week-N" ),
@@ -14,7 +17,7 @@ import { GIVEAWAY, KNOWN_ACCOUNTS } from '../config'
 import { GAMES } from '../arcade/games'
 import { plausible } from '../arcade/types'
 import { DAY_MS } from './daily'
-import type { FreeTicket, ScoreTx } from './chain'
+import type { FreeTicket, PetNote, ScoreTx } from './chain'
 
 export const WEEK_MS = 7 * DAY_MS
 const START = Date.parse(`${GIVEAWAY.start}T00:00:00Z`)
@@ -26,12 +29,17 @@ export const prizeFor = (n: number) => GIVEAWAY.prizes[n] ?? GIVEAWAY.prize
 export const extraFor = (n: number) => GIVEAWAY.extras[n] ?? ''
 const inWeek = (timeSec: number, n: number) => timeSec * 1000 >= weekStart(n) && timeSec * 1000 < weekEnd(n)
 
-export interface Ticket { no: number; address: string; kind: 'score' | 'free'; round: number; txid: string; game?: string; score?: number }
+export interface Ticket { no: number; address: string; kind: 'score' | 'free' | 'checkin'; round: number; txid: string; game?: string; score?: number }
 
 /** Can this wallet win? The giveaway wallet and labelled contracts can't. */
 export const eligible = (address: string) => address !== GIVEAWAY.payer && !KNOWN_ACCOUNTS[address]?.exclude
 
-export function weekTickets(n: number, scores: ScoreTx[], free: FreeTicket[]): Ticket[] {
+/** The UTC days (as day numbers) a wallet's Cozmling checked in during week n, by block time. */
+export function checkinDays(n: number, pets: PetNote[], address: string) {
+  return [...new Set(pets.filter(p => p.checkin && p.address === address && inWeek(p.time, n)).map(p => Math.floor(p.time / 86400)))].sort((a, b) => a - b)
+}
+
+export function weekTickets(n: number, scores: ScoreTx[], free: FreeTicket[], pets: PetNote[] = []): Ticket[] {
   const fromScores = scores.filter(s => {
     if (s.legacy || !inWeek(s.time, n)) return false
     const g = GAMES.find(x => x.id === s.game)
@@ -43,7 +51,15 @@ export function weekTickets(n: number, scores: ScoreTx[], free: FreeTicket[]): T
     .sort((a, b) => a.round - b.round || (a.txid < b.txid ? -1 : 1))
     .filter(f => (seen.has(f.address) ? false : (seen.add(f.address), true)))   // one free ticket per wallet
     .map(f => ({ address: f.address, kind: 'free' as const, round: f.round, txid: f.txid }))
-  return [...fromScores, ...fromFree]
+  // the Cozmling bonus: one ticket once a wallet has checked in on enough different days this week
+  const days = new Map<string, Set<number>>(), fromPets: Omit<Ticket, 'no'>[] = []
+  for (const p of pets.filter(p => p.checkin && inWeek(p.time, n)).sort((a, b) => a.round - b.round || (a.txid < b.txid ? -1 : 1))) {
+    const d = days.get(p.address) ?? new Set<number>()
+    if (d.size >= GIVEAWAY.checkinDays) continue
+    d.add(Math.floor(p.time / 86400)); days.set(p.address, d)
+    if (d.size === GIVEAWAY.checkinDays) fromPets.push({ address: p.address, kind: 'checkin', round: p.round, txid: p.txid })
+  }
+  return [...fromScores, ...fromFree, ...fromPets]
     .filter(t => eligible(t.address))
     .sort((a, b) => a.round - b.round || (a.txid < b.txid ? -1 : a.txid > b.txid ? 1 : 0))
     .map((t, i) => ({ ...t, no: i + 1 }))

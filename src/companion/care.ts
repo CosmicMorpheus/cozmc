@@ -63,15 +63,21 @@ export const cleanName = (s: string) => s.replace(/[^\p{L}\p{N} '\-]/gu, '').rep
 /* ---- the copy saved on Algorand ----
    A 0-ALGO payment from the wallet to itself, with the note cozmc:pet:v1:{…}.
    The newest one wins, so changing the look just saves a new note. */
-export interface Saved { name: string; look: Look; home: HomeId; born: number }
+export interface Saved { name: string; look: Look; home: HomeId; born: number; fed: number; played: number; pets: number }
 
-export const toNote = (p: Pet) => ({
+export const utcDay = (t = Date.now()) => Math.floor(t / 86_400_000)
+
+/** The note's fields. A daily check-in adds the day ("d") and backs up the care counts. */
+export const toNote = (p: Pet, checkin = false) => ({
   n: p.name, f: p.look.form === 'girl' ? 'g' : 'b', b: p.look.body, g: p.look.glow, e: p.look.eyes,
   h: p.home === 'grove' ? 'g' : 'm', s: Math.floor(p.born / 1000),
+  m: p.fed, p: p.played, t: p.pets,
+  ...(checkin ? { d: utcDay() } : {}),
 })
 
 export function fromNote(j: any): Saved | null {
   const int = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) < 64 ? (v as number) : 0)
+  const count = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? Math.min(v as number, 1e7) : 0)
   if (!j || typeof j.n !== 'string' || (j.f !== 'b' && j.f !== 'g')) return null
   const name = cleanName(j.n).trim()
   if (!name) return null
@@ -80,12 +86,13 @@ export function fromNote(j: any): Saved | null {
     look: { form: j.f === 'g' ? 'girl' : 'boy', body: int(j.b), glow: int(j.g), eyes: int(j.e) },
     home: j.h === 'g' ? 'grove' : 'moonbase',
     born: Number.isInteger(j.s) && j.s > 1_600_000_000 ? j.s * 1000 : Date.now(),
+    fed: count(j.m), played: count(j.p), pets: count(j.t),
   }
 }
 
 /** Bring a Cozmling back from its saved note (this browser had no copy). */
 export function restore(owner: string, s: Saved, txid: string, round: number, now = Date.now()): Pet {
-  return { v: 1, name: s.name, look: s.look, home: s.home, born: s.born, hatched: s.born, food: 65, fun: 65, energy: 75, at: now, asleep: null, fed: 0, played: 0, pets: 0, owner, txid, round }
+  return { v: 1, name: s.name, look: s.look, home: s.home, born: s.born, hatched: s.born, food: 65, fun: 65, energy: 75, at: now, asleep: null, fed: s.fed, played: s.played, pets: s.pets, owner, txid, round }
 }
 
 /**

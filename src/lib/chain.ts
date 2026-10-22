@@ -431,6 +431,23 @@ export async function fetchPetNote(address: string): Promise<{ txid: string; rou
   return null
 }
 
+export interface PetNote { txid: string; address: string; round: number; time: number; checkin: boolean }
+
+/** Every wallet's Cozmling notes (saves and daily check-ins), for the giveaway's check-in bonus. */
+export async function fetchPetNotes(): Promise<PetNote[]> {
+  const txns = await paginate<any>(`/v2/transactions?note-prefix=${encodeURIComponent(b64(NOTE_PET))}&tx-type=pay&min-round=${ARCADE_START_ROUND}`, 'transactions', 20)
+  const out: PetNote[] = []
+  for (const t of txns) {
+    const pay = t['payment-transaction']
+    if (!pay || pay.receiver !== t.sender || pay.amount !== 0) continue
+    try {
+      const j = JSON.parse(unb64(t.note).slice(NOTE_PET.length))
+      out.push({ txid: t.id, address: t.sender, round: t['confirmed-round'], time: t['round-time'], checkin: Number.isInteger(j?.d) })
+    } catch { /* not ours */ }
+  }
+  return out
+}
+
 /** Save a Cozmling: a 0-ALGO note to yourself (network fee only). */
 export async function buildPetTxn(algod: algosdk.Algodv2, sender: string, data: object) {
   const sp = await algod.getTransactionParams().do()

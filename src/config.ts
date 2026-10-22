@@ -79,6 +79,7 @@ export const GIVEAWAY = {
   prizes: {} as Record<number, number>,   // per-week overrides, e.g. { 4: 250_000 }
   extras: {} as Record<number, string>,   // optional bonus text per week, e.g. { 4: 'plus a custom Moonshot skin' }
   payer: 'JM2AUDGBHZYIIN5MFP4VPKKAGJH27PWI3XXITX4UAHSQQ5ZL7BAGD72YOQ',   // the creator wallet; can't win
+  checkinDays: 5,                 // Cozmling check-ins on this many different days in a week earn one bonus ticket
 }
 export const NOTE_TICKET = 'cozmc:ticket:v1:'
 export const NOTE_PRIZE = 'cozmc:prize:v1:'

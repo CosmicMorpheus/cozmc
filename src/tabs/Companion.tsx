@@ -3,12 +3,14 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { Room, ART } from '../companion/room'
 import { BODIES, DEFAULT_LOOK, drawBulbGlow, drawCozmling, EYES, GLOWS, STAGE_NAME, STAGES, type Form, type Look, type Stage } from '../companion/look'
 import { drawHome, homeThumb, FLOOR_Y, H, W } from '../companion/scene'
-import { adopt, ageText, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, type HomeId, type Outcome, type Pet } from '../companion/care'
+import { adopt, ageText, clamp, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
 import { buildPetTxn, fetchPetNote, signSendConfirm } from '../lib/chain'
+import { useChain } from '../lib/data'
+import { checkinDays, weekOf, weekStart } from '../lib/giveaway'
 import { PixelArt } from '../components/Pixel'
 import { Failed, HoldButton, Loading, useToast } from '../components/ui'
 import { useMe } from '../components/Wallet'
-import { EXPLORER_TX } from '../config'
+import { EXPLORER_TX, GIVEAWAY } from '../config'
 
 const NAMES: Record<Form, string[]> = { boy: ['Zib', 'Blip', 'Orbit', 'Comet', 'Kip', 'Zorp', 'Rigel', 'Bolt'], girl: ['Nova', 'Luna', 'Zuzu', 'Vega', 'Lyra', 'Mira', 'Pixie', 'Stella'] }
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
@@ -30,6 +32,8 @@ function Owned({ owner }: { owner: string }) {
   const [busy, setBusy] = useState<Busy>('')
   const [greeting, setGreeting] = useState('')
   const startingOver = useRef(false)
+  const { pets: notes, reload } = useChain()
+  const [checkedToday, setCheckedToday] = useState<number[]>([])   // check-ins the indexer may not show yet
   const current = useRef(pet)
   current.current = pet
   useEffect(() => { save(owner, pet) }, [owner, pet])
@@ -49,19 +53,32 @@ function Owned({ owner }: { owner: string }) {
         setPet(restore(owner, saved, n.txid, n.round))
         setGreeting(`Welcome back! ${saved.name} was restored from your wallet.`)
       } else if (n.round > (p.round ?? 0)) {
-        setPet(q => q && { ...q, name: saved.name, look: saved.look, home: saved.home, born: saved.born, txid: n.txid, round: n.round, owner })
+        setPet(q => q && { ...q, name: saved.name, look: saved.look, home: saved.home, born: saved.born, txid: n.txid, round: n.round, owner, fed: Math.max(q.fed, saved.fed), played: Math.max(q.played, saved.played), pets: Math.max(q.pets, saved.pets) })
       }
     }, () => setFind('error'))
   }, [owner])
   useEffect(lookUp, [lookUp])
 
   /** Save a Cozmling to the wallet: one signature, a 0-ALGO note to itself. */
-  const write = async (p: Pet): Promise<Pet | null> => {
+  const write = async (p: Pet, checkin = false): Promise<Pet | null> => {
     setBusy('sign')
     try {
-      const { txid, round } = await signSendConfirm(algodClient, signTransactions, [await buildPetTxn(algodClient, owner, toNote(p))], () => setBusy('send'))
+      const { txid, round } = await signSendConfirm(algodClient, signTransactions, [await buildPetTxn(algodClient, owner, toNote(p, checkin))], () => setBusy('send'))
       return { ...p, owner, txid, round }
     } catch (e) { toast(errText(e)); return null } finally { setBusy('') }
+  }
+
+  const week = Math.max(1, weekOf())
+  const days = [...new Set([...(notes.data ? checkinDays(week, notes.data, owner) : []), ...checkedToday.filter(d => d * 86_400_000 >= weekStart(week))])]
+  /** The daily check-in: one signature that backs the Cozmling up and counts toward the giveaway bonus. */
+  const checkIn = async () => {
+    const now = settle(current.current!)
+    const p = await write({ ...now, fun: clamp(now.fun + 15) }, true)
+    if (!p) return false
+    setPet(p)
+    setCheckedToday(d => [...d, utcDay()])
+    setTimeout(() => reload('giveaway'), 4000)
+    return true
   }
 
   if (!pet && find === 'looking') return <><Head /><Loading what="your Cozmling" /></>
@@ -80,7 +97,8 @@ function Owned({ owner }: { owner: string }) {
     const p = await write({ ...settle(pet), name, look, home })
     if (p) { setPet(p); setEditing(false); toast('Saved to your wallet.') }
   }} />
-  return <Habitat pet={pet} setPet={setPet} greeting={greeting} onEdit={() => setEditing(true)} onStartOver={() => { startingOver.current = true; setPet(null) }} />
+  return <Habitat pet={pet} setPet={setPet} greeting={greeting} onEdit={() => setEditing(true)} onStartOver={() => { startingOver.current = true; setPet(null) }}
+    checkin={{ days, busy, onCheckIn: checkIn }} />
 }
 
 function Head() {
@@ -113,7 +131,9 @@ function Gate() {
 }
 
 /* ---------------- the room ---------------- */
-function Habitat({ pet, setPet, greeting, onEdit, onStartOver }: { pet: Pet; setPet: (p: Pet) => void; greeting: string; onEdit: () => void; onStartOver: () => void }) {
+interface CheckinProps { days: number[]; busy: Busy; onCheckIn: () => Promise<boolean> }
+
+function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet: Pet; setPet: (p: Pet) => void; greeting: string; onEdit: () => void; onStartOver: () => void; checkin: CheckinProps }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const room = useRef<Room | null>(null)
   const live = useRef({ pet, crack: 0 })
@@ -224,6 +244,10 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver }: { pet: Pet; set
             <p className="cz__fine">Needs run down over about a day, even while you’re away. {pet.name} never dies; a neglected Cozmling just gets hungry, bored or sleepy.</p>
           </div>
 
+          {now.hatched && <CheckIn name={pet.name} {...checkin} onCheckIn={async () => {
+            if (await checkin.onCheckIn()) { room.current?.pat(); setSay(`Checked in! ${pet.name} is so happy to see you.`) }
+          }} />}
+
           <div className="panel cz__home">
             <header className="panel__head"><h2>Home</h2><button className="btn btn--ghost btn--sm" onClick={onEdit}>Change look</button></header>
             <div className="cz__homes">
@@ -247,6 +271,32 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver }: { pet: Pet; set
 
       <Prototype pet={now} setPet={setPet} onStartOver={onStartOver} />
     </>
+  )
+}
+
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+/* This week's check-ins (Monday to Sunday, UTC) and the giveaway bonus they lead to. */
+function CheckIn({ name, days, busy, onCheckIn }: { name: string; days: number[]; busy: Busy; onCheckIn: () => void }) {
+  const week = Math.max(1, weekOf()), first = utcDay(weekStart(week)), today = utcDay()
+  const need = GIVEAWAY.checkinDays, got = Math.min(days.length, need), done = days.includes(today)
+  return (
+    <div className="panel cz-check">
+      <header className="panel__head"><h2>Daily check-in</h2><a className="link" href="#/arcade/giveaway">Giveaway</a></header>
+      <ol className="cz-check__week">
+        {WEEKDAYS.map((w, i) => {
+          const d = first + i, on = days.includes(d)
+          return <li key={w} className={`${on ? 'is-on' : ''}${d === today ? ' is-today' : ''}${d > today ? ' is-later' : ''}`} aria-label={`${w}: ${on ? 'checked in' : d > today ? 'still to come' : 'missed'}`}>{w[0]}</li>
+        })}
+      </ol>
+      <p className="cz-check__msg">{got >= need
+        ? <><b>Bonus ticket earned</b> for this week’s giveaway. Keep checking in to keep {name} backed up.</>
+        : <>{got} of {need} days this week. Check in on {need - got} more {need - got === 1 ? 'day' : 'days'} for a bonus giveaway ticket.</>}</p>
+      <button className="btn btn--gold" disabled={done || !!busy} onClick={onCheckIn}>
+        {busy === 'sign' ? 'Approve in your wallet…' : busy === 'send' ? 'Checking in…' : done ? 'Checked in today' : `Check in with ${name}`}
+      </button>
+      <p className="cz__fine">Each check-in signs a short note from your wallet to itself (0.001 ALGO network fee) and backs up {name}’s stats there too. Days reset at 00:00 UTC.</p>
+    </div>
   )
 }
 

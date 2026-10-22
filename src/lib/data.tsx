@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { fetchAsset, fetchBonfireTotal, fetchBurns, fetchFreeTickets, fetchHolders, fetchPactFarms, fetchPrizePayments, fetchRound, fetchScores, type Burn, type FreeTicket, type Holder, type PactFarm, type PrizePayment, type ScoreTx } from './chain'
+import { fetchAsset, fetchBonfireTotal, fetchBurns, fetchFreeTickets, fetchHolders, fetchPactFarms, fetchPetNotes, fetchPrizePayments, fetchRound, fetchScores, type Burn, type FreeTicket, type Holder, type PactFarm, type PetNote, type PrizePayment, type ScoreTx } from './chain'
 
 /* One shared cache of on-chain data for every tab. */
 
@@ -15,6 +15,7 @@ interface ChainData {
   farms: Slot<PactFarm[]>
   tickets: Slot<FreeTicket[]>
   prizes: Slot<PrizePayment[]>
+  pets: Slot<PetNote[]>
   round: number | null
   reload: (what: 'holders' | 'burns' | 'scores' | 'giveaway' | 'all') => void
 }
@@ -41,10 +42,11 @@ export function ChainDataProvider({ children }: { children: ReactNode }) {
   const [farms, loadFarms] = useSlot(fetchPactFarms)
   const [tickets, loadTickets] = useSlot(fetchFreeTickets)
   const [prizes, loadPrizes] = useSlot(fetchPrizePayments)
+  const [pets, loadPets] = useSlot(fetchPetNotes)
   const [round, setRound] = useState<number | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  useEffect(() => { loadAsset(); loadHolders(); loadBurns(); loadBurned(); loadScores(); loadFarms(); loadTickets(); loadPrizes() }, [loadAsset, loadHolders, loadBurns, loadBurned, loadScores, loadFarms, loadTickets, loadPrizes])
+  useEffect(() => { loadAsset(); loadHolders(); loadBurns(); loadBurned(); loadScores(); loadFarms(); loadTickets(); loadPrizes(); loadPets() }, [loadAsset, loadHolders, loadBurns, loadBurned, loadScores, loadFarms, loadTickets, loadPrizes, loadPets])
 
   useEffect(() => {          // live block round, paused while the tab is hidden
     let alive = true
@@ -57,17 +59,17 @@ export function ChainDataProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {          // keep boards and the activity ticker fresh while someone's looking
-    const fast = setInterval(() => { if (!document.hidden) { loadBurns(true); loadBurned(true); loadScores(true); loadTickets(true); loadPrizes(true) } }, 45_000)
+    const fast = setInterval(() => { if (!document.hidden) { loadBurns(true); loadBurned(true); loadScores(true); loadTickets(true); loadPrizes(true); loadPets(true) } }, 45_000)
     const slow = setInterval(() => { if (!document.hidden) { loadHolders(true); loadFarms(true) } }, 120_000)
     return () => { clearInterval(fast); clearInterval(slow) }
-  }, [loadBurns, loadBurned, loadScores, loadHolders, loadFarms, loadTickets, loadPrizes])
+  }, [loadBurns, loadBurned, loadScores, loadHolders, loadFarms, loadTickets, loadPrizes, loadPets])
 
   const reload = useCallback((what: 'holders' | 'burns' | 'scores' | 'giveaway' | 'all') => {
     if (what === 'holders' || what === 'all') loadHolders()
     if (what === 'burns' || what === 'all') { loadBurns(); loadBurned(); loadHolders() }
     if (what === 'scores' || what === 'all') loadScores()
-    if (what === 'giveaway' || what === 'all') { loadTickets(); loadPrizes() }
-  }, [loadHolders, loadBurns, loadBurned, loadScores, loadTickets, loadPrizes])
+    if (what === 'giveaway' || what === 'all') { loadTickets(); loadPrizes(); loadPets() }
+  }, [loadHolders, loadBurns, loadBurned, loadScores, loadTickets, loadPrizes, loadPets])
 
   // A paid score only counts once the burn in its transaction group is found; that burn
   // gets tagged with the run it paid for. Early free scores (legacy) count as they are.
@@ -80,7 +82,7 @@ export function ChainDataProvider({ children }: { children: ReactNode }) {
     return [{ ...rawScores, data: sc }, { ...rawBurns, data: bn }]
   }, [rawScores, rawBurns])
 
-  const value = useMemo(() => ({ asset, holders, burns, burned, scores, farms, tickets, prizes, round, reload }), [asset, holders, burns, burned, scores, farms, tickets, prizes, round, reload])
+  const value = useMemo(() => ({ asset, holders, burns, burned, scores, farms, tickets, prizes, pets, round, reload }), [asset, holders, burns, burned, scores, farms, tickets, prizes, pets, round, reload])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
