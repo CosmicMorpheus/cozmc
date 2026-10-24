@@ -73,7 +73,7 @@ Visitors who already have the site open pick up a new deploy on their next visit
 ## Edit the basics: `src/config.ts`
 
 - `SOCIAL`: your X, Discord, Telegram and email links. Empty ones show as "coming soon".
-- `MUSIC_ID`: the background music's YouTube id. Set it to `""` to remove the music button.
+- `MUSIC_IDS`: the background music's YouTube ids, played in order and looped; the skip button moves to the next one. Set it to `[]` to remove the music buttons.
 - `KNOWN_ACCOUNTS`: labels on Community › Holders. Add each new liquidity pool or contract with `exclude: true` so it isn't ranked like a person.
 - `PACT_FARMS`: the Pact farms for COZMC and the ALGO/COZMC LP. New farms are picked up automatically from Pact's public API; this list is only the fallback if that API is down.
 - `BURN_GOAL`: the community burn target and what it unlocks. **Set `reward` to something you'll actually deliver.** It currently reads "unlocks the next arcade game" as a placeholder.

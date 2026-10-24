@@ -10,8 +10,8 @@ export const SOCIAL = {
   email: '',    // e.g. "hello@yourdomain.com"
 }
 
-/** Background music (YouTube video id). Set to "" to remove the music button. */
-export const MUSIC_ID = 'O9QgHF1gtC8'
+/** Background music (YouTube video ids), played in order and looped. Leave empty to remove the music button. */
+export const MUSIC_IDS = ['O9QgHF1gtC8', 'B0Bwoh948QQ']
 
 // ---- token ----
 export const ASA_ID = 3739851986

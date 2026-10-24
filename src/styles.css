@@ -442,6 +442,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .toast.show { opacity: 1; translate: -50% 0 }
 .music { position: fixed; right: 16px; bottom: 16px; z-index: 90; width: 44px; height: 44px; display: grid; place-items: center; background: #000; border: 2px solid var(--line-3); box-shadow: 3px 3px 0 #1b1b1b }
 .music:hover { border-color: var(--phos) }
+.music--skip { right: 68px; color: var(--dim) }
+.music--skip:hover { color: var(--phos) }
 .music__eq { display: flex; align-items: flex-end; gap: 2px; height: 16px }
 .music__eq i { width: 3px; height: 4px; background: var(--dim) }
 .music.is-on .music__eq i { background: var(--phos); animation: eq .9s steps(4) infinite }
