@@ -1,0 +1,28 @@
+{
+  "name": "cozmc-site",
+  "private": true,
+  "version": "3.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@galaxypay/use-wallet-lute": "^1.0.0",
+    "@txnlab/use-wallet-defly": "^5.0.1",
+    "@txnlab/use-wallet-exodus": "^5.0.1",
+    "@txnlab/use-wallet-pera": "^5.0.1",
+    "@txnlab/use-wallet-react": "^5.0.1",
+    "algosdk": "^3.9.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "5.7",
+    "vite": "^6.4.4"
+  }
+}
