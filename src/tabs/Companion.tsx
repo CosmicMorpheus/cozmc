@@ -3,11 +3,11 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { Room, ART } from '../companion/room'
 import { BODIES, DEFAULT_LOOK, drawBulbGlow, drawCozmling, EYES, GLOWS, STAGE_NAME, STAGES, type Form, type Look, type Stage } from '../companion/look'
 import { CH, CW, homeThumb, THUMB_H, THUMB_W } from '../companion/scene'
-import { adopt, ageText, clamp, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
+import { adopt, ageText, clamp, growth, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
 import { buildPetTxn, fetchPetNote, signSendConfirm } from '../lib/chain'
 import { useChain } from '../lib/data'
 import { checkinDays, weekOf, weekStart } from '../lib/giveaway'
-import { PixelArt } from '../components/Pixel'
+import { Icon, PixelArt } from '../components/Pixel'
 import { Failed, HoldButton, Loading, useToast } from '../components/ui'
 import { useMe } from '../components/Wallet'
 import { EXPLORER_TX, GIVEAWAY } from '../config'
@@ -53,7 +53,7 @@ function Owned({ owner }: { owner: string }) {
         setPet(restore(owner, saved, n.txid, n.round))
         setGreeting(`Welcome back! ${saved.name} was restored from your wallet.`)
       } else if (n.round > (p.round ?? 0)) {
-        setPet(q => q && { ...q, name: saved.name, look: saved.look, home: saved.home, born: saved.born, txid: n.txid, round: n.round, owner, fed: Math.max(q.fed, saved.fed), played: Math.max(q.played, saved.played), pets: Math.max(q.pets, saved.pets) })
+        setPet(q => q && { ...q, name: saved.name, look: saved.look, home: saved.home, born: saved.born, txid: n.txid, round: n.round, owner, fed: Math.max(q.fed, saved.fed), played: Math.max(q.played, saved.played), pets: Math.max(q.pets, saved.pets), arcade: Math.max(q.arcade ?? 0, saved.arcade), cheered: Math.max(q.cheered ?? 0, saved.cheered), checkins: Math.max(q.checkins ?? 0, saved.checkins) })
       }
     }, () => setFind('error'))
   }, [owner])
@@ -73,7 +73,7 @@ function Owned({ owner }: { owner: string }) {
   /** The daily check-in: one signature that backs the Cozmling up and counts toward the giveaway bonus. */
   const checkIn = async () => {
     const now = settle(current.current!)
-    const p = await write({ ...now, fun: clamp(now.fun + 15) }, true)
+    const p = await write({ ...now, fun: clamp(now.fun + 15), checkins: (now.checkins ?? 0) + 1 }, true)
     if (!p) return false
     setPet(p)
     setCheckedToday(d => [...d, utcDay()])
@@ -230,6 +230,7 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
               <button className="btn btn--ghost" onClick={() => act(toggleSleep(now), r => (now.asleep ? r.wake() : r.sleep()))}>
                 <PixelArt rows={ART.z.rows} palette={ART.z.pal} size={14} /> {now.asleep ? 'Wake up' : 'Lights out'}
               </button>
+              <a className="btn btn--phos" href="#/arcade"><Icon name="arcade" size={14} /> Arcade</a>
             </div>
           )}
         </div>
@@ -242,6 +243,8 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
             <Need label="Energy" value={now.energy} kind="energy" dim={!now.hatched} />
             <p className="cz__fine">Needs run down over about a day, even while you’re away. {pet.name} never dies; a neglected Cozmling just gets hungry, bored or sleepy.</p>
           </div>
+
+          {now.hatched && <Growth pet={now} />}
 
           {now.hatched && <CheckIn name={pet.name} {...checkin} onCheckIn={async () => {
             if (await checkin.onCheckIn()) { room.current?.pat(); setSay(`Checked in! ${pet.name} is so happy to see you.`) }
@@ -258,7 +261,8 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
             </div>
             <dl className="cz__stats">
               <div><dt>Meals</dt><dd>{pet.fed}</dd></div>
-              <div><dt>Games</dt><dd>{pet.played}</dd></div>
+              <div><dt>Playtime</dt><dd>{pet.played}</dd></div>
+              <div><dt>Arcade runs</dt><dd>{pet.arcade ?? 0}</dd></div>
               <div><dt>Pats</dt><dd>{pet.pets}</dd></div>
             </dl>
             <p className="cz__saved">{pet.txid
@@ -270,6 +274,20 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
 
       <Prototype pet={now} setPet={setPet} onStartOver={onStartOver} />
     </>
+  )
+}
+
+/* Growing up: arcade runs, check-ins and care all add growth points. */
+function Growth({ pet }: { pet: Pet }) {
+  const g = growth(pet)
+  const pct = g.next ? Math.round(((g.points - g.from) / (g.next.at - g.from)) * 100) : 100
+  return (
+    <div className="panel cz-grow">
+      <header className="panel__head"><h2>Growing up</h2><a className="link" href="#/arcade">Play</a></header>
+      <p className="cz-grow__row"><b>{STAGE_NAME[g.stage]}</b><span>{g.next ? <>{g.points} / {g.next.at} to {STAGE_NAME[g.next.stage]}</> : <>Fully grown · {g.points} points</>}</span></p>
+      <div className="buddy__bar" role="progressbar" aria-label="Growth" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><i style={{ width: `${pct}%` }} /></div>
+      <p className="cz__fine">Every arcade game you play while {pet.name} is awake cheers them up (+Fun) and tires them out a little (−Energy, −Food), so feed them and let them rest between sessions. Arcade runs count the most toward growing up, and runs played while {pet.name} is happy count double. Daily check-ins and care help too.</p>
+    </div>
   )
 }
 
@@ -322,7 +340,7 @@ function HomeThumb({ id }: { id: HomeId }) {
 function Prototype({ pet, setPet, onStartOver }: { pet: Pet; setPet: (p: Pet) => void; onStartOver: () => void }) {
   const show = (s: Stage) => {
     if (s === 'egg') setPet({ ...pet, hatched: null, preview: undefined })
-    else setPet({ ...pet, hatched: pet.hatched ?? Date.now(), at: Date.now(), preview: s === 'sprout' ? undefined : s })
+    else setPet({ ...pet, hatched: pet.hatched ?? Date.now(), at: Date.now(), preview: s === growth({ ...pet, preview: undefined }).stage ? undefined : s })
   }
   const skip = (hours: number) => {
     const later = settle(pet, Date.now() + hours * 3_600_000)
@@ -331,7 +349,7 @@ function Prototype({ pet, setPet, onStartOver }: { pet: Pet; setPet: (p: Pet) =>
   return (
     <section className="panel cz-proto" aria-labelledby="cz-proto-h">
       <header className="panel__head"><h2 id="cz-proto-h">Prototype controls</h2></header>
-      <p className="muted small">In the full version, {pet.name} grows from on-chain activity: daily check-ins, posted scores and burns. For now you can jump between stages to see each one. Starting over lets you adopt a new Cozmling, which replaces this one in your wallet.</p>
+      <p className="muted small">{pet.name} now grows from arcade runs, check-ins and care. These buttons preview the other stages; pick {STAGE_NAME[growth(pet).stage]} to go back to the real one. Starting over lets you adopt a new Cozmling, which replaces this one in your wallet.</p>
       <div className="chips">{STAGES.map(s => <button key={s} className={`chip${stageOf(pet) === s ? ' on' : ''}`} onClick={() => show(s)}>{STAGE_NAME[s]}</button>)}</div>
       <div className="row">
         <button className="btn btn--ghost btn--sm" onClick={() => skip(6)} disabled={!pet.hatched}>Skip 6 hours</button>
