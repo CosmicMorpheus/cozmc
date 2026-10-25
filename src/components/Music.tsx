@@ -73,7 +73,9 @@ export function MusicButton() {
       )}
       <button className={`music${playing ? ' is-on' : ''}`} onClick={() => toggle.current()} aria-pressed={playing}
         aria-label={broken ? 'Music unavailable' : playing ? 'Pause background music' : 'Play background music'} title={broken ? 'Music unavailable' : 'Music'}>
-        <span className="music__eq" aria-hidden="true"><i /><i /><i /><i /></span>
+        {playing
+          ? <span className="music__eq" aria-hidden="true"><i /><i /><i /><i /></span>
+          : <span className={`music__idle${broken ? ' is-still' : ''}`} aria-hidden="true"><b>🎧</b><b>♪</b></span>}
       </button>
       <div className="yt-hidden" aria-hidden="true"><div id="yt-player" /></div>
     </>
