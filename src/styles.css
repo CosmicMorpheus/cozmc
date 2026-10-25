@@ -741,9 +741,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .social__link:hover,.social__link:focus-visible { border-color: var(--phos); color: var(--phos) }
 .social__link--discord { background: var(--discord); border-color: var(--discord); color: #fff }
 .social__link--discord:hover,.social__link--discord:focus-visible { background: #6b77ff; border-color: #fff; color: #fff }
-.tabs__tab--arcade { color: var(--phos); margin-inline: 4px; isolation: isolate }
-.tabs__tab--arcade:before { content: ""; position: absolute; inset: 14px 2px; border: 1px solid var(--phos-deep); background: #8dff6a0f; z-index: -1 }
-.tabs__tab--arcade:hover:before,.tabs__tab--arcade[aria-current=page]:before { border-color: var(--phos); background: #8dff6a1f }
+.tabs__tab--arcade { color: var(--phos) }
 .paths { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-bottom: clamp(40px,6vw,64px) }
 .path { position: relative; display: grid; align-content: start; gap: 8px; padding: 22px; background: var(--bg-1); border: 2px solid var(--line-2); text-decoration: none; box-shadow: 5px 5px #0c0c0c; transition: border-color .15s,transform .08s }
 .path:hover,.path:focus-visible { transform: translate(-1px,-1px); border-color: var(--c) }
