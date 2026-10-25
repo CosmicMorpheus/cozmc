@@ -97,7 +97,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 /* Site-wide navigation: a disclosure beside the wordmark, with local search. */
 .site-menu { flex: none }
-.site-menu__toggle { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 88px; height: 44px; padding: 0 12px; border: 1px solid #64665f; background: var(--bg-2); color: var(--text); font: 600 15px/1 var(--sans); transition: border-color .15s, background-color .15s }
+.top:has(.site-menu__panel) { z-index: 95 }   /* keep the open menu above the music buttons */
+.site-menu__toggle { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 88px; height: 44px; padding: 0 12px; border: 1px solid #64665f; background: var(--bg-2); color: var(--text); font: 700 12px/1 var(--pixel); text-transform: uppercase; letter-spacing: .03em; transition: border-color .15s, background-color .15s }
 .site-menu__toggle svg { color: var(--phos); flex: none }
 .site-menu__toggle:hover, .site-menu__toggle[aria-expanded="true"] { background: var(--phos-ink); border-color: var(--phos) }
 .site-menu__panel { position: absolute; top: calc(100% + 8px); left: var(--gutter); width: min(600px, calc(100% - var(--gutter) * 2)); max-height: calc(100dvh - 146px); overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--phos-deep) var(--bg-2); background: var(--bg-1); border: 1px solid #62675d; border-top: 3px solid var(--phos); box-shadow: 0 20px 60px #000c, 0 0 0 5px #0008; padding: 14px 18px 0 }
@@ -735,7 +736,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 
 /* ---------- responsive ---------- */
 .tabs__tab svg { flex: none }   /* never let a tight header squeeze the icons away */
-@media (max-width: 1160px) {     /* all destinations remain available in the menu */
+@media (max-width: 1140px) {     /* all destinations remain available in the menu; leaves room for a connected wallet */
   .top__in { gap: 12px; min-height: 68px }
   .logo { margin-right: auto }
   .tabs { display: none }
