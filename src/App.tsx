@@ -9,6 +9,7 @@ import { Unlocks } from './components/Unlocks'
 import { InstallButton } from './components/Install'
 import { CommunityButtons, PactButton, Social } from './components/Community'
 import { GiveawayChip } from './components/GiveawayStrip'
+import { SiteMenu } from './components/SiteMenu'
 import { Home } from './tabs/Home'
 import { ASA_ID, HAYSTACK_INVITE } from './config'
 import { GAMES } from './arcade/games'
@@ -140,6 +141,7 @@ export function App() {
       <BurnBar onBurn={openBurn} />
       <header className="top">
         <div className="wrap top__in">
+          <SiteMenu currentPath={`${route.tab}${route.sub ? `/${route.sub}` : ''}`} />
           <a className="logo" href="#/home" aria-label="COZMC home"><img src="/assets/cozmc-wordmark.png" alt="COZMC" width={456} height={120} /></a>
           <nav className="tabs" aria-label="Sections" ref={tabsRef}>
             {TABS.map(t => (
