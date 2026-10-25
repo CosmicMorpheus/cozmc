@@ -995,7 +995,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .cz__hb canvas { width: 100%; height: auto; aspect-ratio: 3 / 2 }
 .cz__hb:hover { border-color: var(--line-3); color: var(--text) }
 .cz__hb.on { border-color: var(--phos); color: var(--text) }
-.cz__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line) }
+.cz__stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line) }
 .cz__stats dt { font: 700 10px var(--pixel); color: var(--dim) }
 .cz__stats dd { font: 700 1.35rem/1.2 var(--sans); font-variant-numeric: tabular-nums }
 .cz__saved { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--mist); font-size: 13px; text-wrap: pretty }
@@ -1120,3 +1120,18 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 @media (max-width: 480px) { .gwchip { width: 36px; padding: 0; justify-content: center } .gwchip__time { display: none } }
 @media (max-width: 600px) { .top__in > .gwchip { min-width: 44px; min-height: 44px } }
 @media (max-width: 380px) { .top__in > .gwchip { display: none } }
+
+/* ---------- the Cozmling ↔ arcade loop ---------- */
+.buddy { display: grid; gap: 10px }
+.buddy .panel__head { margin-bottom: 0 }
+.buddy__screen { display: block; border: 2px solid var(--line-3); background: #000; line-height: 0 }
+.buddy__screen canvas { width: 100%; height: auto; image-rendering: pixelated }
+.buddy__line { color: var(--text); font-size: 14px; min-height: 1.5em; text-wrap: pretty }
+.buddy__delta { display: flex; flex-wrap: wrap; gap: 6px; font: 700 10px var(--pixel); text-transform: uppercase }
+.buddy__delta span { padding: 4px 6px; border: 1px solid var(--line-3); color: var(--mist) }
+.buddy__delta .is-fun { color: #ff8ad8; border-color: #ff8ad855 }
+.buddy__needs { margin: 0; max-width: none }
+.buddy__grow p, .cz-grow__row { display: flex; justify-content: space-between; gap: 8px; font: 700 10px var(--pixel); text-transform: uppercase; color: var(--mist); margin-bottom: 6px }
+.cz-grow__row b { color: var(--phos); font-weight: 700 }
+.buddy__bar { height: 8px; background: var(--bg-3) }
+.buddy__bar i { display: block; height: 100%; background: var(--phos); box-shadow: 0 0 8px #8dff6a66 }

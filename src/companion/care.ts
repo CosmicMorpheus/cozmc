@@ -23,6 +23,9 @@ export interface Pet {
   at: number
   asleep: number | null        // fell asleep at, ms
   fed: number; played: number; pets: number   // lifetime care counts
+  arcade?: number              // arcade runs played with this Cozmling
+  cheered?: number             // …of those, runs played while it was happy
+  checkins?: number            // daily check-ins
   owner?: string               // the wallet it belongs to
   txid?: string                // its latest save on Algorand
   round?: number               // …and the round it landed in
@@ -64,7 +67,7 @@ export const cleanName = (s: string) => s.replace(/[^\p{L}\p{N} '\-]/gu, '').rep
 /* ---- the copy saved on Algorand ----
    A 0-ALGO payment from the wallet to itself, with the note cozmc:pet:v1:{…}.
    The newest one wins, so changing the look just saves a new note. */
-export interface Saved { name: string; look: Look; home: HomeId; born: number; fed: number; played: number; pets: number }
+export interface Saved { name: string; look: Look; home: HomeId; born: number; fed: number; played: number; pets: number; arcade: number; cheered: number; checkins: number }
 
 export const utcDay = (t = Date.now()) => Math.floor(t / 86_400_000)
 
@@ -72,7 +75,7 @@ export const utcDay = (t = Date.now()) => Math.floor(t / 86_400_000)
 export const toNote = (p: Pet, checkin = false) => ({
   n: p.name, f: p.look.form === 'girl' ? 'g' : 'b', b: p.look.body, g: p.look.glow, e: p.look.eyes,
   h: p.home === 'grove' ? 'g' : p.home === 'loft' ? 'l' : 'm', s: Math.floor(p.born / 1000),
-  m: p.fed, p: p.played, t: p.pets,
+  m: p.fed, p: p.played, t: p.pets, a: p.arcade ?? 0, x: p.cheered ?? 0, c: p.checkins ?? 0,
   ...(checkin ? { d: utcDay() } : {}),
 })
 
@@ -87,13 +90,13 @@ export function fromNote(j: any): Saved | null {
     look: { form: j.f === 'g' ? 'girl' : 'boy', body: int(j.b), glow: int(j.g), eyes: int(j.e) },
     home: j.h === 'g' ? 'grove' : j.h === 'l' ? 'loft' : 'moonbase',
     born: Number.isInteger(j.s) && j.s > 1_600_000_000 ? j.s * 1000 : Date.now(),
-    fed: count(j.m), played: count(j.p), pets: count(j.t),
+    fed: count(j.m), played: count(j.p), pets: count(j.t), arcade: count(j.a), cheered: count(j.x), checkins: count(j.c),
   }
 }
 
 /** Bring a Cozmling back from its saved note (this browser had no copy). */
 export function restore(owner: string, s: Saved, txid: string, round: number, now = Date.now()): Pet {
-  return { v: 1, name: s.name, look: s.look, home: s.home, born: s.born, hatched: s.born, food: 65, fun: 65, energy: 75, at: now, asleep: null, fed: s.fed, played: s.played, pets: s.pets, owner, txid, round }
+  return { v: 1, name: s.name, look: s.look, home: s.home, born: s.born, hatched: s.born, food: 65, fun: 65, energy: 75, at: now, asleep: null, fed: s.fed, played: s.played, pets: s.pets, arcade: s.arcade, cheered: s.cheered, checkins: s.checkins, owner, txid, round }
 }
 
 /**
@@ -158,6 +161,45 @@ export function pat(p: Pet): Outcome {
   return { pet: { ...p, fun: clamp(p.fun + 3), pets: p.pets + 1 }, ok: true, say: '' }
 }
 
+/* ---- the arcade loop ----
+   Games played in the Arcade cheer a Cozmling up and tire it out, so players
+   come back to feed it and let it rest. Every run also helps it grow, and a
+   run played while it's happy counts extra. Nothing here touches scores. */
+export interface RunInfo { daily: boolean; best: boolean }
+export interface RunOutcome { pet: Pet; say: string; fun: number; energy: number; food: number }
+
+export function arcadeRun(p0: Pet, r: RunInfo, now = Date.now()): RunOutcome {
+  const p = settle(p0, now)
+  const none = { fun: 0, energy: 0, food: 0 }
+  // only an awake, rested Cozmling plays along; resting is part of the loop
+  if (!p.hatched) return { pet: p, say: 'Your Star Egg wiggled. Hatch it to play along.', ...none }
+  if (p.asleep) return { pet: p, say: `${p.name} is asleep. Let them rest, then play again.`, ...none }
+  if (p.energy < 12) return { pet: p, say: `${p.name} is too sleepy to cheer. Time for bed?`, ...none }
+  const happy = mood(p).mood === 'great'
+  const next: Pet = {
+    ...p, arcade: (p.arcade ?? 0) + 1, cheered: (p.cheered ?? 0) + (happy ? 1 : 0),
+    fun: clamp(p.fun + 10 + (r.daily ? 6 : 0) + (r.best ? 6 : 0)), energy: clamp(p.energy - 6), food: clamp(p.food - 4),
+  }
+  const say = r.best ? `${p.name} can’t believe that score!` : r.daily ? `${p.name} loves the Daily Challenge.` : happy ? `${p.name} is cheering you on. Happy runs grow faster.` : `${p.name} had fun watching.`
+  return { pet: next, say, fun: Math.round(next.fun - p.fun), energy: Math.round(next.energy - p.energy), food: Math.round(next.food - p.food) }
+}
+
+/* ---- growing up ----
+   Growth points come from everything you do together; the arcade counts most. */
+export const GROWTH: { stage: Stage; at: number }[] = [
+  { stage: 'sprout', at: 0 }, { stage: 'cadet', at: 40 }, { stage: 'explorer', at: 200 }, { stage: 'guardian', at: 600 },
+]
+export const growthPoints = (p: Pet) =>
+  (p.arcade ?? 0) * 2 + (p.cheered ?? 0) * 2 + (p.checkins ?? 0) * 10 + p.fed + p.played + Math.floor(p.pets / 5)
+
+/** Where it is on the way to the next stage (`next` is null once it's a Guardian). */
+export function growth(p: Pet): { stage: Stage; points: number; from: number; next: { stage: Stage; at: number } | null } {
+  const points = growthPoints(p)
+  let i = 0
+  while (i + 1 < GROWTH.length && points >= GROWTH[i + 1].at) i++
+  return { stage: GROWTH[i].stage, points, from: GROWTH[i].at, next: GROWTH[i + 1] ?? null }
+}
+
 /* ---- how it's doing ---- */
 export type Mood = 'great' | 'good' | 'low'
 export function mood(p: Pet): { mood: Mood; need: Need | null; line: string } {
@@ -171,8 +213,8 @@ export function mood(p: Pet): { mood: Mood; need: Need | null; line: string } {
   return { mood: 'great', need: null, line: `${n} is over the moon.` }
 }
 
-/** The stage the prototype shows. In the full launch, stages come from on-chain levels. */
-export const stageOf = (p: Pet): Stage => (!p.hatched ? 'egg' : p.preview ?? 'sprout')
+/** The stage it's at: grown from activity (the prototype controls can preview another). */
+export const stageOf = (p: Pet): Stage => (!p.hatched ? 'egg' : p.preview ?? growth(p).stage)
 
 export const ageText = (p: Pet, now = Date.now()) => {
   const d = Math.floor((now - (p.hatched ?? p.born)) / 86_400_000)
