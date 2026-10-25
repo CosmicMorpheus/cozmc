@@ -449,6 +449,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .music.is-on .music__eq i { background: var(--phos); animation: eq .9s steps(4) infinite }
 .music.is-on .music__eq i:nth-child(2) { animation-delay: -.3s } .music.is-on .music__eq i:nth-child(3) { animation-delay: -.6s } .music.is-on .music__eq i:nth-child(4) { animation-delay: -.15s }
 @keyframes eq { 0%, 100% { height: 4px } 50% { height: 16px } }
+.music__idle { display: grid; font-size: 18px; line-height: 1 }
+.music__idle b { grid-area: 1 / 1; display: grid; place-items: center; font-weight: normal; color: var(--phos); animation: idle-swap 6s ease-in-out infinite }
+.music__idle b + b { animation-delay: -3s }
+@keyframes idle-swap { 0%, 40% { opacity: 1 } 50%, 90% { opacity: 0 } 100% { opacity: 1 } }
+.music__idle.is-still b, .music__idle.is-still b + b { animation: none } .music__idle.is-still b + b { opacity: 0 }
+@media (prefers-reduced-motion: reduce) { .music__idle b { animation: none } .music__idle b + b { opacity: 0 } }
 .modal__box--share { width: min(760px, 100%) }
 .share__preview { margin: 14px 0 4px; border: 2px solid var(--line-3); background: #000; aspect-ratio: 1200 / 675; display: grid; place-items: center }
 .share__preview img { width: 100%; height: 100%; display: block }
