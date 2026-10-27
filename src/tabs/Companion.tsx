@@ -81,6 +81,12 @@ function Owned({ owner }: { owner: string }) {
     return true
   }
 
+  /** Back up its needs and sleep now, without a check-in. */
+  const backup = async () => {
+    const p = await write(settle(current.current!))
+    if (p) { setPet(p); toast(`${p.name} is backed up to your wallet.`) }
+  }
+
   if (!pet && find === 'looking') return <><Head /><Loading what="your Cozmling" /></>
   if (!pet && find === 'error') return <><Head /><Failed what="your Cozmling" retry={lookUp} /></>
   if (!pet) {
@@ -98,7 +104,7 @@ function Owned({ owner }: { owner: string }) {
     if (p) { setPet(p); setEditing(false); toast('Saved to your wallet.') }
   }} />
   return <Habitat pet={pet} setPet={setPet} greeting={greeting} onEdit={() => setEditing(true)} onStartOver={() => { startingOver.current = true; setPet(null) }}
-    checkin={{ days, busy, onCheckIn: checkIn }} />
+    checkin={{ days, busy, onCheckIn: checkIn }} onBackup={backup} />
 }
 
 function Head() {
@@ -133,7 +139,7 @@ function Gate() {
 /* ---------------- the room ---------------- */
 interface CheckinProps { days: number[]; busy: Busy; onCheckIn: () => Promise<boolean> }
 
-function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet: Pet; setPet: (p: Pet) => void; greeting: string; onEdit: () => void; onStartOver: () => void; checkin: CheckinProps }) {
+function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin, onBackup }: { pet: Pet; setPet: (p: Pet) => void; greeting: string; onEdit: () => void; onStartOver: () => void; checkin: CheckinProps; onBackup: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const room = useRef<Room | null>(null)
   const live = useRef({ pet, crack: 0 })
@@ -266,8 +272,10 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin }: { pet:
               <div><dt>Pats</dt><dd>{pet.pets}</dd></div>
             </dl>
             <p className="cz__saved">{pet.txid
-              ? <>Saved to your wallet, so {pet.name} can always come back. <a href={EXPLORER_TX(pet.txid)} target="_blank" rel="noopener">See the note ↗</a></>
+              ? <>Saved to your wallet, so {pet.name} can always come back, asleep or awake. <a href={EXPLORER_TX(pet.txid)} target="_blank" rel="noopener">See the note ↗</a></>
               : <>Not saved to your wallet yet.</>}</p>
+            <button className="btn btn--ghost btn--sm" onClick={onBackup} disabled={!!checkin.busy}>{checkin.busy ? 'Saving…' : 'Back up now'}</button>
+            <p className="cz__fine">Each daily check-in backs {pet.name} up too. Backing up signs a short note from your wallet to itself (0.001 ALGO network fee).</p>
           </div>
         </aside>
       </section>

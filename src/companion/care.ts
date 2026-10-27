@@ -67,15 +67,21 @@ export const cleanName = (s: string) => s.replace(/[^\p{L}\p{N} '\-]/gu, '').rep
 /* ---- the copy saved on Algorand ----
    A 0-ALGO payment from the wallet to itself, with the note cozmc:pet:v1:{…}.
    The newest one wins, so changing the look just saves a new note. */
-export interface Saved { name: string; look: Look; home: HomeId; born: number; fed: number; played: number; pets: number; arcade: number; cheered: number; checkins: number }
+export interface Saved {
+  name: string; look: Look; home: HomeId; born: number; fed: number; played: number; pets: number; arcade: number; cheered: number; checkins: number
+  /** its needs and whether it was asleep when saved (notes before this was added don't have it) */
+  state?: { food: number; fun: number; energy: number; at: number; asleep: number | null }
+}
 
 export const utcDay = (t = Date.now()) => Math.floor(t / 86_400_000)
 
-/** The note's fields. A daily check-in adds the day ("d") and backs up the care counts. */
+/** The note's fields. A daily check-in adds the day ("d"). Every save backs up the care counts,
+    the needs ("k": food, fun, energy as of "u") and whether it's asleep ("z": since when, 0 = awake). */
 export const toNote = (p: Pet, checkin = false) => ({
   n: p.name, f: p.look.form === 'girl' ? 'g' : 'b', b: p.look.body, g: p.look.glow, e: p.look.eyes,
   h: p.home === 'grove' ? 'g' : p.home === 'loft' ? 'l' : 'm', s: Math.floor(p.born / 1000),
   m: p.fed, p: p.played, t: p.pets, a: p.arcade ?? 0, x: p.cheered ?? 0, c: p.checkins ?? 0,
+  k: [Math.round(p.food), Math.round(p.fun), Math.round(p.energy)], u: Math.floor(p.at / 1000), z: p.asleep ? Math.floor(p.asleep / 1000) : 0,
   ...(checkin ? { d: utcDay() } : {}),
 })
 
@@ -91,12 +97,24 @@ export function fromNote(j: any): Saved | null {
     home: j.h === 'g' ? 'grove' : j.h === 'l' ? 'loft' : 'moonbase',
     born: Number.isInteger(j.s) && j.s > 1_600_000_000 ? j.s * 1000 : Date.now(),
     fed: count(j.m), played: count(j.p), pets: count(j.t), arcade: count(j.a), cheered: count(j.x), checkins: count(j.c),
+    state: stateFrom(j),
   }
 }
 
-/** Bring a Cozmling back from its saved note (this browser had no copy). */
+function stateFrom(j: any): Saved['state'] {
+  const need = (v: unknown) => (typeof v === 'number' && v >= 0 && v <= 100 ? v : null)
+  const k = Array.isArray(j.k) ? j.k.map(need) : []
+  const at = Number.isInteger(j.u) && j.u > 1_600_000_000 && j.u * 1000 <= Date.now() + 60_000 ? j.u * 1000 : null
+  if (k.length !== 3 || k.includes(null) || at == null) return undefined
+  const asleep = Number.isInteger(j.z) && j.z > 1_600_000_000 && j.z <= j.u ? j.z * 1000 : null
+  return { food: k[0], fun: k[1], energy: k[2], at, asleep }
+}
+
+/** Bring a Cozmling back from its saved note (this browser had no copy): as it was when saved,
+    asleep or awake, then caught up to now. Older notes without needs start it fresh and awake. */
 export function restore(owner: string, s: Saved, txid: string, round: number, now = Date.now()): Pet {
-  return { v: 1, name: s.name, look: s.look, home: s.home, born: s.born, hatched: s.born, food: 65, fun: 65, energy: 75, at: now, asleep: null, fed: s.fed, played: s.played, pets: s.pets, arcade: s.arcade, cheered: s.cheered, checkins: s.checkins, owner, txid, round }
+  const st = s.state ?? { food: 65, fun: 65, energy: 75, at: now, asleep: null }
+  return settle({ v: 1, name: s.name, look: s.look, home: s.home, born: s.born, hatched: s.born, food: st.food, fun: st.fun, energy: st.energy, at: Math.min(st.at, now), asleep: st.asleep, fed: s.fed, played: s.played, pets: s.pets, arcade: s.arcade, cheered: s.cheered, checkins: s.checkins, owner, txid, round }, now)
 }
 
 /**

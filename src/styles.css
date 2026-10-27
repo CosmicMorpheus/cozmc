@@ -1000,6 +1000,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .cz__stats dd { font: 700 1.35rem/1.2 var(--sans); font-variant-numeric: tabular-nums }
 .cz__saved { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--mist); font-size: 13px; text-wrap: pretty }
 .cz__saved a { color: var(--phos); white-space: nowrap }
+.cz__saved + .btn { margin-top: 10px }
 .cz-gate { display: grid; gap: 14px; align-content: start; justify-items: start }
 .cz-gate h2 { font: 800 1.7rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase }
 .cz-gate p:not(.cz__fine) { color: var(--mist); text-wrap: pretty }
