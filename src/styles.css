@@ -273,7 +273,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .hud__lives { display: flex; gap: 4px; color: #3a1010 }
 .hud__lives .on { color: var(--blood) }
 .screen { aspect-ratio: 4/3 }
-.cabinet__play { width: 100%; max-width: max(320px, calc((100svh - 380px) * 4 / 3)); margin-inline: auto }
+.cabinet__play { width: 100%; max-width: max(320px, calc((100svh - 96px) * 4 / 3)); margin-inline: auto; scroll-margin-top: 8px }
 .screen canvas { outline: none }
 .screen__overlay { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 14px; padding: 20px; text-align: center; background: rgba(0,0,0,.72) }
 .screen__overlay--over { background: rgba(0,0,0,.8) }
@@ -1136,3 +1136,21 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .cz-grow__row b { color: var(--phos); font-weight: 700 }
 .buddy__bar { height: 8px; background: var(--bg-3) }
 .buddy__bar i { display: block; height: 100%; background: var(--phos); box-shadow: 0 0 8px #8dff6a66 }
+
+/* ---------- game screens: as big as the screen allows ----------
+   On a game page the header scrolls away, the page gets wider, and the screen
+   is sized to the window's height (keeping 4:3), so on a PC it fills the view. */
+.main:has(.cabinet) { max-width: 1640px }
+body:has(.cabinet) .top { position: relative }
+html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on game pages */
+.cabinet { scroll-margin-top: 12px }
+@media (pointer: coarse) { .cabinet__play { max-width: max(300px, calc((100svh - 190px) * 4 / 3)) } }   /* leave room for the touch buttons */
+@media (max-width: 560px) { .cabinet__play .screen { margin-inline: calc(var(--gutter) * -1); border-radius: 0 } }   /* phones: edge to edge */
+/* phones on their side: screen on the left at full height, score and buttons beside it */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  .cabinet__play { max-width: none; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "screen hud" "screen pad"; align-items: start; gap: 10px 16px }
+  .cabinet__play .screen { grid-area: screen; height: calc(100svh - 16px); width: auto }
+  .cabinet__play .hud { grid-area: hud; margin: 0 }
+  .cabinet__play .pad { grid-area: pad; margin-top: 0 }
+  .cabinet__play .pad__btn { height: 56px }
+}

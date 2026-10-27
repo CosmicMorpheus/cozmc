@@ -152,6 +152,8 @@ type Post = 'idle' | 'prep' | 'sign' | 'send' | 'done' | 'error'
 
 function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily: boolean; onExit: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
+  const cab = useRef<HTMLDivElement>(null)
+  const playArea = useRef<HTMLDivElement>(null)
   const handle = useRef<GameHandle | null>(null)
   const lives = game.maxLives ?? 3
   const [hud, setHud] = useState<GameHud>({ score: 0, lives, level: 1 })
@@ -208,6 +210,13 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
   }, [game])
   useEffect(() => { handle.current?.setSkin?.(skin) }, [skin])
 
+  // the game fills the screen: open with the cabinet at the top, and bring the whole play area into view on start
+  useEffect(() => { cab.current?.scrollIntoView({ block: 'start' }) }, [])
+  const showPlayArea = () => {
+    const r = playArea.current?.getBoundingClientRect()
+    if (r && (r.top < 0 || r.bottom > innerHeight)) playArea.current!.scrollIntoView({ block: 'start' })
+  }
+
   const setMode = (m: 'free' | 'daily') => {
     setModeState(m); setResult(null); setPhase('ready')
     history.replaceState(null, '', `#/arcade/${game.id}${m === 'daily' ? '/daily' : ''}`)
@@ -215,7 +224,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
   const start = () => {
     const day = utcDay()
     runDay.current = mode === 'daily' ? day : null
-    setPhase('play'); setResult(null); setNewBest(''); canvas.current?.focus()
+    setPhase('play'); setResult(null); setNewBest(''); canvas.current?.focus({ preventScroll: true }); showPlayArea()
     handle.current?.start(mode === 'daily' ? { seed: seedFor(game.id, day) } : undefined)
   }
   useEffect(() => {
@@ -247,7 +256,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
   const where = result?.day != null ? 'today’s daily board' : 'the board'
 
   return (
-    <div className="cabinet">
+    <div className="cabinet" ref={cab}>
       <div className="cabinet__bar">
         <button className="btn btn--sm btn--ghost" onClick={onExit}>← Arcade</button>
         <h1 className="cabinet__title">{game.title}</h1>
@@ -265,7 +274,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
       </div>
 
       <div className="cabinet__grid">
-        <div className="cabinet__play">
+        <div className="cabinet__play" ref={playArea}>
           <div className="hud" aria-live="off">
             <span>Score <b>{String(hud.score).padStart(6, '0')}</b></span>
             {lives > 0 && <span className="hud__lives" aria-label={`${hud.lives} of ${lives} lives`}>{Array.from({ length: lives }, (_, i) => <span key={i} className={i < hud.lives ? 'on' : ''}><Icon name="heart" size={12} /></span>)}</span>}
