@@ -100,9 +100,10 @@ export function restore(owner: string, s: Saved, txid: string, round: number, no
 }
 
 /**
- * Bring the needs up to `now`. A Cozmling that runs out of energy dozes off by
- * itself and wakes up when it is rested, so a long absence plays out naturally.
- * Eggs don't need anything.
+ * Bring the needs up to `now`, including time the site was closed. A Cozmling
+ * that runs out of energy dozes off by itself. Asleep, its energy refills and
+ * then stays full: it sleeps until you wake it, so a night away never ends
+ * with a lower energy bar than bedtime. Eggs don't need anything.
  */
 export function settle(p: Pet, now = Date.now()): Pet {
   if (!p.hatched) return { ...p, at: now }
@@ -117,11 +118,9 @@ export function settle(p: Pet, now = Date.now()): Pet {
       at += dt
       if (dt === toEmpty) asleep = at                    // ran out of steam: naps
     } else {
-      const toFull = (100 - energy) / REFILL
-      const dt = Math.min(left, toFull)
-      food -= dt * ASLEEP.food; fun -= dt * ASLEEP.fun; energy += dt * REFILL
-      at += dt
-      if (dt === toFull) asleep = null                   // rested: wakes up on its own
+      // energy refills, then holds at full until it's woken up
+      food -= left * ASLEEP.food; fun -= left * ASLEEP.fun; energy += left * REFILL
+      at = now
     }
     food = clamp(food); fun = clamp(fun); energy = clamp(energy)
   }
@@ -173,7 +172,7 @@ export function arcadeRun(p0: Pet, r: RunInfo, now = Date.now()): RunOutcome {
   const none = { fun: 0, energy: 0, food: 0 }
   // only an awake, rested Cozmling plays along; resting is part of the loop
   if (!p.hatched) return { pet: p, say: 'Your Star Egg wiggled. Hatch it to play along.', ...none }
-  if (p.asleep) return { pet: p, say: `${p.name} is asleep. Let them rest, then play again.`, ...none }
+  if (p.asleep) return { pet: p, say: p.energy >= 99.5 ? `${p.name} is rested but still asleep. Wake them on the Cozmling page.` : `${p.name} is asleep. Let them rest, then play again.`, ...none }
   if (p.energy < 12) return { pet: p, say: `${p.name} is too sleepy to cheer. Time for bed?`, ...none }
   const happy = mood(p).mood === 'great'
   const next: Pet = {
@@ -205,7 +204,7 @@ export type Mood = 'great' | 'good' | 'low'
 export function mood(p: Pet): { mood: Mood; need: Need | null; line: string } {
   const n = p.name
   if (!p.hatched) return { mood: 'good', need: null, line: 'Something is moving inside. Tap the egg.' }
-  if (p.asleep) return { mood: 'good', need: null, line: p.energy > 85 ? `${n} is about to wake up.` : `${n} is fast asleep.` }
+  if (p.asleep) return { mood: 'good', need: null, line: p.energy >= 99.5 ? `${n} is fully rested. Wake them up!` : p.energy > 85 ? `${n} is almost rested.` : `${n} is fast asleep.` }
   const needs: [Need, number][] = [['food', p.food], ['fun', p.fun], ['energy', p.energy]]
   const [need, low] = needs.reduce((a, b) => (b[1] < a[1] ? b : a))
   if (low < 25) return { mood: 'low', need, line: need === 'food' ? `${n} is hungry.` : need === 'fun' ? `${n} is bored. Play together?` : `${n} can barely keep their eyes open.` }
