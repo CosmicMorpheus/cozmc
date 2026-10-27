@@ -142,7 +142,7 @@ export function App() {
       <header className="top">
         <div className="wrap top__in">
           <SiteMenu currentPath={`${route.tab}${route.sub ? `/${route.sub}` : ''}`} />
-          <a className="logo" href="#/home" aria-label="COZMC home"><img src="/assets/cozmc-wordmark.png" alt="COZMC" width={456} height={120} /></a>
+          <a className="logo" href="#/home" aria-label="COZMC home"><img src="/assets/cozmc-logo-272.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w, /assets/cozmc-wordmark.png 912w" sizes="(max-width: 380px) 99px, (max-width: 600px) 114px, 129px" alt="COZMC" width={456} height={120} /></a>
           <nav className="tabs" aria-label="Sections" ref={tabsRef}>
             {TABS.map(t => (
               <a key={t.id} href={`#/${t.id}`} className={`tabs__tab${t.id === 'arcade' ? ' tabs__tab--arcade' : ''}${t.id === 'cozmling' ? ' tabs__tab--cz' : ''}`} aria-current={route.tab === t.id ? 'page' : undefined}>
@@ -183,7 +183,7 @@ export function App() {
 
       <footer className="foot">
         <div className="wrap foot__in">
-          <img src="/assets/cozmc-wordmark.png" alt="COZMC" width={456} height={120} className="foot__mark" loading="lazy" />
+          <img src="/assets/cozmc-logo-408.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w, /assets/cozmc-wordmark.png 912w" sizes="167px" alt="COZMC" width={456} height={120} className="foot__mark" loading="lazy" />
           <p className="foot__join">Built with the community, not just for it. Come say hi.</p>
           <div className="row row--center">
             <CommunityButtons size="sm" />

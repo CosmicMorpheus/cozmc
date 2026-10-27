@@ -84,7 +84,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .top { position: sticky; top: 0; z-index: 50; background: rgba(0,0,0,.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--line-2) }
 .top__in { position: relative; display: flex; align-items: center; gap: 14px; min-height: 72px; max-width: 1440px }
 .logo { flex: none }
-.logo img { height: 26px; width: auto }
+.logo img { display: block; height: 34px; width: auto }
 .top__in > .acct { flex: none; min-width: 0; max-width: 150px }
 .top__in > .acct .acct__btn { max-width: 100% }
 .top__in > .acct .acct__btn > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
@@ -481,7 +481,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* ---------- footer, toast, music ---------- */
 .foot { border-top: 1px solid var(--line-2); padding: 40px 0 60px; background: #000 }
 .foot__in { display: grid; justify-items: center; text-align: center; gap: 12px }
-.foot__mark { height: 34px; width: auto; opacity: .9 }
+.foot__mark { height: 44px; width: auto }
 .foot__meta { font: 700 11px var(--pixel); color: var(--mist); text-transform: uppercase }
 .foot__legal { max-width: 44rem; font-size: 12.5px; color: var(--dim) }
 .toast { position: fixed; left: 50%; bottom: 24px; z-index: 180; translate: -50% 20px; opacity: 0; pointer-events: none; padding: 12px 16px; background: #000; border: 2px solid var(--phos); box-shadow: 4px 4px 0 var(--phos-deep); font: 700 12px var(--pixel); color: var(--phos); text-transform: uppercase; transition: opacity .25s, translate .3s var(--out); max-width: calc(100vw - 100px) }
@@ -736,7 +736,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 
 /* ---------- responsive ---------- */
 .tabs__tab svg { flex: none }   /* never let a tight header squeeze the icons away */
-@media (max-width: 1140px) {     /* all destinations remain available in the menu; leaves room for a connected wallet */
+@media (max-width: 1180px) {     /* all destinations remain available in the menu; leaves room for a connected wallet */
   .top__in { gap: 12px; min-height: 68px }
   .logo { margin-right: auto }
   .tabs { display: none }
@@ -745,6 +745,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
   .top .top__social { display: none }
 }
 @media (max-width: 600px) {
+  .logo img { height: 30px }
   .top__in { gap: 10px }
   .site-menu__toggle { min-width: 44px; width: 44px; padding: 0 }
   .site-menu__toggle > span { display: none }
@@ -757,7 +758,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
   .top__in > .acct { max-width: 100px }
 }
 @media (max-width: 380px) {
-  .logo img { height: 22px }
+  .logo img { height: 26px }
   .top__in > .acct .acct__btn { padding-inline: 8px; font-size: 12px }
 }
 @media (max-width: 1060px) {

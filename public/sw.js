@@ -7,7 +7,7 @@
 try { importScripts('/sw-manifest.js') } catch { self.__BUILD = { version: 'dev', files: [] } }
 const SHELL = `cozmc-shell-${self.__BUILD.version}`
 const FONTS = 'cozmc-fonts-v1'
-const PRECACHE = ['/', '/manifest.webmanifest', '/assets/card-face.webp', '/assets/cozmc-wordmark.png', '/icons/icon-192.png', ...self.__BUILD.files]
+const PRECACHE = ['/', '/manifest.webmanifest', '/assets/card-face.webp', '/assets/cozmc-wordmark.png', '/assets/cozmc-logo-272.png', '/icons/icon-192.png', ...self.__BUILD.files]
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()))
