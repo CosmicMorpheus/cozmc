@@ -1208,3 +1208,96 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 .gw-final { margin-top: 0 }
 .preview-date { position: relative; z-index: 60; padding: 8px 16px; background: #b3122e; color: #fff; text-align: center; font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .03em }
 .preview-date a { color: #fff; margin-left: 8px }
+
+/* ---------- Adrift: the daily word rescue ---------- */
+.ad-head h1 { letter-spacing: .02em }
+.ad-head__dot { color: var(--phos) }
+.ad { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 0; border: 2px solid var(--line-2); background: var(--bg-1); box-shadow: 8px 8px 0 #0c0c0c }
+.ad-scene { position: relative; min-height: 540px; border-radius: 0; background: radial-gradient(ellipse at 55% 49%, #24403b66, transparent 62%), linear-gradient(150deg, #111d1a, #050909 70%); border-right: 2px solid var(--line-2); overflow: hidden }
+.ad-scene[data-misses="4"] [data-part="rope"], .ad-scene[data-misses="5"] [data-part="rope"] { stroke: var(--ember) }
+.ad-scene[data-rescue="lost"] .ad-live { color: #ffb893 } .ad-scene[data-rescue="lost"] .ad-live i { background: var(--ember); box-shadow: 0 0 8px var(--ember) }
+.ad-scene[data-rescue="lost"] [data-part="readout"] { fill: #ffbd83 }
+.ad-scene[data-rescue="won"] .ad-ship { filter: drop-shadow(0 0 14px #8dff6a88) }
+.ad-art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1 }
+.ad-stars rect { fill: #cfe8d3; opacity: .35; animation: ad-twinkle 4s steps(2) infinite }
+.ad-stars rect:nth-child(3n) { fill: var(--phos); opacity: .25 }
+@keyframes ad-twinkle { 50% { opacity: .9 } }
+.ad-thruster { animation: ad-thrust .18s steps(2) infinite }
+@keyframes ad-thrust { 50% { opacity: .65 } }
+.ad-beacon-light { animation: blink 1.2s steps(1) infinite }
+.ad-chest { animation: ad-chest 2.4s steps(2) infinite }
+@keyframes ad-chest { 50% { fill: #3a8a2a } }
+.ad-planet { position: absolute; width: 620px; height: 620px; border-radius: 50%; left: -165px; top: 410px; background: radial-gradient(ellipse at 55% 0, #679b78, #152d25 25%, #071211 47%); box-shadow: 0 -3px 10px #b0ffd144, 0 -15px 70px #8dff6a14 }
+.ad-orbit { position: absolute; border: 1px solid #8dff6a14; border-radius: 50%; width: 440px; height: 440px; left: 12px; top: 45px; animation: ad-spin 90s linear infinite }
+.ad-orbit--2 { width: 330px; height: 330px; left: 65px; top: 100px; border-style: dashed; animation-duration: 60s; animation-direction: reverse }
+@keyframes ad-spin { to { rotate: 360deg } }
+.ad-scene__top { position: absolute; z-index: 4; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; gap: 10px; padding: 16px 18px; font: 700 9px var(--pixel); text-transform: uppercase; letter-spacing: .06em; color: #81948c; pointer-events: none }
+.ad-live { color: #b9d0bd } .ad-live i { display: inline-block; width: 6px; height: 6px; margin-right: 6px; background: var(--phos); box-shadow: 0 0 8px var(--phos); animation: blink 1.2s steps(1) infinite }
+.ad-console { border: 0; display: grid; align-content: start; gap: 0 }
+.ad-console__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font: 700 10px var(--pixel); text-transform: uppercase; color: var(--mist) }
+.ad-tag { border: 1px solid var(--phos-deep); padding: 4px 7px; color: var(--phos) }
+.ad-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 22px }
+.ad-status h2 { font: 800 clamp(1.7rem, 3vw, 2.2rem)/1.05 var(--sans); font-stretch: 75%; text-transform: uppercase; letter-spacing: .01em; color: var(--text) }
+.ad-timer { font: 700 28px var(--pixel); color: var(--phos); font-variant-numeric: tabular-nums; text-shadow: 0 0 14px #8dff6a55 }
+.ad-timer.is-urgent { color: var(--ember); text-shadow: 0 0 14px #ffb02077; animation: ad-urgent .5s steps(2) infinite }
+@keyframes ad-urgent { 50% { opacity: .55 } }
+.ad-desc { color: var(--mist); font-size: 14.5px; margin: 10px 0 20px; min-height: 2.6em; text-wrap: pretty }
+.ad-word { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px }
+.ad-letter { display: grid; place-items: center; width: 50px; height: 58px; background: #0b130d; border: 2px solid #2c3d30; border-bottom: 4px solid var(--phos-deep); font: 700 26px var(--pixel); color: var(--phos); text-shadow: 0 0 10px #8dff6a66 }
+.ad-letter.is-on { animation: ad-pop .35s steps(4) }
+.ad-letter.is-missed { color: #ffb893; border-color: #86513d; text-shadow: none }
+@keyframes ad-pop { 0% { transform: scale(.4) rotate(-8deg); background: var(--phos) } 60% { transform: scale(1.15) } 100% { transform: none } }
+.ad-tele { display: flex; align-items: center; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--line-2); font: 700 9px var(--pixel); text-transform: uppercase; color: var(--mist) }
+.ad-tele > span:last-child { margin-left: auto }
+.ad-lives { display: flex; gap: 4px }
+.ad-lives b { width: 8px; height: 14px; background: var(--phos); box-shadow: 0 0 6px #8dff6a66 }
+.ad-lives b.is-used { background: #3a2a14; box-shadow: none }
+.ad-rules { list-style: none; display: grid; gap: 12px; margin: 20px 0 22px; color: var(--mist) }
+.ad-rules li { display: flex; gap: 12px; align-items: baseline }
+.ad-rules b { font: 700 11px var(--pixel); color: var(--phos) }
+.ad-rules strong { color: var(--text); font-weight: 600 }
+.ad-start { width: 100%; height: 54px; font-size: 14px }
+.ad-fine { text-align: center; font-size: 12.5px; color: var(--dim); margin-top: 10px }
+.ad-keys { display: grid; gap: 7px; margin-top: 20px }
+.ad-keys__row { display: flex; justify-content: center; gap: 5px }
+.ad-key { flex: 0 1 44px; height: 48px; padding: 0; background: var(--bg-2); color: var(--text); border: 2px solid var(--line-3); border-bottom-width: 4px; font: 700 15px var(--pixel); transition: transform .06s }
+.ad-key:hover:not(:disabled) { border-color: var(--phos); color: var(--phos) }
+.ad-key:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 2px }
+.ad-key.is-hit { background: var(--phos); color: #061404; border-color: var(--phos); animation: ad-pop .3s steps(3) }
+.ad-key.is-miss { background: #140d07; color: #6a5440; border-color: #3a2a14; animation: ad-shake .3s steps(3) }
+@keyframes ad-shake { 33% { translate: -3px 0 } 66% { translate: 3px 0 } }
+.ad-result__card { margin: 20px 0; padding: 6px 0 6px 14px; border-left: 3px solid var(--phos) }
+.is-lost .ad-result__card { border-left-color: var(--ember) }
+.ad-result__card b { font: 700 14px var(--pixel); text-transform: uppercase; color: var(--text) }
+.ad-result__card p { color: var(--mist); margin: 8px 0 }
+.ad-result__card strong { color: var(--phos); font-family: var(--pixel); letter-spacing: .06em }
+.is-lost .ad-result__card strong { color: var(--ember) }
+.ad-result__card small { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--phos) }
+.ad-share { width: 100%; min-height: 110px; margin-top: 10px; background: #0b130d; color: var(--text); border: 1px solid var(--line-3); font: 13px var(--mono) }
+.ad.is-won { border-color: var(--phos-deep); box-shadow: 8px 8px 0 #0c0c0c, 0 0 40px #8dff6a22 }
+.ad.is-lost { border-color: #5a3a12 }
+.ad-strip { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 16px 2px; font: 700 10px var(--pixel); text-transform: uppercase; color: var(--mist) }
+.ad-strip i { display: inline-block; width: 6px; height: 6px; margin-right: 8px; background: var(--phos); animation: blink 1.2s steps(1) infinite }
+.ad-note { color: var(--dim); font-size: 13px; text-align: center }
+.ad-test { max-width: 460px; margin: 18px auto 0; padding: 12px 14px; border: 1px dashed #b3122e; color: var(--mist); font-size: 13px }
+.ad-test summary { cursor: pointer; font: 700 11px var(--pixel); text-transform: uppercase; color: #ff6b81 }
+.ad-test p { margin: 8px 0 }
+.ad-thumb { aspect-ratio: 4 / 3; display: block; background: linear-gradient(150deg, #111d1a, #050909 70%) }
+.ad-thumb .ad-art { position: absolute; inset: 0 }
+.ad-thumb:hover .cab__attract, .ad-thumb:focus-visible .cab__attract { opacity: 1 }
+.ad-new { display: inline-block; vertical-align: middle; margin-left: 6px; padding: 3px 6px; font: 700 9px var(--pixel); color: #000; background: var(--phos); text-transform: uppercase }
+@media (max-width: 860px) {
+  .ad { grid-template-columns: minmax(0, 1fr) }
+  .ad-scene { min-height: 0; aspect-ratio: 520 / 470; border-right: 0; border-bottom: 2px solid var(--line-2) }
+  .ad-planet { top: auto; bottom: -540px; left: -80px }
+  .ad-orbit { top: -60px }
+}
+@media (max-width: 480px) {
+  .ad-letter { width: 40px; height: 50px; font-size: 21px }
+  .ad-keys { gap: 6px; margin-inline: -8px }
+  .ad-keys__row { gap: 4px }
+  .ad-key { height: 50px; font-size: 14px }
+  .ad-status h2 { font-size: 1.5rem }
+  .ad-timer { font-size: 22px }
+}
+@media (prefers-reduced-motion: reduce) { .ad-orbit, .ad-stars rect, .ad-thruster, .ad-chest, .ad-letter.is-on, .ad-key { animation: none !important } }

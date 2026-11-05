@@ -31,6 +31,7 @@ const PAGES: Destination[] = [
 const DESTINATIONS: Destination[] = [
   ...PAGES,
   ...GAMES.map(game => ({ path: `arcade/${game.id}`, label: game.title, description: game.tagline, icon: 'arcade' as const, group: 'Games', keywords: `play game ${game.id.replaceAll('-', ' ')}` })),
+  { path: 'arcade/adrift', label: 'Adrift', description: 'Daily word rescue: one word, one shot', icon: 'arcade', group: 'Games', keywords: 'play game word puzzle daily rescue astronaut letters guess' },
 ]
 
 /** Searches the site's pages and registered games without loading other tabs or using a service. */

@@ -29,6 +29,7 @@ const Holders = lazy(() => import('./tabs/Holders').then(m => ({ default: m.Hold
 const Card = lazy(() => import('./tabs/Card').then(m => ({ default: m.Card })))
 const Giveaway = lazy(() => import('./tabs/Giveaway').then(m => ({ default: m.Giveaway })))
 const Prizes = lazy(() => import('./tabs/Prizes').then(m => ({ default: m.Prizes })))
+const Adrift = lazy(() => import('./tabs/Adrift').then(m => ({ default: m.Adrift })))
 const Philosophy = lazy(() => import('./tabs/Philosophy').then(m => ({ default: m.Philosophy })))
 const Bonfire = lazy(() => import('./tabs/Bonfire').then(m => ({ default: m.Bonfire })))
 const About = lazy(() => import('./tabs/About').then(m => ({ default: m.About })))
@@ -111,7 +112,7 @@ export function App() {
     const game = route.tab === 'arcade' && route.sub ? GAMES.find(g => g.id === route.sub) : null
     const page = SECTIONS[route.tab]?.find(s => s.id && s.id === route.sub)
     const label = page?.label ?? TABS.find(t => t.id === route.tab)?.label
-    document.title = game ? `${game.title} | COZMC Arcade` : route.tab === 'home' ? 'COZMC: community & philosophy on Algorand' : `${label} | COZMC`
+    document.title = game ? `${game.title} | COZMC Arcade` : route.tab === 'arcade' && route.sub === 'adrift' ? 'Adrift | COZMC Arcade' : route.tab === 'home' ? 'COZMC: community & philosophy on Algorand' : `${label} | COZMC`
   }, [route.tab, route.sub])
 
   // on phones the tab strip scrolls: keep the current tab in view
@@ -177,6 +178,7 @@ export function App() {
           route.sub === 'boards' ? <Leaderboard go={go} onBurn={openBurn} />
           : route.sub === 'giveaway' ? <Giveaway go={go} />
           : route.sub === 'prizes' ? <Prizes />
+          : route.sub === 'adrift' ? <Adrift />
           : route.sub === 'card' ? <Card go={go} />
           : <Arcade playing={route.sub} daily={route.extra === 'daily'} setPlaying={(id, daily) => go('arcade', id ? `${id}${daily ? '/daily' : ''}` : undefined)} />
         )}

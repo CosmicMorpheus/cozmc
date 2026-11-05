@@ -20,6 +20,7 @@ import { DAILY_PRIZES, EXPLORER_TX, GIVEAWAY, SCORE_FEE_ALGO } from '../config'
 import { GameThumb } from '../components/GameThumb'
 import { GiveawayStrip } from '../components/GiveawayStrip'
 import { DailyStrip } from '../components/DailyPrize'
+import { AdriftCabinet } from '../adrift/Cabinet'
 import { dailyLive, featuredGame } from '../lib/dailyPrize'
 import { prizeFor, weekOf } from '../lib/giveaway'
 import { SocialIcon, socialLinks } from '../components/Community'
@@ -94,6 +95,7 @@ function Floor({ onPlay }: { onPlay: (id: string, daily?: boolean) => void }) {
             </article>
           )
         })}
+        <AdriftCabinet />
       </div>
       {discord && (
         <aside className="arcade-ask">

@@ -7,6 +7,8 @@
    Imported first in main.tsx, so the clock is shifted before anything reads it.
    ============================================================ */
 const PREVIEW_HOSTS = ['cozmc-preview.netlify.app', 'localhost', '127.0.0.1']
+/** Is this the preview site (or a local build), where testing tools may appear? */
+export const onPreviewSite = () => typeof location !== 'undefined' && PREVIEW_HOSTS.includes(location.hostname)
 
 export const previewAsOf: number | null = (() => {
   if (typeof location === 'undefined' || !PREVIEW_HOSTS.includes(location.hostname)) return null
