@@ -98,9 +98,9 @@ export function Adrift() {
   const urgent = playing && left <= 30_000
   const toNext = (today + 1) * DAY - now
   const heading = !s ? 'Bring them home.' : playing ? 'Find the rescue word.' : s.status === 'won' ? 'Safely back on board.' : 'Signal lost. Mission over.'
-  const desc = !s ? 'Find the missing word to lock onto our astronaut’s signal.' : playing ? 'Solve the word to winch our astronaut back. Every miss pushes them farther away.' : s.status === 'won' ? 'One small word. One very happy astronaut.' : 'Our astronaut is out of reach this time. A new rescue is waiting tomorrow.'
-  const announce = done ? (s!.status === 'won' ? `Astronaut rescued! The word was ${word}. Today’s attempt is complete.` : `Mission over. The word was ${word}. Today’s attempt is complete.`) : message
-  const shareText = done ? `COZMC · ADRIFT\n${isoDay(s!.day)}\n${s!.status === 'won' ? '🟩 Astronaut rescued' : '⬛ Signal lost'}\n${'🟧'.repeat(wrong)}${'🟩'.repeat(CONFIG.misses - wrong)}\n${s!.status === 'won' ? `${tookText(s!.ended! - s!.started)} · ` : ''}One word. One shot. #COZMC\ncozmc.us/#/arcade/adrift` : ''
+  const desc = !s ? 'Find the missing word to lock onto our explorer’s signal.' : playing ? 'Solve the word to winch our explorer back. Every miss pushes them farther away.' : s.status === 'won' ? 'One small word. One explorer, safely home.' : 'Our explorer is out of reach this time. A new rescue is waiting tomorrow.'
+  const announce = done ? (s!.status === 'won' ? `Explorer rescued! The word was ${word}. Today’s attempt is complete.` : `Mission over. The word was ${word}. Today’s attempt is complete.`) : message
+  const shareText = done ? `COZMC · ADRIFT\n${isoDay(s!.day)}\n${s!.status === 'won' ? '🟩 Explorer rescued' : '⬛ Signal lost'}\n${'🟧'.repeat(wrong)}${'🟩'.repeat(CONFIG.misses - wrong)}\n${s!.status === 'won' ? `${tookText(s!.ended! - s!.started)} · ` : ''}One word. One shot. #COZMC\ncozmc.us/#/arcade/adrift` : ''
 
   async function copyResult() {
     try { await navigator.clipboard.writeText(shareText); setShareMsg('Result copied. The word stays secret.') }
@@ -111,12 +111,14 @@ export function Adrift() {
     <>
       <header className="page-head ad-head">
         <p className="kicker"><span className="dot" /> Daily word rescue · free to play</p>
-        <h1>Adrift<span className="ad-head__dot">.</span></h1>
-        <p>One word. One astronaut. One shot. Find today’s rescue word before the tether runs out.</p>
+        <h1 aria-label="Adrift">ADRI<span className="ad-head__f">F</span>T<span className="ad-head__dot">.</span></h1>
+        <p className="ad-head__with"><span>with</span> <img src="/assets/cozmc-logo-272.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w" sizes="122px" alt="COZMC" width={456} height={120} /></p>
+        <p className="ad-head__tag"><b>Bring them home.</b> One word. One explorer. One shot.</p>
       </header>
 
       <section className={`ad${s ? ` is-${s.status}` : ''}`} aria-label="Daily rescue game">
         <div className="ad-scene crt" ref={sceneRoot}>
+          <div className="ad-holo" aria-hidden="true" />
           <div className="ad-planet" aria-hidden="true" />
           <div className="ad-orbit" aria-hidden="true" /><div className="ad-orbit ad-orbit--2" aria-hidden="true" />
           <div className="ad-scene__top"><span>Deep space · sector 07</span><span className="ad-live"><i /> <span data-part="beacon">Signal found</span></span></div>
@@ -146,6 +148,10 @@ export function Adrift() {
 
           {!s && (
             <div className="ad-ready">
+              <div className="ad-brief">
+                <img src="/assets/adrift/explorer.webp" alt="" width={320} height={320} />
+                <div><b>Signal found</b><span>A COZMC explorer is drifting off sector 07. Find the rescue word and the winch brings them home.</span></div>
+              </div>
               <ol className="ad-rules">
                 <li><b>01</b><span>Guess a familiar <strong>4 to 7 letter word</strong>.</span></li>
                 <li><b>02</b><span>You have <strong>{durationText()}</strong> and <strong>{CONFIG.misses} missed letters</strong>.</span></li>
@@ -178,7 +184,8 @@ export function Adrift() {
           {done && (
             <div className="ad-result">
               <div className="ad-result__card">
-                <b>{s!.status === 'won' ? 'Rescue complete. Nice work.' : 'Today’s attempt is complete.'}</b>
+                {s!.status === 'won' && <img className="ad-victory" src="/assets/adrift/victory.webp" alt="The COZMC explorer, safe on board, raising a fist" width={480} height={462} />}
+                <b className={s!.status === 'won' ? 'ad-holo-text' : undefined}>{s!.status === 'won' ? 'Crew safe. Rescue complete.' : 'Today’s attempt is complete.'}</b>
                 <p>The rescue word was <strong>{word}</strong>. {wrong} of {CONFIG.misses} missed letters used{s!.status === 'won' ? `, in ${tookText(s!.ended! - s!.started)}` : ''}.</p>
                 <small>Next mission: {new Date((day + 1) * DAY).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} your time (00:00 UTC)</small>
               </div>

@@ -1,6 +1,6 @@
 /* ============================================================
    ADRIFT: the rescue scene.
-   One interruptible timeline owns the astronaut and its tether (ported from
+   One interruptible timeline owns the explorer and the tether (ported from
    the original trial), plus arcade touches: an idle drift, sparks on every
    miss, a green ping on a right letter, the tether snapping on a loss and a
    burst of light when the airlock seals. Reduced motion shows still poses.
@@ -9,15 +9,17 @@
 export interface Pose { x: number; y: number; scale: number; angle: number; opacity: number }
 export type SceneStatus = 'ready' | 'playing' | 'won' | 'lost'
 
-const AIRLOCK = { x: 110, y: 128 }
+/** Where the tether leaves the ship (the winch) and where a rescue ends (the airlock door), in scene units. */
+export const WINCH = { x: 267, y: 138 }
+export const DOOR = { x: 230, y: 128 }
 const SVGNS = 'http://www.w3.org/2000/svg'
 
 /** Where the astronaut sits: each miss pushes them farther out; a win ends inside the airlock. */
 export function rescuePose(misses: number, status: SceneStatus = 'playing'): Pose {
   const n = Math.max(0, Math.min(6, misses))
-  if (status === 'won') return { x: AIRLOCK.x, y: AIRLOCK.y, scale: 0.06, angle: -18, opacity: 0 }
-  if (status === 'lost') return { x: 415, y: 421, scale: 0.43, angle: 35, opacity: 0.58 }
-  return { x: 260 + n * 21, y: 255 + n * 23, scale: 0.72 - n * 0.025, angle: n * 3, opacity: 1 }
+  if (status === 'won') return { x: DOOR.x, y: DOOR.y, scale: 0.06, angle: -18, opacity: 0 }
+  if (status === 'lost') return { x: 430, y: 440, scale: 0.4, angle: 35, opacity: 0.58 }
+  return { x: 300 + n * 20, y: 300 + n * 20, scale: 0.6 - n * 0.022, angle: n * 3, opacity: 1 }
 }
 /** Where the tether clips onto the suit, for a pose. */
 export function tetherPoint(p: Pose) {
@@ -66,11 +68,11 @@ export class RescueScene {
     const p = this.drifted(this.pose), b = this.broken
     this.actor.setAttribute('transform', `translate(${p.x} ${p.y}) rotate(${p.angle}) scale(${p.scale}) translate(-220 -250)`)
     this.actor.style.opacity = String(p.opacity)
-    const end = tetherPoint(p), cx = (AIRLOCK.x + end.x) / 2, cy = (AIRLOCK.y + end.y) / 2 + 22 * (1 - b)
-    this.rope.setAttribute('d', `M${AIRLOCK.x} ${AIRLOCK.y} Q${cx} ${cy} ${end.x} ${end.y}`)
+    const end = tetherPoint(p), cx = (WINCH.x + end.x) / 2, cy = (WINCH.y + end.y) / 2 + 22 * (1 - b)
+    this.rope.setAttribute('d', `M${WINCH.x} ${WINCH.y} Q${cx} ${cy} ${end.x} ${end.y}`)
     this.rope.style.opacity = String(1 - b)
     const sway = this.idle && !this.reduced.matches ? Math.sin(performance.now() / 700) * 6 : 0
-    this.loose.setAttribute('d', `M${AIRLOCK.x} ${AIRLOCK.y} Q${145 + sway} ${178 + b * 20} ${160 + b * 30 + sway} ${175 + b * 30}`)
+    this.loose.setAttribute('d', `M${WINCH.x} ${WINCH.y} Q${WINCH.x + 30 + sway} ${WINCH.y + 50 + b * 20} ${WINCH.x + 50 + b * 30 + sway} ${WINCH.y + 70 + b * 30}`)
     this.loose.style.opacity = String(b)
   }
 
@@ -79,9 +81,9 @@ export class RescueScene {
     this.beacon.textContent = status === 'lost' ? 'Signal lost' : status === 'won' ? 'Crew safe' : 'Signal found'
     this.label.textContent = status === 'won' ? 'AIRLOCK SEALED · CREW SAFE' : status === 'lost' ? 'TETHER DISCONNECTED · SIGNAL LOST'
       : `${String(misses).padStart(2, '0')} / 06 MISSES · ${misses >= 4 ? 'TETHER AT LIMIT' : 'TETHER CONNECTED'}`
-    this.svg.setAttribute('aria-label', status === 'won' ? 'Astronaut safely inside the rescue ship. Airlock sealed.'
-      : status === 'lost' ? 'Rescue tether disconnected. Astronaut drifting away from the ship.'
-      : `Astronaut tethered to rescue ship. ${misses} of 6 misses; ${misses === 0 ? 'within rescue range' : 'drifting farther away'}.`)
+    this.svg.setAttribute('aria-label', status === 'won' ? 'The explorer is safely inside the rescue ship. Airlock sealed.'
+      : status === 'lost' ? 'Rescue tether disconnected. The explorer is drifting away from the ship.'
+      : `The COZMC explorer, tethered to the rescue ship. ${misses} of 6 misses; ${misses === 0 ? 'within rescue range' : 'drifting farther away'}.`)
     this.root.dataset.rescue = status
     this.root.dataset.misses = String(misses)
   }
@@ -103,7 +105,7 @@ export class RescueScene {
     const from = { ...this.pose }, to = rescuePose(misses, status), terminal = status === 'won' || status === 'lost', duration = terminal ? 2600 : 950, t0 = performance.now()
     if (misses > last.misses || status === 'lost') this.alarm()
     if (misses > last.misses && status !== 'lost') this.sparks(tetherPoint(from), ['#ffb020', '#ff7a3d', '#ffd36b'], 14)
-    if (status === 'lost') { this.sparks(AIRLOCK, ['#ffb020', '#ff4b3d'], 18, 60); this.sparks(tetherPoint(from), ['#ffb020', '#ff7a3d'], 16) }
+    if (status === 'lost') { this.sparks(WINCH, ['#ffb020', '#ff4b3d'], 18, 60); this.sparks(tetherPoint(from), ['#ffb020', '#ff7a3d'], 16) }
     this.label.textContent = status === 'won' ? 'WINCH ENGAGED · RETURNING TO AIRLOCK' : status === 'lost' ? 'TETHER RELEASED · RESCUE LINK LOST' : `${String(misses).padStart(2, '0')} / 06 MISSES · DRIFTING OUTWARD`
     this.hatch.style.opacity = '.18'
     let burst = false
@@ -124,7 +126,7 @@ export class RescueScene {
   ping() {
     if (this.reduced.matches || typeof document === 'undefined') return
     const ring = document.createElementNS(SVGNS, 'circle')
-    ring.setAttribute('cx', String(AIRLOCK.x)); ring.setAttribute('cy', String(AIRLOCK.y)); ring.setAttribute('r', '10')
+    ring.setAttribute('cx', String(WINCH.x)); ring.setAttribute('cy', String(WINCH.y)); ring.setAttribute('r', '10')
     ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#8dff6a'); ring.setAttribute('stroke-width', '3')
     this.fx.append(ring)
     ring.animate([{ r: 10, opacity: 0.9 } as Keyframe, { r: 90, opacity: 0 } as Keyframe], { duration: 700, easing: 'ease-out' }).onfinish = () => ring.remove()
@@ -141,10 +143,10 @@ export class RescueScene {
   /** The airlock seals: a burst of light, pixel sparks and two rings. */
   private celebrate() {
     if (this.reduced.matches) return
-    this.sparks(AIRLOCK, ['#8dff6a', '#f2c45c', '#ffffff', '#59e6ff'], 34, 120)
+    this.sparks(DOOR, ['#8dff6a', '#f2c45c', '#ffffff', '#59e6ff'], 34, 120)
     for (const [delay, r] of [[0, 140], [180, 200]]) {
       const ring = document.createElementNS(SVGNS, 'circle')
-      ring.setAttribute('cx', String(AIRLOCK.x)); ring.setAttribute('cy', String(AIRLOCK.y)); ring.setAttribute('r', '12')
+      ring.setAttribute('cx', String(DOOR.x)); ring.setAttribute('cy', String(DOOR.y)); ring.setAttribute('r', '12')
       ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', delay ? '#f2c45c' : '#8dff6a'); ring.setAttribute('stroke-width', '4')
       ring.style.opacity = '0'
       this.fx.append(ring)

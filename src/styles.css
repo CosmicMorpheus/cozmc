@@ -1301,3 +1301,46 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
   .ad-timer { font-size: 22px }
 }
 @media (prefers-reduced-motion: reduce) { .ad-orbit, .ad-stars rect, .ad-thruster, .ad-chest, .ad-letter.is-on, .ad-key { animation: none !important } }
+
+/* ---------- Adrift: COZMC brand pass (the explorer, the freighter, nebula and holo touches) ---------- */
+.ad-head { text-align: left }
+.ad-head h1 { font: 800 clamp(3rem, 9vw, 6.5rem)/.9 var(--sans); font-stretch: 75%; letter-spacing: .02em; text-transform: uppercase; color: var(--text) }
+.ad-head__f { display: inline-block; rotate: 9deg; translate: 0 -2px }
+.ad-head__with { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; font: 700 11px var(--pixel); text-transform: uppercase; letter-spacing: .12em; color: var(--mist) }
+.ad-head__with img { height: 32px; width: auto }
+.ad-head__tag { font-size: 17px; color: var(--mist) }
+.ad-head__tag b { color: var(--text); font-weight: 700 }
+.ad-scene { background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.62)), url('/assets/adrift/nebula.webp') center / cover, #050909 }
+.ad-scene .ad-stars rect { opacity: .25 }
+.ad-planet { background: radial-gradient(ellipse at 55% 0, #4f8a64, #11261e 25%, #050d0b 47%); opacity: .9 }
+.ad-holo { position: absolute; inset: 0; z-index: 5; pointer-events: none; border: 3px solid transparent; border-image: linear-gradient(135deg, #f2c45c, #ff8ad8 22%, #59e6ff 44%, #8dff6a 66%, #f2c45c 88%) 1; animation: ad-holo 6s linear infinite; opacity: .85 }
+@keyframes ad-holo { to { filter: hue-rotate(360deg) } }
+.ad-console__head, .ad-timer, .ad-letter { font-family: var(--mono) }
+.ad-console__head { font: 500 11px var(--mono); font-stretch: 87.5%; letter-spacing: .02em }
+.ad-console__head .ad-tag { font: 700 9px var(--pixel) }
+.ad-timer { font: 600 30px var(--mono); font-stretch: 87.5% }
+.ad-desc, .ad-rules { font-size: 16px }
+.ad-letter { font: 600 27px var(--mono); border-radius: 4px }
+.ad-key { font: 600 16px var(--mono); border-radius: 4px; min-height: 44px }
+.ad-key.is-miss { text-decoration: line-through 2px; color: #8a6a4a }
+.ad-key.is-hit { box-shadow: inset 0 -4px 0 #2c6b1f }
+.ad-key:focus-visible { outline: 2px solid var(--text); outline-offset: 3px }
+.ad-brief { display: flex; gap: 14px; align-items: center; margin-top: 20px; padding: 10px; border: 1px solid #2c3d30; background: #070b08; border-radius: 4px }
+.ad-brief img { width: 72px; height: 72px; flex: none; border-radius: 4px; border: 1px solid var(--phos-deep); box-shadow: 0 0 14px #8dff6a33; object-fit: cover }
+.ad-brief b { display: block; font: 700 10px var(--pixel); text-transform: uppercase; color: var(--phos); margin-bottom: 4px }
+.ad-brief span { color: var(--mist); font-size: 15px }
+.ad-victory { float: right; width: min(46%, 200px); height: auto; margin: -6px -6px 6px 12px; mix-blend-mode: lighten; filter: drop-shadow(0 0 18px #8dff6a33) }
+.ad-result__card::after { content: ""; display: block; clear: both }
+.ad-holo-text { background: linear-gradient(90deg, #f2c45c, #ff8ad8, #59e6ff, #8dff6a, #f2c45c); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent !important; animation: ad-shine 3s linear infinite }
+@keyframes ad-shine { to { background-position: 200% 0 } }
+.ad-vent { animation: ad-vent 1.4s ease-in-out infinite; filter: drop-shadow(0 0 6px #8dff6a) }
+@keyframes ad-vent { 50% { opacity: .55 } }
+.ad-strip-light { filter: drop-shadow(0 0 4px #8dff6a); animation: ad-vent 2s ease-in-out infinite }
+.ad-running rect { animation: blink 1.6s steps(1) infinite } .ad-running rect:nth-child(2n) { animation-delay: -.8s }
+.ad-scene[data-rescue="won"] [data-part="hatch"] { filter: drop-shadow(0 0 10px #8dff6a) }
+.ad-dreads { transform-box: fill-box; transform-origin: 50% 70%; animation: ad-dreads 5s ease-in-out infinite }
+@keyframes ad-dreads { 50% { rotate: 3deg } }
+.ad-eyes { animation: ad-vent 2.6s ease-in-out infinite }
+.ad-scene[data-rescue="lost"] .ad-eyes { opacity: .35; animation: none }
+@media (max-width: 480px) { .ad-head__with img { height: 26px } .ad-brief img { width: 60px; height: 60px } .ad-key { font-size: 15px } .ad-letter { font-size: 22px } }
+@media (prefers-reduced-motion: reduce) { .ad-holo, .ad-holo-text, .ad-vent, .ad-strip-light, .ad-running rect, .ad-dreads, .ad-eyes { animation: none !important } }
