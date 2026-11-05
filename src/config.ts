@@ -11,7 +11,7 @@ export const SOCIAL = {
 }
 
 /** Background music (YouTube video ids), played in order and looped. Leave empty to remove the music button. */
-export const MUSIC_IDS = ['O9QgHF1gtC8', 'B0Bwoh948QQ', 'fHCIchBq8CM']
+export const MUSIC_IDS = ['O9QgHF1gtC8', 'B0Bwoh948QQ', 'fHCIchBq8CM', 'GjTTB6yII4o', '2dlpY7PX_DA']
 
 // ---- token ----
 export const ASA_ID = 3739851986
