@@ -8,6 +8,7 @@ import {
 } from '../config'
 import { toWhole } from './format'
 import type { DailyPayout } from './dailyPrize'
+import { previewAsOf } from './previewDate'
 
 /* ---------------- low-level REST ---------------- */
 async function getJSON<T = any>(url: string): Promise<T> {
@@ -336,7 +337,10 @@ export async function buildScoreGroup(algod: algosdk.Algodv2, sender: string, ga
 
 type Signer = (txns: algosdk.Transaction[]) => Promise<(Uint8Array | null)[]>
 
+const noPreviewWrites = () => { if (previewAsOf != null) throw new Error('Wallet transactions are turned off while previewing another date.') }
+
 export async function signAndSend(algod: algosdk.Algodv2, sign: Signer, txns: algosdk.Transaction[]) {
+  noPreviewWrites()
   const signed = (await sign(txns)).filter((x): x is Uint8Array => !!x)
   if (signed.length !== txns.length) throw new Error('The wallet did not sign every transaction.')
   const { txid } = await algod.sendRawTransaction(signed).do()
@@ -346,6 +350,7 @@ export async function signAndSend(algod: algosdk.Algodv2, sign: Signer, txns: al
 
 /** Like signAndSend, but says when the wallet has signed, and returns the confirmed round too. */
 export async function signSendConfirm(algod: algosdk.Algodv2, sign: Signer, txns: algosdk.Transaction[], onSigned?: () => void) {
+  noPreviewWrites()
   const signed = (await sign(txns)).filter((x): x is Uint8Array => !!x)
   if (signed.length !== txns.length) throw new Error('The wallet did not sign every transaction.')
   onSigned?.()

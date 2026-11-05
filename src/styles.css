@@ -1206,3 +1206,5 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 }
 .gwb__final { margin-top: 10px; padding: 10px 12px; border: 1px dashed #6b4f12; background: rgba(0,0,0,.45) }
 .gw-final { margin-top: 0 }
+.preview-date { position: relative; z-index: 60; padding: 8px 16px; background: #b3122e; color: #fff; text-align: center; font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .03em }
+.preview-date a { color: #fff; margin-left: 8px }

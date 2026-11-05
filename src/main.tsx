@@ -1,3 +1,4 @@
+import './lib/previewDate'          // first: the preview site's ?as-of= clock (no effect elsewhere)
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { WalletProvider } from '@txnlab/use-wallet-react'

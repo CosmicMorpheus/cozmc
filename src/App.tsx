@@ -11,6 +11,7 @@ import { CommunityButtons, PactButton, Social } from './components/Community'
 import { GiveawayChip } from './components/GiveawayStrip'
 import { DailyChip } from './components/DailyPrize'
 import { dailyLive } from './lib/dailyPrize'
+import { previewAsOf, previewLabel } from './lib/previewDate'
 import { SiteMenu } from './components/SiteMenu'
 import { Home } from './tabs/Home'
 import { ASA_ID, HAYSTACK_INVITE } from './config'
@@ -142,6 +143,9 @@ export function App() {
     <>
       <Starfield />
       <a className="skip" href="#main">Skip to content</a>
+      {previewAsOf != null && (
+        <p className="preview-date" role="status">Preview: showing the site as of <b>{previewLabel()}</b>. Wallet transactions are off. <a href={location.pathname + location.hash}>Back to today</a></p>
+      )}
       <BurnBar onBurn={openBurn} />
       <header className="top">
         <div className="wrap top__in">
