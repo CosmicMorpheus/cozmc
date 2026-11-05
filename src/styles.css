@@ -1344,3 +1344,11 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 .ad-scene[data-rescue="lost"] .ad-eyes { opacity: .35; animation: none }
 @media (max-width: 480px) { .ad-head__with img { height: 26px } .ad-brief img { width: 60px; height: 60px } .ad-key { font-size: 15px } .ad-letter { font-size: 22px } }
 @media (prefers-reduced-motion: reduce) { .ad-holo, .ad-holo-text, .ad-vent, .ad-strip-light, .ad-running rect, .ad-dreads, .ad-eyes { animation: none !important } }
+
+/* the music button announces itself when the music starts */
+.music.is-intro { border-color: var(--phos); animation: music-flash .7s ease-in-out 6 }
+@keyframes music-flash { 50% { box-shadow: 0 0 0 6px #8dff6a55, 0 0 24px #8dff6a; background: var(--phos-ink) } }
+.music-hint { position: fixed; right: 16px; bottom: 72px; z-index: 91; padding: 8px 11px; background: #000; border: 2px solid var(--phos); box-shadow: 3px 3px 0 var(--phos-deep); font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos); white-space: nowrap; animation: music-hint 6s ease forwards; pointer-events: none }
+.music-hint::after { content: ""; position: absolute; right: 16px; bottom: -8px; width: 12px; height: 12px; background: #000; border-right: 2px solid var(--phos); border-bottom: 2px solid var(--phos); rotate: 45deg }
+@keyframes music-hint { 0% { opacity: 0; translate: 0 6px } 8%, 85% { opacity: 1; translate: 0 0 } 100% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .music.is-intro { animation: none; box-shadow: 0 0 0 3px #8dff6a88 } .music-hint { animation: none } }
