@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { advance, CONFIG, createSession, DAY, dayAt, missesOf, wordFor, type Session } from '../adrift/engine'
+import { advance, CONFIG, createSession, DAY, dayAt, durationText, missesOf, tookText, wordFor, type Session } from '../adrift/engine'
 import { ADRIFT_KEY, readSaved } from '../adrift/storage'
 import { RescueScene, type SceneStatus } from '../adrift/scene'
 import { RescueArt } from '../adrift/RescueArt'
@@ -37,7 +37,7 @@ export function Adrift() {
         const save = (n: Session) => { localStorage.setItem(ADRIFT_KEY, JSON.stringify(n)); s = n }
         if (s?.status === 'playing') { const u = advance(s, now); if (JSON.stringify(u) !== JSON.stringify(s)) save(u) }
         if (action === 'start') {
-          if (!(s?.status === 'playing' || (s && s.day >= dayAt(now)))) { save(createSession(now)); setMessage(`Rescue started. ${CONFIG.seconds} seconds on the clock.`) }
+          if (!(s?.status === 'playing' || (s && s.day >= dayAt(now)))) { save(createSession(now)); setMessage(`Rescue started. ${durationText()} on the clock.`) }
         } else if (action && s?.status === 'playing') {
           const before = s, next = advance(s, now, action), word = wordFor(next.day)
           save(next)
@@ -95,12 +95,12 @@ export function Adrift() {
   useEffect(() => { scene.current?.update(wrong, status, s ? String(s.started) : 'ready') }, [wrong, status, s?.started])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const left = playing ? s!.deadline - now : done ? s!.deadline - s!.ended! : CONFIG.seconds * 1000
-  const urgent = playing && left <= 20_000
+  const urgent = playing && left <= 30_000
   const toNext = (today + 1) * DAY - now
   const heading = !s ? 'Bring them home.' : playing ? 'Find the rescue word.' : s.status === 'won' ? 'Safely back on board.' : 'Signal lost. Mission over.'
   const desc = !s ? 'Find the missing word to lock onto our astronaut’s signal.' : playing ? 'Solve the word to winch our astronaut back. Every miss pushes them farther away.' : s.status === 'won' ? 'One small word. One very happy astronaut.' : 'Our astronaut is out of reach this time. A new rescue is waiting tomorrow.'
   const announce = done ? (s!.status === 'won' ? `Astronaut rescued! The word was ${word}. Today’s attempt is complete.` : `Mission over. The word was ${word}. Today’s attempt is complete.`) : message
-  const shareText = done ? `COZMC · ADRIFT\n${isoDay(s!.day)}\n${s!.status === 'won' ? '🟩 Astronaut rescued' : '⬛ Signal lost'}\n${'🟧'.repeat(wrong)}${'🟩'.repeat(CONFIG.misses - wrong)}\n${s!.status === 'won' ? `${Math.ceil((s!.ended! - s!.started) / 1000)}s · ` : ''}One word. One shot. #COZMC\ncozmc.us/#/arcade/adrift` : ''
+  const shareText = done ? `COZMC · ADRIFT\n${isoDay(s!.day)}\n${s!.status === 'won' ? '🟩 Astronaut rescued' : '⬛ Signal lost'}\n${'🟧'.repeat(wrong)}${'🟩'.repeat(CONFIG.misses - wrong)}\n${s!.status === 'won' ? `${tookText(s!.ended! - s!.started)} · ` : ''}One word. One shot. #COZMC\ncozmc.us/#/arcade/adrift` : ''
 
   async function copyResult() {
     try { await navigator.clipboard.writeText(shareText); setShareMsg('Result copied. The word stays secret.') }
@@ -148,7 +148,7 @@ export function Adrift() {
             <div className="ad-ready">
               <ol className="ad-rules">
                 <li><b>01</b><span>Guess a familiar <strong>4 to 7 letter word</strong>.</span></li>
-                <li><b>02</b><span>You have <strong>{CONFIG.seconds} seconds</strong> and <strong>{CONFIG.misses} missed letters</strong>.</span></li>
+                <li><b>02</b><span>You have <strong>{durationText()}</strong> and <strong>{CONFIG.misses} missed letters</strong>.</span></li>
                 <li><b>03</b><span><strong>One mission per day</strong> (UTC). The clock keeps running if you leave.</span></li>
               </ol>
               <button className="btn btn--phos ad-start" disabled={blocked} onClick={() => transact('start').then(() => {
@@ -179,7 +179,7 @@ export function Adrift() {
             <div className="ad-result">
               <div className="ad-result__card">
                 <b>{s!.status === 'won' ? 'Rescue complete. Nice work.' : 'Today’s attempt is complete.'}</b>
-                <p>The rescue word was <strong>{word}</strong>. {wrong} of {CONFIG.misses} missed letters used{s!.status === 'won' ? `, in ${Math.ceil((s!.ended! - s!.started) / 1000)} seconds` : ''}.</p>
+                <p>The rescue word was <strong>{word}</strong>. {wrong} of {CONFIG.misses} missed letters used{s!.status === 'won' ? `, in ${tookText(s!.ended! - s!.started)}` : ''}.</p>
                 <small>Next mission: {new Date((day + 1) * DAY).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} your time (00:00 UTC)</small>
               </div>
               <div className="row">

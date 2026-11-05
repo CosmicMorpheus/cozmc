@@ -1,5 +1,6 @@
 import { RescueArt } from './RescueArt'
 import { adriftToday } from './storage'
+import { durationText } from './engine'
 import { Icon } from '../components/Pixel'
 
 /* Adrift's cabinet on the Arcade floor: a still of the rescue and today's status in this browser. */
@@ -14,7 +15,7 @@ export function AdriftCabinet() {
       </a>
       <div className="cab__body">
         <h2>Adrift <span className="ad-new">New</span></h2>
-        <p>One word. One astronaut. One shot. A daily word rescue with 90 seconds and six misses.</p>
+        <p>One word. One astronaut. One shot. A daily word rescue with {durationText()} and six misses.</p>
         <dl className="cab__stats">
           <div><dt>Today</dt><dd>{status}</dd></div>
           <div><dt>Wallet</dt><dd>Not needed</dd></div>

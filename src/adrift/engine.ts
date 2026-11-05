@@ -1,6 +1,6 @@
 /* ============================================================
    ADRIFT: the daily word rescue (rules engine).
-   One shared word per UTC day; 90 seconds and six missed letters to
+   One shared word per UTC day; ten minutes and six missed letters to
    find it. A session is saved in this browser and tied to the day it
    started, so a mission that crosses midnight finishes on its word.
    No wallet, rewards or on-chain scores: it's just for fun. The daily
@@ -9,7 +9,11 @@
    ============================================================ */
 import { rng } from '../lib/daily'
 
-export const CONFIG = { seconds: 90, misses: 6 }
+export const CONFIG = { seconds: 600, misses: 6 }
+/** How long a mission lasts, in words: "10 minutes" (or "90 seconds"). */
+export const durationText = (sec = CONFIG.seconds) => sec % 60 === 0 && sec >= 120 ? `${sec / 60} minutes` : `${sec} seconds`
+/** "4m 12s" / "37s": how long a finished mission took. */
+export const tookText = (ms: number) => { const s = Math.ceil(ms / 1000); return s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s` }
 export const DAY = 86_400_000
 export const dayAt = (now = Date.now()) => Math.floor(now / DAY)
 

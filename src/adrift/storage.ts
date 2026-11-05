@@ -1,7 +1,8 @@
 /* Where Adrift keeps today's mission: this browser's storage, under one key. */
 import { dayAt, valid, type Session } from './engine'
 
-export const ADRIFT_KEY = 'cozmc:adrift:v1'
+// v2: missions became 10 minutes long (a saved mission's deadline must match the current length)
+export const ADRIFT_KEY = 'cozmc:adrift:v2'
 
 export function readSaved(): Session | null {
   const raw = localStorage.getItem(ADRIFT_KEY)
