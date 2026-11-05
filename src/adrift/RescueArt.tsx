@@ -1,6 +1,6 @@
-/* The Adrift scene's artwork: the rescue ship and tether from the original trial, and the COZMC
-   explorer (carved wooden skull mask, glowing blue eyes, the green infinity rune, zero-g dreadlocks,
-   cloak, armour and compass strap), plus pixel stars. RescueScene finds its moving parts by data-part. */
+/* The Adrift scene's artwork: the COZMC freighter and its tether, and the COZMC explorer in a
+   white space suit and bubble helmet (carved wooden skull mask, glowing blue eyes, the green
+   infinity rune, dreadlocks floating inside the helmet), plus pixel stars. RescueScene finds its moving parts by data-part. */
 import { rescuePose, tetherPoint, WINCH } from './scene'
 
 // a fixed scatter of pixel stars (same every load)
@@ -19,8 +19,9 @@ export function RescueArt({ id = 'ad', still = false }: { id?: string; still?: b
     <svg className="ad-art" viewBox="0 0 520 530" preserveAspectRatio={still ? 'xMidYMid slice' : 'xMidYMid meet'} role="img" aria-label="The COZMC explorer, tethered to a rescue ship in deep space">
       <defs>
         <linearGradient id={u('wood')} x1="0" y1="0" x2=".6" y2="1"><stop stopColor="#c9a172" /><stop offset=".55" stopColor="#8f6a42" /><stop offset="1" stopColor="#4e3520" /></linearGradient>
-        <linearGradient id={u('cloak')} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#3a3631" /><stop offset=".5" stopColor="#1f1c18" /><stop offset="1" stopColor="#0e0d0b" /></linearGradient>
-        <linearGradient id={u('leather')} x1="0" x2="1"><stop stopColor="#8a6a45" /><stop offset="1" stopColor="#4b3622" /></linearGradient>
+        <linearGradient id={u('suit')} x1="0" x2="1" y2="1"><stop stopColor="#fffef6" /><stop offset=".45" stopColor="#d6dee0" /><stop offset="1" stopColor="#7d8d92" /></linearGradient>
+        <radialGradient id={u('glass')} cx=".35" cy=".3" r=".8"><stop stopColor="#bfe9ff" stopOpacity=".22" /><stop offset=".6" stopColor="#59a8c4" stopOpacity=".08" /><stop offset="1" stopColor="#0b2a33" stopOpacity=".35" /></radialGradient>
+        <clipPath id={u('helmet')}><circle cx="217" cy="160" r="82" /></clipPath>
         <linearGradient id={u('gold')}><stop stopColor="#edcf83" /><stop offset="1" stopColor="#74603b" /></linearGradient>
         <filter id={u('shadow')}><feDropShadow dx="6" dy="12" stdDeviation="9" floodOpacity=".55" /></filter>
         <filter id={u('glow')} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -65,6 +66,32 @@ export function RescueArt({ id = 'ad', still = false }: { id?: string; still?: b
       <path data-part="loose" d={`M${WINCH.x} ${WINCH.y} Q${WINCH.x + 30} ${WINCH.y + 50} ${WINCH.x + 50} ${WINCH.y + 70}`} fill="none" stroke="#ffb020" strokeWidth="2.4" opacity="0" />
       <g data-part="actor" transform={actorAt}>
         <g filter={`url(#${u('shadow')})`} transform="rotate(-18 220 240)">
+          {/* the space suit: life-support backpack, jointed arms and legs, boots */}
+          <rect x="146" y="197" width="148" height="147" rx="28" fill="#c9d1d4" stroke="#7d8a8f" strokeWidth="4" />
+          <rect x="160" y="206" width="120" height="16" rx="5" fill="#9aa6aa" />
+          <path d="M168 310 L158 393 Q156 414 183 418 L203 417 224 323 M233 320 L240 399 Q242 416 264 412 L282 402 271 311" fill={`url(#${u('suit')})`} stroke="#7d8a8f" strokeWidth="4" />
+          <path d="M163 352 L215 360 M236 356 L278 348" stroke="#9aa6aa" strokeWidth="7" />
+          <path d="M156 391 L205 401 201 428 Q167 439 150 421Z M240 397 L283 389 296 412 Q282 433 249 426Z" fill="#8d999d" stroke="#e4e9ea" strokeWidth="3" />
+          <path d="M162 214 Q137 196 116 165 L99 140 Q83 129 75 145 Q73 155 82 174 L109 219 Q127 249 160 256 M278 215 Q311 237 326 219 L354 183 Q372 177 373 193 L352 240 Q327 277 280 258" fill={`url(#${u('suit')})`} stroke="#7d8a8f" strokeWidth="4" />
+          <path d="M121 186 L141 172 M312 228 L326 246" stroke="#9aa6aa" strokeWidth="8" />
+          <path d="M85 145 L109 169 M340 202 L359 215" stroke="#8d999d" strokeWidth="13" />
+          <circle cx="80" cy="150" r="12" fill="#e4e9ea" stroke="#7d8a8f" strokeWidth="3" />
+          <circle cx="368" cy="190" r="12" fill="#e4e9ea" stroke="#7d8a8f" strokeWidth="3" />
+          {/* the torso: control panel, COZMC patch, belt */}
+          <rect x="159" y="213" width="121" height="121" rx="30" fill={`url(#${u('suit')})`} stroke="#7d8a8f" strokeWidth="3" />
+          <path d="M167 307 L274 307" stroke="#7d8a8f" strokeWidth="12" />
+          <rect x="196" y="250" width="58" height="40" rx="7" fill="#2c3a3f" stroke="#e4e9ea" strokeWidth="3" />
+          <rect className="ad-chest" x="203" y="257" width="22" height="12" rx="2" fill="#8dff6a" />
+          <circle cx="240" cy="263" r="4" fill="#ffb020" /><circle cx="240" cy="277" r="4" fill="#59e6ff" />
+          <path d="M203 280H228" stroke="#8d9f9d" strokeWidth="3" />
+          <circle cx="178" cy="262" r="12" fill="#0d1a12" stroke="#d4b97c" strokeWidth="2.5" />
+          <path d="M170 262 C170 257 175 257 178 262 C181 267 186 267 186 262 C186 257 181 257 178 262 C175 267 170 267 170 262Z" fill="none" stroke="#8dff6a" strokeWidth="2" filter={`url(#${u('glow')})`} />
+          {/* the neck ring the helmet locks onto */}
+          <ellipse cx="217" cy="238" rx="62" ry="15" fill="#aab5b9" stroke="#6f7c81" strokeWidth="3" />
+          {/* the helmet: dark inside, the explorer's face and floating dreadlocks within, then the glass bubble, shell and raised gold visor */}
+          <circle cx="217" cy="160" r="84" fill="#060c0e" />
+          <g clipPath={`url(#${u('helmet')})`}>
+            <g transform="translate(217 168) scale(.86) translate(-217 -168)">
           {/* the hair: a dark mass with dreadlocks floating free in zero gravity */}
           <path d="M150 150 C140 90 190 70 217 72 C262 70 300 96 288 160 C296 190 280 230 262 236 L172 236 C150 226 142 190 150 150Z" fill="#33231a" />
           <g className="ad-dreads" fill="none" strokeLinecap="round">
@@ -75,29 +102,6 @@ export function RescueArt({ id = 'ad', still = false }: { id?: string; still?: b
             ))}
             <g fill="#8fae38">{[[150, 52], [196, 38], [238, 38], [302, 62], [332, 104], [108, 110], [104, 186], [330, 190], [136, 252], [300, 252], [120, 70], [322, 82]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="3" />)}</g>
           </g>
-          {/* legs and boots */}
-          <path d="M184 326 L172 398 Q170 416 192 419 L210 417 222 334 M232 334 L240 402 Q242 419 262 415 L280 405 270 326" fill="#1d1b17" stroke="#4a463e" strokeWidth="4" />
-          <path d="M160 392 L208 402 204 428 Q170 438 154 421Z M238 398 L282 388 296 412 Q282 432 250 426Z" fill={`url(#${u('leather')})`} stroke="#a3875c" strokeWidth="3" />
-          {/* arms: one reaching up for the ship, one out for balance; leather-wrapped forearms, gloves */}
-          <path d="M164 258 Q138 226 118 190 L102 158 Q88 142 78 156 Q74 166 84 182 L110 226 Q128 254 162 268 M272 258 Q306 270 326 248 L352 218 Q368 206 374 222 L356 256 Q330 288 276 276" fill={`url(#${u('cloak')})`} stroke="#4a463e" strokeWidth="4" />
-          <path d="M98 176 L118 166 M106 194 L126 184 M330 240 L346 254 M342 228 L358 240" stroke={`url(#${u('leather')})`} strokeWidth="9" />
-          <circle cx="86" cy="152" r="14" fill={`url(#${u('leather')})`} stroke="#a3875c" strokeWidth="3" />
-          <circle cx="370" cy="212" r="13" fill={`url(#${u('leather')})`} stroke="#a3875c" strokeWidth="3" />
-          <path d="M108 200 L114 188 110 178" fill="none" stroke="#8dff6a" strokeWidth="2.5" filter={`url(#${u('glow')})`} />
-          {/* cloak and armour */}
-          <path d="M156 246 Q217 232 280 246 L290 330 Q217 352 150 330Z" fill={`url(#${u('cloak')})`} stroke="#4a463e" strokeWidth="4" />
-          <path d="M150 248 Q166 236 190 246 L184 276 Q162 280 148 266Z M244 246 Q268 236 286 250 L288 268 Q272 280 252 276Z" fill="#3b3833" stroke="#7a756b" strokeWidth="3" />
-          <path d="M170 300 Q188 312 206 300 M232 306 Q252 316 270 302" fill="none" stroke="#2c2924" strokeWidth="3" />
-          <path d="M262 286 L270 298 266 312" fill="none" stroke="#8dff6a" strokeWidth="2.5" filter={`url(#${u('glow')})`} />
-          {/* the leather strap and its compass medallion */}
-          <path d="M262 246 L176 332" stroke={`url(#${u('leather')})`} strokeWidth="16" />
-          <path d="M262 246 L176 332" stroke="#c9b07a" strokeWidth="1.5" strokeDasharray="4 5" />
-          <circle cx="212" cy="296" r="12" fill="#3a2c1c" stroke="#d4b97c" strokeWidth="3" />
-          <path d="M212 286 L215 293 222 296 215 299 212 306 209 299 202 296 209 293Z" fill="#d4b97c" />
-          <path d="M152 324 L286 324" stroke="#2a2018" strokeWidth="10" />
-          {/* the scarf wrapped round the neck */}
-          <path d="M162 232 Q217 266 272 232 L282 258 Q217 296 152 258Z" fill="#26231e" stroke="#4a463e" strokeWidth="3" />
-          <path d="M172 250 Q217 272 262 250 M168 262 Q217 286 266 262" fill="none" stroke="#3d3934" strokeWidth="3" />
           {/* the carved wooden skull mask */}
           <path d="M217 90 C259 90 283 117 282 151 C281 170 274 182 268 194 L258 214 C250 230 235 240 217 242 C199 240 184 230 176 214 L166 194 C160 182 153 170 152 151 C151 117 175 90 217 90Z" fill={`url(#${u('wood')})`} stroke="#2e2010" strokeWidth="4" />
           <path d="M226 92 C262 96 284 122 282 152 C281 170 274 182 268 194 L258 214 C250 230 236 240 220 242 C238 220 246 188 244 150 C242 120 236 102 226 92Z" fill="#2a1a0c" opacity=".38" />
@@ -113,11 +117,17 @@ export function RescueArt({ id = 'ad', still = false }: { id?: string; still?: b
             <path d="M216 128 C216 120 226 120 230 128 C234 136 244 136 244 128 C244 120 234 120 230 128 C226 136 216 136 216 128Z" strokeWidth="3.5" />
             <path d="M236 98 L232 116 M232 140 L238 150 M244 176 L240 196 M166 180 L174 194 170 206" strokeWidth="2.4" />
           </g>
-          <g fill="none" strokeLinecap="round">
-            <path d="M174 214 C164 238 176 258 164 282 C158 294 166 304 160 316" stroke="#4a3320" strokeWidth="10" />
-            <path d="M262 214 C272 238 260 258 272 282 C278 294 270 304 276 316" stroke="#4a3320" strokeWidth="10" />
-            <path d="M174 214 C164 238 176 258 164 282 C158 294 166 304 160 316 M262 214 C272 238 260 258 272 282 C278 294 270 304 276 316" stroke="#8a6440" strokeWidth="3.5" strokeDasharray="3 6" />
+            </g>
           </g>
+          <circle cx="217" cy="160" r="84" fill={`url(#${u('glass')})`} />
+          <path d="M160 112 Q182 88 214 84" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" opacity=".5" />
+          <path d="M262 206 Q276 192 282 172" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" opacity=".3" />
+          <path d="M141 136 A 80 80 0 0 1 293 136 L 282 132 A 70 70 0 0 0 152 132 Z" fill={`url(#${u('gold')})`} opacity=".95" />
+          <circle cx="217" cy="160" r="86" fill="none" stroke="#e9eef0" strokeWidth="9" />
+          <circle cx="217" cy="160" r="81" fill="none" stroke="#7d8a8f" strokeWidth="2" />
+          <rect x="124" y="146" width="12" height="34" rx="5" fill="#c9d1d4" stroke="#7d8a8f" strokeWidth="2" />
+          <rect x="298" y="146" width="12" height="34" rx="5" fill="#c9d1d4" stroke="#7d8a8f" strokeWidth="2" />
+          <circle className="ad-chest" cx="130" cy="152" r="3" fill="#8dff6a" /><circle className="ad-chest" cx="304" cy="152" r="3" fill="#8dff6a" />
           {/* the harness clip the rescue tether hooks onto */}
           <path d="M184 288 Q160 304 174 319" fill="none" stroke={`url(#${u('gold')})`} strokeWidth="7" />
           <circle cx="174" cy="319" r="8" fill="#3b3833" stroke="#d4b97c" strokeWidth="3" />
