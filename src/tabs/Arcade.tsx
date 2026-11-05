@@ -16,7 +16,7 @@ import { Icon, TierBadge } from '../components/Pixel'
 import { useMe } from '../components/Wallet'
 import { ShareBtn } from '../components/Share'
 import { scoreShare } from '../lib/sharePayloads'
-import { DAILY_PRIZES, EXPLORER_TX, SCORE_FEE_ALGO } from '../config'
+import { DAILY_PRIZES, EXPLORER_TX, GIVEAWAY, SCORE_FEE_ALGO } from '../config'
 import { GameThumb } from '../components/GameThumb'
 import { GiveawayStrip } from '../components/GiveawayStrip'
 import { DailyStrip } from '../components/DailyPrize'
@@ -317,7 +317,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
                   : (
                     <>
                       <button className="btn btn--fire" onClick={postScore}>Post score · {SCORE_FEE_ALGO} ALGO</button>
-                      <p className="screen__fine">Would rank #{rankIfPosted} on {where}. Your {SCORE_FEE_ALGO} ALGO buys COZMC on Pact and burns it in the Bonfire, all in one signature.{dailyLive() ? (prizeRun ? <> Top three on today’s board at 00:00 UTC win {prizeLine} COZMC.</> : '') : <> It also earns you a ticket in this week’s {compact(prizeFor(Math.max(1, weekOf())))} COZMC giveaway.</>}</p>
+                      <p className="screen__fine">Would rank #{rankIfPosted} on {where}. Your {SCORE_FEE_ALGO} ALGO buys COZMC on Pact and burns it in the Bonfire, all in one signature.{dailyLive() ? (prizeRun ? <> Top three on today’s board at 00:00 UTC win {prizeLine} COZMC.</> : '') : <> It also earns you a ticket in this week’s {compact(prizeFor(Math.max(1, weekOf())))} COZMC giveaway{weekOf() === GIVEAWAY.lastWeek ? ', the last weekly one (drawn Monday 00:00 UTC)' : ''}.</>}</p>
                     </>
                   )}
                 {post === 'error' && <p className="state state--err">{postErr}</p>}

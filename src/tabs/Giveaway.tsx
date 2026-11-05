@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { useChain } from '../lib/data'
 import { buildOptInTxn, buildPrizeTxn, buildTicketTxn, fetchCozmcBalance, fetchDrawBlock, signAndSend } from '../lib/chain'
-import { countdownTo, entrants, eligible, extraFor, prizeFor, weekEnd, weekOf, weekStart, weekTickets, winnerIndex, type Ticket } from '../lib/giveaway'
+import { countdownTo, entrants, eligible, extraFor, finalDrawAt, isFinalWeek, localWhen, prizeFor, utcDate, weekEnd, weekOf, weekStart, weekTickets, winnerIndex, type Ticket } from '../lib/giveaway'
 import { compact, fmt } from '../lib/format'
 import { Addr, Loading, useToast } from '../components/ui'
 import { Icon } from '../components/Pixel'
@@ -80,9 +80,16 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
   return (
     <>
       <Head />
+      {isFinalWeek(week) && (
+        <a className="gw-strip gw-final" href="#/arcade/prizes">
+          <span className="gw-strip__icon"><Icon name="gift" size={18} /></span>
+          <span className="gw-strip__text"><b>This is the final weekly giveaway.</b> Week {week} ends and is drawn {utcDate(finalDrawAt())} at 00:00 UTC (<b>{localWhen(finalDrawAt())}</b> your time). There are no weekly giveaways after that: from then on it’s <b>9,000 COZMC up for grabs every day</b> in daily high-score prizes.</span>
+          <span className="gw-strip__go">Daily prizes →</span>
+        </a>
+      )}
       <section className="gw" aria-labelledby="gw-prize">
         <div className="gw__main">
-          <p className="gw__kicker">Week {week} prize</p>
+          <p className="gw__kicker">{isFinalWeek(week) ? `Week ${week} · the final weekly prize` : `Week ${week} prize`}</p>
           <p className="gw__prize" id="gw-prize">{compact(prizeFor(week))} <span>COZMC</span></p>
           {extraFor(week) && <p className="gw__extra">plus {extraFor(week)}</p>}
           <p className="gw__draw">Drawn in <b>{countdownTo(weekEnd(week))}</b> <span className="muted">(Monday 00:00 UTC)</span></p>

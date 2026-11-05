@@ -319,7 +319,7 @@ function CheckIn({ name, days, busy, onCheckIn }: { name: string; days: number[]
         ? <>{days.length} {days.length === 1 ? 'day' : 'days'} this week. Each check-in backs {name} up to your wallet and adds growth points.</>
         : got >= need
         ? <><b>Bonus ticket earned</b> for this week’s giveaway. Keep checking in to keep {name} backed up.</>
-        : <>{got} of {need} days this week. Check in on {need - got} more {need - got === 1 ? 'day' : 'days'} for a bonus giveaway ticket.</>}</p>
+        : <>{got} of {need} days this week. Check in on {need - got} more {need - got === 1 ? 'day' : 'days'} for a bonus giveaway ticket.{week === GIVEAWAY.lastWeek && <> This is the last week of bonus tickets: the weekly giveaway ends Monday 00:00 UTC.</>}</>}</p>
       <button className="btn btn--gold" disabled={done || !!busy} onClick={onCheckIn}>
         {busy === 'sign' ? 'Approve in your wallet…' : busy === 'send' ? 'Checking in…' : done ? 'Checked in today' : `Check in with ${name}`}
       </button>

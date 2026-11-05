@@ -1204,3 +1204,5 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
   .dp-sched li { grid-template-columns: 5.5rem minmax(0, 1fr) auto }
   .dp-ladder li { min-width: 0; flex: 1 }
 }
+.gwb__final { margin-top: 10px; padding: 10px 12px; border: 1px dashed #6b4f12; background: rgba(0,0,0,.45) }
+.gw-final { margin-top: 0 }

@@ -87,6 +87,14 @@ export async function winnerIndex(n: number, seedB64: string, count: number) {
   return Number(x % BigInt(count))
 }
 
+/** The weekly giveaway's last draw (the end of GIVEAWAY.lastWeek), and whether week n is that final week. */
+export const finalDrawAt = () => weekEnd(GIVEAWAY.lastWeek)
+export const isFinalWeek = (n: number) => n === GIVEAWAY.lastWeek
+/** A moment in the visitor's own time zone, e.g. "Sun, Nov 8, 4:00 PM PST". */
+export const localWhen = (ms: number) => new Date(ms).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+/** "Monday, Nov 9" in UTC. */
+export const utcDate = (ms: number) => new Date(ms).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })
+
 export const countdownTo = (ms: number) => {
   const s = Math.max(0, Math.floor((ms - Date.now()) / 1000)), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60)
   return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`

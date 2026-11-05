@@ -116,7 +116,7 @@ export function DailyStrip() {
       <span className="gw-strip__text">
         {live
           ? <><b>Today’s prize game: {game.title}.</b> Top three on today’s Daily board win {DAILY_PRIZES.prizes.map(fmt).join(' / ')} COZMC. <span className="muted">Ends in {h}h {m}m (00:00 UTC).</span></>
-          : <><b>New: {fmt(PRIZE_TOTAL)} COZMC up for grabs every day</b>, from {weekday(PRIZE_START_DAY)}. The first prize game is {game.title}.</>}
+          : <><b>New: {fmt(PRIZE_TOTAL)} COZMC up for grabs every day</b>, from {weekday(PRIZE_START_DAY)} at 00:00 UTC. It replaces the weekly 100K giveaway, which ends at the same moment. The first prize game is {game.title}.</>}
       </span>
       <span className="gw-strip__go">{live ? 'Play now →' : 'See how →'}</span>
     </a>

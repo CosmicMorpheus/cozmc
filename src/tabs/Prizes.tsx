@@ -40,7 +40,7 @@ export function Prizes() {
           <p className="dpb__sub">up for grabs every day</p>
           <Ladder />
           <Clock to={live ? dayEnd(today) : PRIZE_START_DAY * DAY_MS} label={live ? 'Today’s competition ends in' : 'The daily prizes start in'} />
-          <p className="gw__draw">{live ? <>Board closes at <b>00:00 UTC</b>. {mine ? <>You’re <b>#{mine.rank}</b> with {fmt(mine.score)}.</> : activeAddress ? 'Post a run to get on the board.' : ''}</> : <>Until then, the weekly giveaway runs as usual.</>}</p>
+          <p className="gw__draw">{live ? <>Board closes at <b>00:00 UTC</b>. {mine ? <>You’re <b>#{mine.rank}</b> with {fmt(mine.score)}.</> : activeAddress ? 'Post a run to get on the board.' : ''}</> : <>It replaces the weekly 100K giveaway, whose <a href="#/arcade/giveaway">final draw</a> is at the same moment.</>}</p>
         </div>
         <a className="dpb__game" href={playHref(game.id)} aria-label={`Play ${game.title}`}>
           <GameThumb game={game} />

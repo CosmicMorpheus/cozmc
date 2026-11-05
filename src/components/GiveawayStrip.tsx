@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { useChain } from '../lib/data'
 import { compact } from '../lib/format'
-import { countdownTo, entrants, extraFor, prizeFor, weekEnd, weekOf, weekTickets } from '../lib/giveaway'
+import { countdownTo, entrants, extraFor, finalDrawAt, isFinalWeek, localWhen, prizeFor, utcDate, weekEnd, weekOf, weekTickets } from '../lib/giveaway'
 import { GIVEAWAY } from '../config'
 import { Icon } from './Pixel'
 
@@ -25,8 +25,10 @@ export function GiveawayStrip() {
     <a className="gw-strip" href="#/arcade/giveaway">
       <span className="gw-strip__icon"><Icon name="gift" size={18} /></span>
       <span className="gw-strip__text">
-        <b>Weekly giveaway: {compact(prizeFor(week))} COZMC.</b> Every score you post is a ticket, plus a free ticket each week and a bonus for Cozmling check-ins.
-        <span className="muted"> {all ? `${all.length} ${all.length === 1 ? 'ticket' : 'tickets'} so far` : ''}{mine ? `, ${mine} yours` : ''}. Drawn in {countdownTo(weekEnd(week))}.</span>
+        {isFinalWeek(week)
+          ? <><b>Last chance: the final weekly {compact(prizeFor(week))} COZMC giveaway.</b> It ends {utcDate(finalDrawAt())} at 00:00 UTC, then it’s replaced by 9,000 COZMC in daily prizes.</>
+          : <><b>Weekly giveaway: {compact(prizeFor(week))} COZMC.</b> Every score you post is a ticket, plus a free ticket each week and a bonus for Cozmling check-ins.</>}
+        <span className="muted"> {all ? `${all.length} ${all.length === 1 ? 'ticket' : 'tickets'} so far${mine ? `, ${mine} yours` : ''}. ` : ''}Drawn in {countdownTo(weekEnd(week))}.</span>
       </span>
       <span className="gw-strip__go">Enter →</span>
     </a>
@@ -44,7 +46,7 @@ export function GiveawayBanner() {
   return (
     <section className="gwb" aria-labelledby="gwb-h">
       <div className="gwb__main">
-        <p className="gwb__kicker"><Icon name="gift" size={13} /> Week {week} giveaway</p>
+        <p className="gwb__kicker"><Icon name="gift" size={13} /> {isFinalWeek(week) ? 'Final weekly giveaway · ends ' + utcDate(finalDrawAt()) : `Week ${week} giveaway`}</p>
         <h2 id="gwb-h" className="gwb__prize">{compact(prizeFor(week))} <span>COZMC</span></h2>
         {extraFor(week) && <p className="gwb__extra">plus {extraFor(week)}</p>}
         <div className="gwb__clock" role="timer" aria-label={`Drawn in ${countdownTo(weekEnd(week))}`}>
@@ -54,6 +56,7 @@ export function GiveawayBanner() {
           {all ? <>{all.length} {all.length === 1 ? 'ticket' : 'tickets'} from {players} {players === 1 ? 'player' : 'players'} so far.</> : 'Counting tickets…'}
           {connected && all && <> You have <b>{mine}</b>.</>} Drawn Monday 00:00 UTC.
         </p>
+        {isFinalWeek(week) && <p className="gwb__sub gwb__final"><b>This is the last weekly giveaway.</b> The final draw is {utcDate(finalDrawAt())} at 00:00 UTC (<b>{localWhen(finalDrawAt())}</b> your time). After that, it’s 9,000 COZMC up for grabs every day.</p>}
       </div>
       <ul className="gwb__ways" aria-label="Ways to get tickets">
         <li><span className="gwb__ico"><Icon name="play" size={10} /></span><b>Post a score</b><span>Every run you post in the arcade is a ticket. No limit.</span></li>
@@ -74,9 +77,9 @@ export function GiveawayChip() {
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(t) }, [])
   const week = Math.max(1, weekOf())
   return (
-    <a className="gwchip" href="#/arcade/giveaway" aria-label={`Weekly giveaway: ${compact(prizeFor(week))} COZMC, drawn in ${countdownTo(weekEnd(week))}`}>
+    <a className="gwchip" href="#/arcade/giveaway" aria-label={`${isFinalWeek(week) ? 'Final weekly giveaway' : 'Weekly giveaway'}: ${compact(prizeFor(week))} COZMC, drawn in ${countdownTo(weekEnd(week))}`}>
       <Icon name="gift" size={13} />
-      <span className="gwchip__prize">Win {compact(prizeFor(week))}</span>
+      <span className="gwchip__prize">{isFinalWeek(week) ? 'Last' : 'Win'} {compact(prizeFor(week))}</span>
       <span className="gwchip__time">{countdownTo(weekEnd(week))}</span>
     </a>
   )
