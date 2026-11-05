@@ -8,6 +8,8 @@ import { GAMES } from '../arcade/games'
 import { ASA_ID, HAYSTACK_INVITE } from '../config'
 import type { TabId } from '../App'
 import { GiveawayBanner } from '../components/GiveawayStrip'
+import { DailyBanner, DailyStrip } from '../components/DailyPrize'
+import { dailyLive } from '../lib/dailyPrize'
 import { GameThumb } from '../components/GameThumb'
 import { CommunityButtons, HaystackPanel, PactPanel, SocialIcon, socialLinks } from '../components/Community'
 import { dailyNo } from '../lib/daily'
@@ -21,9 +23,11 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
   const players = new Set((scores.data ?? []).map(s => s.player)).size
   const runs = (scores.data ?? []).length
   const discord = socialLinks()[0]
+  const live = dailyLive()
 
   return (
     <>
+      {live && <DailyBanner />}
       <section className="hero">
         <div className="hero__copy">
           <p className="kicker"><span className="dot" /> ASA {ASA_ID} {round && <span className="hide-sm">· Round {fmt(round)}</span>}</p>
@@ -39,7 +43,7 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         <div className="hero__card"><HoloCard /><p className="hint">Move to tilt · click to flip</p></div>
       </section>
 
-      <GiveawayBanner />
+      {!live && <><DailyStrip /><GiveawayBanner /></>}
 
       <Suspense fallback={<div className="spot spot--wait" aria-hidden="true" />}><Spotlight /></Suspense>
 

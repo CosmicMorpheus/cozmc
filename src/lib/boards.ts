@@ -17,7 +17,19 @@ export function gameBoard(game: ArcadeGame, scores: ScoreTx[], day?: number): Sc
       if (s.score > cur.score || (s.score === cur.score && s.time < cur.time)) Object.assign(cur, { score: s.score, time: s.time, txid: s.txid })
     }
   }
-  return [...best.values()].sort((a, b) => b.score - a.score || a.time - b.time)
+  return [...best.values()].sort((a, b) => b.score - a.score || a.time - b.time || (a.txid < b.txid ? -1 : a.txid > b.txid ? 1 : 0))
+}
+
+/**
+ * A paid score only counts once the burn in its transaction group is found; that burn gets
+ * tagged with the run it paid for. Early free scores (legacy) count as they are.
+ */
+export function joinScoresAndBurns(rawScores: ScoreTx[], rawBurns: Burn[]): { scores: ScoreTx[]; burns: Burn[] } {
+  const burnt = new Map(rawBurns.filter(b => b.group).map(b => [b.group!, b.amount]))
+  const scores = rawScores.filter(x => x.legacy || (x.group && burnt.has(x.group))).map(x => (x.group && burnt.has(x.group) ? { ...x, burned: burnt.get(x.group) } : x))
+  const byGroup = new Map(scores.filter(x => x.group).map(x => [x.group!, x]))
+  const burns = rawBurns.map(b => { const x = b.group ? byGroup.get(b.group) : undefined; return x ? { ...b, arcade: { game: x.game, score: x.score } } : b })
+  return { scores, burns }
 }
 
 export interface BurnerRow { sender: string; total: number; count: number; last: number; lastWish: string; lastTx: string }

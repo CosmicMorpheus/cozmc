@@ -301,20 +301,23 @@ function Growth({ pet }: { pet: Pet }) {
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-/* This week's check-ins (Monday to Sunday, UTC) and the giveaway bonus they lead to. */
+/* This week's check-ins (Monday to Sunday, UTC); while the weekly giveaway ran, they led to a bonus ticket. */
 function CheckIn({ name, days, busy, onCheckIn }: { name: string; days: number[]; busy: Busy; onCheckIn: () => void }) {
   const week = Math.max(1, weekOf()), first = utcDay(weekStart(week)), today = utcDay()
   const need = GIVEAWAY.checkinDays, got = Math.min(days.length, need), done = days.includes(today)
+  const weekly = week <= GIVEAWAY.lastWeek            // the bonus ticket ended with the weekly giveaway
   return (
     <div className="panel cz-check">
-      <header className="panel__head"><h2>Daily check-in</h2><a className="link" href="#/arcade/giveaway">Giveaway</a></header>
+      <header className="panel__head"><h2>Daily check-in</h2>{weekly ? <a className="link" href="#/arcade/giveaway">Giveaway</a> : <a className="link" href="#/arcade/prizes">Daily prizes</a>}</header>
       <ol className="cz-check__week">
         {WEEKDAYS.map((w, i) => {
           const d = first + i, on = days.includes(d)
           return <li key={w} className={`${on ? 'is-on' : ''}${d === today ? ' is-today' : ''}${d > today ? ' is-later' : ''}`} aria-label={`${w}: ${on ? 'checked in' : d > today ? 'still to come' : 'missed'}`}>{w[0]}</li>
         })}
       </ol>
-      <p className="cz-check__msg">{got >= need
+      <p className="cz-check__msg">{!weekly
+        ? <>{days.length} {days.length === 1 ? 'day' : 'days'} this week. Each check-in backs {name} up to your wallet and adds growth points.</>
+        : got >= need
         ? <><b>Bonus ticket earned</b> for this week’s giveaway. Keep checking in to keep {name} backed up.</>
         : <>{got} of {need} days this week. Check in on {need - got} more {need - got === 1 ? 'day' : 'days'} for a bonus giveaway ticket.</>}</p>
       <button className="btn btn--gold" disabled={done || !!busy} onClick={onCheckIn}>

@@ -4,9 +4,10 @@ import {
   ARCADE_START_ROUND, TOKEN_START_ROUND, KNOWN_ACCOUNTS, CREATOR,
   SCORE_FEE_ALGO, PACT_POOL_APP, PACT_VAULT_APP, SCORE_SLIPPAGE, FREE_SCORES_BEFORE_ROUND,
   PACT_LP_ASSET, PACT_URL, PACT_FARMS,
-  GIVEAWAY, NOTE_TICKET, NOTE_PRIZE, NOTE_PET,
+  GIVEAWAY, NOTE_TICKET, NOTE_PRIZE, NOTE_PET, DAILY_PRIZES, NOTE_DAILY_PRIZE,
 } from '../config'
 import { toWhole } from './format'
+import type { DailyPayout } from './dailyPrize'
 
 /* ---------------- low-level REST ---------------- */
 async function getJSON<T = any>(url: string): Promise<T> {
@@ -413,6 +414,33 @@ export async function fetchDrawBlock(deadlineMs: number): Promise<{ round: numbe
 export async function buildTicketTxn(algod: algosdk.Algodv2, sender: string, week: number) {
   const sp = await algod.getTransactionParams().do()
   return algosdk.makePaymentTxnWithSuggestedParamsFromObject({ sender, receiver: sender, amount: 0, note: enc.encode(NOTE_TICKET + JSON.stringify({ w: week })), suggestedParams: sp })
+}
+
+/* ---------------- daily prizes ---------------- */
+/** Daily prize payouts: COZMC sent from the prize wallet with the note {"d":day,"r":rank,"g":game}. */
+export async function fetchDailyPayouts(): Promise<DailyPayout[]> {
+  let txns: any[]
+  try { txns = await paginate<any>(`/v2/accounts/${DAILY_PRIZES.payer}/transactions?note-prefix=${encodeURIComponent(b64(NOTE_DAILY_PRIZE))}&tx-type=axfer&asset-id=${ASA_ID}`, 'transactions', 10) }
+  catch (e: any) { if (e.status === 404) return []; throw e }      // the prize wallet hasn't been used yet
+  const out: DailyPayout[] = []
+  for (const t of txns) {
+    const ax = t['asset-transfer-transaction']
+    if (!ax || t.sender !== DAILY_PRIZES.payer || !(ax.amount > 0)) continue
+    try {
+      const j = JSON.parse(unb64(t.note).slice(NOTE_DAILY_PRIZE.length))
+      if (Number.isInteger(j.d) && Number.isInteger(j.r) && typeof j.g === 'string') out.push({ txid: t.id, to: ax.receiver, day: j.d, rank: j.r, game: j.g, amount: toWhole(ax.amount), round: t['confirmed-round'], time: t['round-time'] })
+    } catch { /* not ours */ }
+  }
+  return out
+}
+
+/** Pay one daily prize from the prize wallet. */
+export async function buildDailyPrizeTxn(algod: algosdk.Algodv2, sender: string, winner: string, note: { d: number; r: number; g: string }, amountWhole: number, assetId = ASA_ID) {
+  const sp = await algod.getTransactionParams().do()
+  return algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender, receiver: winner, assetIndex: assetId, amount: BigInt(Math.round(amountWhole)) * 1_000_000n,
+    note: enc.encode(NOTE_DAILY_PRIZE + JSON.stringify(note)), suggestedParams: sp,
+  })
 }
 
 /* ---------------- Cozmling ---------------- */

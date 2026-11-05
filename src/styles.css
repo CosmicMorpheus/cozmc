@@ -1155,3 +1155,52 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
   .cabinet__play .pad { grid-area: pad; margin-top: 0 }
   .cabinet__play .pad__btn { height: 56px }
 }
+
+/* ---------- the daily prizes ---------- */
+.dpb__prize { margin-bottom: 0 }
+.dpb__sub { font: 700 clamp(14px, 2vw, 18px) var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--text); margin: 6px 0 14px }
+.dpb .gwb__cta { margin-top: 18px }
+.dpb__play { min-height: 50px; padding-inline: 26px; font-size: 14px }
+.dp-ladder { list-style: none; display: flex; flex-wrap: wrap; gap: 8px }
+.dp-ladder li { display: grid; gap: 4px; min-width: 92px; padding: 10px 14px; background: #000; border: 1px solid #3a2d0c }
+.dp-ladder small { font: 700 9px var(--pixel); text-transform: uppercase; color: var(--dim) }
+.dp-ladder b { font: 700 20px/1 var(--pixel); color: var(--text); font-variant-numeric: tabular-nums }
+.dp-ladder__p1 b { color: var(--gold) } .dp-ladder__p2 b { color: var(--silver) } .dp-ladder__p3 b { color: var(--bronze) }
+.dp-ladder__p1 { border-color: #6b5212 }
+.dpb__side { display: grid; gap: 14px; align-content: start }
+.dpb__game { position: relative; display: block; border: 2px solid #6b5212; background: #000; text-decoration: none; overflow: hidden; transition: border-color .15s, transform .08s }
+.dpb__game:hover, .dpb__game:focus-visible { border-color: var(--gold); transform: translate(-1px, -1px) }
+.dpb__game canvas { display: block; width: 100%; height: auto; image-rendering: pixelated }
+.dpb__tag { position: absolute; left: 10px; top: 10px; padding: 5px 7px; background: var(--gold); color: #1a1200; font: 700 9px var(--pixel); text-transform: uppercase }
+.dpb__title { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12px 10px; background: linear-gradient(transparent, #000c 55%); font: 700 16px var(--pixel); text-transform: uppercase; color: var(--text) }
+.dpb__board { margin: 0; background: rgba(0,0,0,.55); border: 1px solid #3a2d0c; padding: 4px 12px }
+.dp-win { font: 700 10px var(--pixel); color: var(--gold); text-transform: uppercase }
+.dp-hero { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) }
+.dp-hero .gw__prize { margin-bottom: 0 }
+.dp-steps { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px }
+.dp-steps li { display: grid; gap: 6px; align-content: start; padding: 14px 16px; background: var(--bg-1); border: 1px solid var(--line-2) }
+.dp-steps b { font: 700 12px var(--pixel); text-transform: uppercase; color: var(--gold) }
+.dp-steps span { color: var(--mist); font-size: 14px; text-wrap: pretty }
+.dp-board li.is-prize .mb__rank { color: var(--gold) }
+.dp-sched { list-style: none; display: grid; gap: 4px }
+.dp-sched li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid transparent; color: var(--mist) }
+.dp-sched li.is-today { border-color: #6b5212; background: #120d03 }
+.dp-sched b { color: var(--text); font-weight: 600 }
+.dp-past { margin-top: 18px }
+.dp-winners { list-style: none; display: grid; gap: 6px }
+.dp-winners li { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto auto; gap: 10px; align-items: center }
+.dp-place { font: 700 11px var(--pixel); text-transform: uppercase; color: var(--gold) }
+.dp-status { justify-self: end; text-align: right }
+.cabinet__prize { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; color: var(--gold); font-size: 14px }
+.cabinet__prize a { color: inherit }
+@media (max-width: 860px) {
+  .dp-hero { grid-template-columns: minmax(0, 1fr) }
+  .dp-steps { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+}
+@media (max-width: 560px) {
+  .dp-steps { grid-template-columns: minmax(0, 1fr) }
+  .dp-winners li { grid-template-columns: 2.6rem minmax(0, 1fr) auto; }
+  .dp-winners li > .muted { display: none }
+  .dp-sched li { grid-template-columns: 5.5rem minmax(0, 1fr) auto }
+  .dp-ladder li { min-width: 0; flex: 1 }
+}

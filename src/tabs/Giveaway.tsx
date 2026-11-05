@@ -39,6 +39,25 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
 
   if (!scores.data || !tickets.data || !pets.data) return <><Head /><Loading what="this week’s tickets" /></>
 
+  // the weekly giveaway ended with GIVEAWAY.lastWeek; after that this page is its archive
+  if (weekOf() > GIVEAWAY.lastWeek) {
+    const weeks = Array.from({ length: GIVEAWAY.lastWeek }, (_, i) => GIVEAWAY.lastWeek - i)
+    return (
+      <>
+        <Head ended />
+        <a className="gw-strip" href="#/arcade/prizes">
+          <span className="gw-strip__icon"><Icon name="trophy" size={18} /></span>
+          <span className="gw-strip__text"><b>The weekly giveaway has ended.</b> It’s been replaced by daily prizes: 9,000 COZMC up for grabs every day.</span>
+          <span className="gw-strip__go">Daily prizes →</span>
+        </a>
+        <section className="panel">
+          <header className="panel__head"><h2>Weekly winners</h2></header>
+          <ul className="gw__past">{weeks.map(n => <PastWeek key={n} n={n} all={weekTickets(n, scores.data!, tickets.data!, pets.data!)} />)}</ul>
+        </section>
+      </>
+    )
+  }
+
   const week = Math.max(1, weekOf())
   const all = weekTickets(week, scores.data, tickets.data, pets.data)
   const people = entrants(all)
@@ -80,7 +99,7 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
             : !eligible(activeAddress) ? <span className="muted small">The giveaway wallet can’t enter.</span>
             : claimed ? <span className="gw__claimed">Free ticket claimed for week {week}</span>
             : <button className="btn btn--gold" disabled={busy} onClick={claim}>{busy ? 'Claiming…' : 'Claim your free ticket'}</button>}
-          <p className="gw__fine">Every score you post is one ticket. Check in with your Cozmling on {GIVEAWAY.checkinDays} different days in a week for a bonus ticket. No purchase necessary: every wallet also gets one free ticket each week (network fee only).</p>
+          <p className="gw__fine"><b>Week {GIVEAWAY.lastWeek} is the last weekly giveaway.</b> From {new Date(weekEnd(GIVEAWAY.lastWeek)).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })} it’s replaced by <a href="#/arcade/prizes">daily prizes</a>: 9,000 COZMC every day. Every score you post is one ticket. Check in with your Cozmling on {GIVEAWAY.checkinDays} different days in a week for a bonus ticket. No purchase necessary: every wallet also gets one free ticket each week (network fee only).</p>
         </div>
       </section>
 
@@ -170,11 +189,13 @@ function PastWeek({ n, all }: { n: number; all: Ticket[] }) {
   )
 }
 
-function Head() {
+function Head({ ended = false }: { ended?: boolean }) {
   return (
     <header className="page-head">
       <h1>Weekly giveaway</h1>
-      <p>Every score you post is a ticket, every wallet gets a free one, and Cozmling check-ins earn a bonus. One winner every Monday, drawn in the open on Algorand.</p>
+      <p>{ended
+        ? <>The weekly giveaway ran for {GIVEAWAY.lastWeek} weeks. Every winner was drawn in the open on Algorand; here’s each draw and payout.</>
+        : <>Every score you post is a ticket, every wallet gets a free one, and Cozmling check-ins earn a bonus. One winner every Monday, drawn in the open on Algorand.</>}</p>
     </header>
   )
 }

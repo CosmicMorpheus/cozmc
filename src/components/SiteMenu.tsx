@@ -22,7 +22,7 @@ const PAGES: Destination[] = [
   { path: 'community/holders', label: 'Community', description: 'Holders, ranks & community', icon: 'holders', group: 'Start here', keywords: 'holders rankings tiers people token balance' },
   { path: 'about', label: 'About COZMC', description: 'Our story & official links', icon: 'about', group: 'Start here', keywords: 'algorand asa discord socials contact buy pact liquidity token' },
   { path: 'arcade/boards', label: 'Leaderboards', description: 'See the scores to beat', icon: 'leaderboard', group: 'Explore more', keywords: 'scores high score rankings boards' },
-  { path: 'arcade/giveaway', label: 'Weekly giveaway', description: 'Prizes, tickets & the next draw', icon: 'gift', group: 'Explore more', keywords: 'giveaway win rewards enter free ticket' },
+  { path: 'arcade/prizes', label: 'Daily prizes', description: '9,000 COZMC up for grabs every day', icon: 'trophy', group: 'Explore more', keywords: 'giveaway win prizes rewards daily high score competition contest winners' },
   { path: 'arcade/card', label: 'Your card', description: 'Your profile & achievements', icon: 'card', group: 'Explore more', keywords: 'profile badges achievements unlocks' },
   { path: 'community/bonfire', label: 'Bonfire', description: 'Burn COZMC and make a wish', icon: 'fire', group: 'Explore more', keywords: 'burn fire wishes' },
   { path: 'community/wisdom', label: 'Wisdom', description: 'The philosophy behind COZMC', icon: 'philosophy', group: 'Explore more', keywords: 'philosophy ideas principles' },

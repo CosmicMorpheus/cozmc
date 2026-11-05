@@ -1,0 +1,38 @@
+# Pays the daily high-score prizes (see scripts/daily-payout.ts and DAILY_PRIZES in src/config.ts).
+# Runs every day at 00:05 UTC. Run it by hand from the Actions tab: "Dry run" (the default) only
+# prints who would be paid; untick it to pay now. It never pays the same prize twice.
+name: Daily prize payout
+
+on:
+  schedule:
+    - cron: '5 0 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run: only show what would be paid'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-payout
+  cancel-in-progress: false
+
+jobs:
+  payout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pay the prizes that are due
+        run: npx tsx scripts/daily-payout.ts
+        env:
+          PRIZE_WALLET_MNEMONIC: ${{ secrets.PRIZE_WALLET_MNEMONIC }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}

@@ -132,7 +132,34 @@ Staking never costs anyone their rank or tier. The Holders table shows the break
 
 Names, thresholds and the pixel badges can all be edited there.
 
-## Weekly giveaway (Arcade › Giveaway)
+## Daily prizes (Arcade › Daily prizes)
+
+From **Monday 9 Nov 2026** the weekly giveaway is replaced by daily high-score prizes: **9,000 COZMC every day**.
+- Each UTC day has one **prize game**, rotating Moon Bounce → Moonshot → Brick by Brick.
+- That day's **Daily Challenge** board for it decides the winners. Each wallet's best paid run posted that day counts, and ties go to the earlier post.
+- The top three win **5,000 / 3,000 / 1,000 COZMC**.
+- The logic is in `src/lib/dailyPrize.ts`, and the site and the payout job both use it, so they always agree.
+
+**Where it shows.**
+- The banner at the top of Home (headline, clock, live top 3, Play now).
+- The gold header chip and the Arcade › Daily prizes page (live board, coming up, previous winners, rules).
+- A notice on the prize game's screen.
+
+**Payouts are automatic** (`.github/workflows/daily-payout.yml` runs `scripts/daily-payout.ts` every day at 00:05 UTC):
+- **What a run does:** it announces the day that just ended, which is then in review for a day. It pays the winners of the day before that from the prize wallet (`DAILY_PRIZES.payer`), with a `cozmc:daily-prize:v1:` note that the site shows as paid.
+- **No double payments:** a run never pays the same prize twice. A winner who isn't opted in to COZMC is retried daily for `claimDays` (30).
+- **One-time setup:** fund the prize wallet with COZMC (about 63,000 a week) and a little ALGO. Save its 25-word recovery phrase as the repo secret `PRIZE_WALLET_MNEMONIC` (Settings → Secrets and variables → Actions).
+- **Check it by hand:** Actions → Daily prize payout → Run workflow, with "Dry run" ticked, shows who would be paid and sends nothing. A failed run (an empty wallet, a missing secret) turns red and GitHub emails you.
+
+**Disqualifying cheaters** during the review day (`DAILY_PRIZES` in `src/config.ts`), then push live before the payout:
+- `voidScores: { '<score txid>': 'reason' }` drops one run. That wallet's next-best run still counts.
+- `ineligible: { '<address>': 'reason' }` bars a wallet for good. Add team wallets here too.
+
+**Changing it:** `prizes`, `rotation` (game ids) and `start` live in `DAILY_PRIZES`.
+
+## Weekly giveaway (Arcade › Giveaway, ended after week 3)
+
+After `GIVEAWAY.lastWeek` the page becomes an archive of the weekly draws and payouts, and the menu and banners link to the daily prizes instead.
 
 **Entering.**
 - Every score posted in the arcade during the week is one ticket, with no limit per wallet.

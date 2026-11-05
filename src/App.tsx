@@ -9,6 +9,8 @@ import { Unlocks } from './components/Unlocks'
 import { InstallButton } from './components/Install'
 import { CommunityButtons, PactButton, Social } from './components/Community'
 import { GiveawayChip } from './components/GiveawayStrip'
+import { DailyChip } from './components/DailyPrize'
+import { dailyLive } from './lib/dailyPrize'
 import { SiteMenu } from './components/SiteMenu'
 import { Home } from './tabs/Home'
 import { ASA_ID, HAYSTACK_INVITE } from './config'
@@ -25,6 +27,7 @@ const Leaderboard = lazy(() => import('./tabs/Leaderboard').then(m => ({ default
 const Holders = lazy(() => import('./tabs/Holders').then(m => ({ default: m.Holders })))
 const Card = lazy(() => import('./tabs/Card').then(m => ({ default: m.Card })))
 const Giveaway = lazy(() => import('./tabs/Giveaway').then(m => ({ default: m.Giveaway })))
+const Prizes = lazy(() => import('./tabs/Prizes').then(m => ({ default: m.Prizes })))
 const Philosophy = lazy(() => import('./tabs/Philosophy').then(m => ({ default: m.Philosophy })))
 const Bonfire = lazy(() => import('./tabs/Bonfire').then(m => ({ default: m.Bonfire })))
 const About = lazy(() => import('./tabs/About').then(m => ({ default: m.About })))
@@ -45,7 +48,8 @@ const SECTIONS: Partial<Record<TabId, Section[]>> = {
   arcade: [
     { id: '', label: 'Games', icon: 'arcade' },
     { id: 'boards', label: 'Leaderboards', icon: 'leaderboard' },
-    { id: 'giveaway', label: 'Giveaway', icon: 'gift' },
+    { id: 'prizes', label: 'Daily prizes', icon: 'trophy' },
+    { id: 'giveaway', label: 'Giveaway', icon: 'gift' },     // the weekly giveaway: hidden from the menu once the daily prizes start
     { id: 'card', label: 'Your card', icon: 'card' },
   ],
   community: [
@@ -55,7 +59,7 @@ const SECTIONS: Partial<Record<TabId, Section[]>> = {
   ],
 }
 /* links from before the restructure still land in the right place */
-const MOVED: Record<string, string> = { leaderboard: 'arcade/boards', giveaway: 'arcade/giveaway', card: 'arcade/card', holders: 'community/holders', philosophy: 'community/wisdom' }
+const MOVED: Record<string, string> = { leaderboard: 'arcade/boards', giveaway: 'arcade/giveaway', prizes: 'arcade/prizes', card: 'arcade/card', holders: 'community/holders', philosophy: 'community/wisdom' }
 
 /* #/arcade/moon-bounce/daily → { tab: 'arcade', sub: 'moon-bounce', extra: 'daily' } */
 function parse(): { tab: TabId; sub: string | null; extra: string | null } {
@@ -73,8 +77,8 @@ function SubNav({ tab, active }: { tab: TabId; active: string }) {
   return (
     <nav className="subnav" aria-label={`${TABS.find(t => t.id === tab)?.label} pages`}>
       <div className="subnav__links">
-        {items.map(s => (
-          <a key={s.id} href={`#/${tab}${s.id ? `/${s.id}` : ''}`} className={s.id === 'giveaway' ? 'is-gold' : undefined} aria-current={active === s.id ? 'page' : undefined}>
+        {items.filter(s => !(s.id === 'giveaway' && dailyLive())).map(s => (
+          <a key={s.id} href={`#/${tab}${s.id ? `/${s.id}` : ''}`} className={s.id === 'giveaway' || s.id === 'prizes' ? 'is-gold' : undefined} aria-current={active === s.id ? 'page' : undefined}>
             <Icon name={s.icon} size={11} /><span>{s.label}</span>
           </a>
         ))}
@@ -85,7 +89,7 @@ function SubNav({ tab, active }: { tab: TabId; active: string }) {
 }
 
 const SITEMAP: [string, string][] = [
-  ['cozmling', 'Cozmling'], ['arcade', 'Arcade'], ['arcade/boards', 'Leaderboards'], ['arcade/giveaway', 'Giveaway'], ['arcade/card', 'Your card'],
+  ['cozmling', 'Cozmling'], ['arcade', 'Arcade'], ['arcade/boards', 'Leaderboards'], ['arcade/prizes', 'Daily prizes'], ['arcade/card', 'Your card'],
   ['community/holders', 'Holders'], ['community/bonfire', 'Bonfire'], ['community/wisdom', 'Wisdom'], ['about', 'About'],
 ]
 
@@ -150,7 +154,7 @@ export function App() {
               </a>
             ))}
           </nav>
-          <GiveawayChip />
+          {dailyLive() ? <DailyChip /> : <GiveawayChip />}
           <Social className="top__social" />
           <WalletButton />
         </div>
@@ -168,6 +172,7 @@ export function App() {
         {route.tab === 'arcade' && (
           route.sub === 'boards' ? <Leaderboard go={go} onBurn={openBurn} />
           : route.sub === 'giveaway' ? <Giveaway go={go} />
+          : route.sub === 'prizes' ? <Prizes />
           : route.sub === 'card' ? <Card go={go} />
           : <Arcade playing={route.sub} daily={route.extra === 'daily'} setPlaying={(id, daily) => go('arcade', id ? `${id}${daily ? '/daily' : ''}` : undefined)} />
         )}

@@ -16,9 +16,11 @@ import { Icon, TierBadge } from '../components/Pixel'
 import { useMe } from '../components/Wallet'
 import { ShareBtn } from '../components/Share'
 import { scoreShare } from '../lib/sharePayloads'
-import { EXPLORER_TX, SCORE_FEE_ALGO } from '../config'
+import { DAILY_PRIZES, EXPLORER_TX, SCORE_FEE_ALGO } from '../config'
 import { GameThumb } from '../components/GameThumb'
 import { GiveawayStrip } from '../components/GiveawayStrip'
+import { DailyStrip } from '../components/DailyPrize'
+import { dailyLive, featuredGame } from '../lib/dailyPrize'
 import { prizeFor, weekOf } from '../lib/giveaway'
 import { SocialIcon, socialLinks } from '../components/Community'
 import type { RunOutcome } from '../companion/care'
@@ -65,7 +67,7 @@ function Floor({ onPlay }: { onPlay: (id: string, daily?: boolean) => void }) {
         <p>Every game has one seeded run today, the same for everyone. Play it as often as you like; your best counts. <span className="muted">Resets in {countdown(msToReset())}.</span></p>
         {streak > 0 && <p className="daily-strip__streak"><b>{streak}</b> day streak</p>}
       </section>
-      <GiveawayStrip />
+      {dailyLive() ? <DailyStrip /> : <><DailyStrip /><GiveawayStrip /></>}
       <div className="cabinets">
         {GAMES.map(g => {
           const top = gameBoard(g, scores.data ?? [])[0]
@@ -254,6 +256,10 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
   const ok = result ? plausible(game, result.score, result.ms) : false
   const dayNo = dailyNo(boardDay ?? today)
   const where = result?.day != null ? 'today’s daily board' : 'the board'
+  // the daily prizes: is this today's prize game, and does this run count for it?
+  const prizeGame = dailyLive() && featuredGame(today).id === game.id
+  const prizeRun = prizeGame && result?.day === today
+  const prizeLine = DAILY_PRIZES.prizes.map(fmt).join(' / ')
 
   return (
     <div className="cabinet" ref={cab}>
@@ -271,6 +277,9 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
         <p className="small muted">{mode === 'daily'
           ? <>Same run for everyone today. Resets in {countdown(msToReset())}.{liveStreak(profile) > 0 && <> Streak <b className="phos">{liveStreak(profile)}</b>.</>}</>
           : 'A fresh random run every time.'}</p>
+        {prizeGame && <p className="cabinet__prize"><Icon name="trophy" size={11} /> {mode === 'daily'
+          ? <>Today’s prize game: the top three Daily scores at 00:00 UTC win {prizeLine} COZMC. <a href="#/arcade/prizes">Rules</a></>
+          : <>This is today’s prize game. Switch to <b>Daily #{dailyNo()}</b> to compete for {prizeLine} COZMC.</>}</p>}
       </div>
 
       <div className="cabinet__grid">
@@ -301,14 +310,14 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
                 ) : !activeAddress ? (
                   <button className="btn btn--phos" onClick={openConnect}>Connect to post score</button>
                 ) : post === 'done' ? (
-                  <p className="state state--ok">Posted. You’re #{rankIfPosted} on {where}, your post burned {fmt(postBurn)} COZMC, and you have +1 <a href="#/arcade/giveaway">giveaway ticket</a>. <a href={EXPLORER_TX(postTx)} target="_blank" rel="noopener">View ↗</a></p>
+                  <p className="state state--ok">Posted. You’re #{rankIfPosted} on {where}, your post burned {fmt(postBurn)} COZMC{dailyLive() ? (prizeRun ? <>, and you’re on <a href="#/arcade/prizes">today’s prize board</a></> : '') : <>, and you have +1 <a href="#/arcade/giveaway">giveaway ticket</a></>}. <a href={EXPLORER_TX(postTx)} target="_blank" rel="noopener">View ↗</a></p>
                 ) : post === 'prep' ? <p className="state state--load"><span className="blink">▮</span> Getting a price from Pact…</p>
                   : post === 'sign' ? <p className="state state--load"><span className="blink">▮</span> Approve in your wallet…</p>
                   : post === 'send' ? <p className="state state--load"><span className="blink">▮</span> Buying, burning and posting…</p>
                   : (
                     <>
                       <button className="btn btn--fire" onClick={postScore}>Post score · {SCORE_FEE_ALGO} ALGO</button>
-                      <p className="screen__fine">Would rank #{rankIfPosted} on {where}. Your {SCORE_FEE_ALGO} ALGO buys COZMC on Pact and burns it in the Bonfire, all in one signature. It also earns you a ticket in this week’s {compact(prizeFor(Math.max(1, weekOf())))} COZMC giveaway.</p>
+                      <p className="screen__fine">Would rank #{rankIfPosted} on {where}. Your {SCORE_FEE_ALGO} ALGO buys COZMC on Pact and burns it in the Bonfire, all in one signature.{dailyLive() ? (prizeRun ? <> Top three on today’s board at 00:00 UTC win {prizeLine} COZMC.</> : '') : <> It also earns you a ticket in this week’s {compact(prizeFor(Math.max(1, weekOf())))} COZMC giveaway.</>}</p>
                     </>
                   )}
                 {post === 'error' && <p className="state state--err">{postErr}</p>}

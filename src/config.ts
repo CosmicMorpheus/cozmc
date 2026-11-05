@@ -80,8 +80,29 @@ export const GIVEAWAY = {
   extras: {} as Record<number, string>,   // optional bonus text per week, e.g. { 4: 'plus a custom Moonshot skin' }
   payer: 'JM2AUDGBHZYIIN5MFP4VPKKAGJH27PWI3XXITX4UAHSQQ5ZL7BAGD72YOQ',   // the creator wallet; can't win
   checkinDays: 5,                 // Cozmling check-ins on this many different days in a week earn one bonus ticket
+  lastWeek: 3,                    // the weekly giveaway ended with this week; the daily prizes replaced it
 }
 export const NOTE_TICKET = 'cozmc:ticket:v1:'
+
+/**
+ * The daily high-score prizes. Each UTC day has one featured game (rotating through
+ * `rotation`); the top three wallets on that day's Daily Challenge board for it win `prizes`.
+ * Every day at 00:05 UTC the payout job (scripts/daily-payout.ts) announces the day that just
+ * ended and pays the day before that, from `payer`, so there's a full day to review the results.
+ */
+export const DAILY_PRIZES = {
+  start: '2026-11-09',            // the first prize day (UTC); the weekly giveaway ends as it begins
+  prizes: [5_000, 3_000, 1_000],  // COZMC for 1st, 2nd and 3rd
+  rotation: ['moon-bounce', 'moonshot', 'brick-by-brick'],   // the featured game, one per day, in this order from `start`
+  payer: 'KVKJDMESHWEVEVG2YWIL3DGP7KRKFR2FML4RFRSHYDJ5CE62PV4KOEFZYY',   // the prize wallet; pays the prizes and can't win
+  /** Wallets that can't win: team wallets, and anyone disqualified for cheating. */
+  ineligible: {} as Record<string, string>,      // address → reason, e.g. { 'ABC…': 'faked scores' }
+  /** Single runs that don't count (by score transaction id); that wallet's next-best run still can. */
+  voidScores: {} as Record<string, string>,      // txid → reason
+  claimDays: 30,                  // a winner who hasn't opted in to COZMC is retried for this many days
+}
+/** Daily prize payouts carry this note: {"d": day number, "r": rank, "g": game id}. */
+export const NOTE_DAILY_PRIZE = 'cozmc:daily-prize:v1:'
 export const NOTE_PRIZE = 'cozmc:prize:v1:'
 /** Each wallet's Cozmling is saved as a 0-ALGO note to itself with this prefix (newest wins). */
 export const NOTE_PET = 'cozmc:pet:v1:'
