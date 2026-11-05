@@ -4,7 +4,7 @@
 
 /** Official channels. Leave "" for any you don't have yet ("Coming soon"). */
 export const SOCIAL = {
-  x: '',        // e.g. "https://x.com/cozmc"
+  x: 'https://x.com/Markus_Cozmc',
   discord: 'https://discord.gg/UUyC6aw9W',
   telegram: '',
   email: '',    // e.g. "hello@yourdomain.com"
