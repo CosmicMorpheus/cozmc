@@ -45,6 +45,13 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         <div className="hero__card"><HoloCard /><p className="hint">Move to tilt · click to flip</p></div>
       </section>
 
+      {/* Adrift is out for testing: the newest game, outside the giveaway and the daily prizes */}
+      <a className="gw-strip newgame-strip" href="#/arcade/adrift">
+        <span className="gw-strip__icon" aria-hidden="true">🎮</span>
+        <span className="gw-strip__text"><b>New game in the Arcade!</b> Adrift is now available for testing. Head over to the Arcade, give it a try, and let us know what you think. <span className="newgame-strip__note">This game is not part of the giveaway or the daily prizes.</span></span>
+        <span className="gw-strip__go">Try Adrift →</span>
+      </a>
+
       {!live && <><DailyStrip /><GiveawayBanner /></>}
 
       {/* the Bonfire: live total, wallets, the goal, and one click to burn or visit. Right under the hero once the

@@ -1238,6 +1238,12 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 }
 .gwb__final { margin-top: 10px; padding: 10px 12px; border: 1px dashed #6b4f12; background: rgba(0,0,0,.45) }
 .gw-final { margin-top: 0 }
+/* the Adrift test announcement on Home: the same strip, in the arcade's green */
+.newgame-strip { border-color: var(--phos-deep); background: linear-gradient(90deg, #07140a, #000 75%) }
+.newgame-strip:hover, .newgame-strip:focus-visible { border-color: var(--phos) }
+.newgame-strip .gw-strip__icon { background: var(--phos); color: #000; box-shadow: 3px 3px 0 var(--phos-deep); font-size: 20px; line-height: 1 }
+.newgame-strip .gw-strip__text b, .newgame-strip .gw-strip__go { color: var(--phos) }
+.newgame-strip__note { display: block; margin-top: 4px; color: var(--dim); font-size: 13px }
 .preview-date { position: relative; z-index: 60; padding: 8px 16px; background: #b3122e; color: #fff; text-align: center; font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .03em }
 .preview-date a { color: #fff; margin-left: 8px }
 
