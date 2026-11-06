@@ -7,6 +7,7 @@ import { tierOf } from '../lib/tiers'
 import { ago, compact, fmt } from '../lib/format'
 import { Addr } from './ui'
 import { Flame, Icon } from './Pixel'
+const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /* The live wire under the header: burns, posted runs and new holders, newest first. */
 const BLOCK_S = 2.8      // approx. Algorand block time, to date opt-ins (the indexer only gives their round)
@@ -47,9 +48,10 @@ export function Ticker() {
     <li key={i.key + (dup ? '-2' : '')} aria-hidden={dup || undefined}>{i.node}<time>{ago(i.time)}</time></li>
   ))
   return (
-    <div className="ticker" aria-label="Recent activity on-chain">
+    <div className="ticker" role="region" aria-label="Recent activity on-chain">
       <span className="ticker__live"><i />Live</span>
-      <div className="ticker__view">
+      {/* with reduced motion it stops scrolling by itself and scrolls by hand, so keyboards need to reach it */}
+      <div className="ticker__view" tabIndex={reduceMotion() ? 0 : undefined}>
         <ul className="ticker__track" style={{ ['--n' as string]: items.length }}>{row(false)}{row(true)}</ul>
       </div>
     </div>

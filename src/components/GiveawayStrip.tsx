@@ -77,9 +77,9 @@ export function GiveawayChip() {
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(t) }, [])
   const week = Math.max(1, weekOf())
   return (
-    <a className="gwchip" href="#/arcade/giveaway" aria-label={`${isFinalWeek(week) ? 'Final weekly giveaway' : 'Weekly giveaway'}: ${compact(prizeFor(week))} COZMC, drawn in ${countdownTo(weekEnd(week))}`}>
+    <a className="gwchip" href="#/arcade/giveaway" aria-label={`${isFinalWeek(week) ? 'Last' : 'Win'} ${compact(prizeFor(week))} ${countdownTo(weekEnd(week))}: ${isFinalWeek(week) ? 'the final weekly giveaway' : 'the weekly giveaway'}, ${compact(prizeFor(week))} COZMC, drawn in ${countdownTo(weekEnd(week))}`}>
       <Icon name="gift" size={13} />
-      <span className="gwchip__prize">{isFinalWeek(week) ? 'Last' : 'Win'} {compact(prizeFor(week))}</span>
+      <span className="gwchip__prize">{isFinalWeek(week) ? 'Last' : 'Win'} {compact(prizeFor(week))}</span>{' '}
       <span className="gwchip__time">{countdownTo(weekEnd(week))}</span>
     </a>
   )

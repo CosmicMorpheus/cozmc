@@ -7,6 +7,7 @@ import { sfx } from '../arcade/sfx'
 import { useChain } from '../lib/data'
 import { gameBoard } from '../lib/boards'
 import { buildScoreGroup, signAndSend } from '../lib/chain'
+import { friendlyError } from '../lib/errors'
 import { fmt, compact } from '../lib/format'
 import { countdown, dailyNo, msToReset, seedFor, utcDay } from '../lib/daily'
 import { gameEvent, liveStreak, recordRun, runBadges, setSkin as saveSkin, todaysDaily, unlock, useProfile } from '../lib/profile'
@@ -248,8 +249,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
       setPostTx(g.scoreTxId); setPostBurn(g.burn); setPost('done'); sfx.level(); unlock('posted'); unlock('burner')
       setTimeout(() => { reload('scores'); reload('burns') }, 2500)
     } catch (e: any) {
-      const m = String(e?.message ?? e)
-      setPostErr(/reject|cancel|closed|denied/i.test(m) ? 'Signature cancelled. Nothing was posted or spent.' : /overspend|below min/i.test(m) ? `This wallet needs a little more ALGO: ${SCORE_FEE_ALGO} to burn plus about 0.01 in fees.` : m.slice(0, 220))
+      setPostErr(friendlyError(e, { cancelled: 'Signature cancelled. Nothing was posted or spent.', lowAlgo: `This wallet needs a little more ALGO: ${SCORE_FEE_ALGO} to burn plus about 0.01 in fees.`, max: 220 }))
       setPost('error')
     }
   }
@@ -264,7 +264,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
   const prizeLine = DAILY_PRIZES.prizes.map(fmt).join(' / ')
 
   return (
-    <div className="cabinet" ref={cab}>
+    <div className={`cabinet${phase === 'play' ? ' is-playing' : ''}`} ref={cab}>
       <div className="cabinet__bar">
         <button className="btn btn--sm btn--ghost" onClick={onExit}>← Arcade</button>
         <h1 className="cabinet__title">{game.title}</h1>
@@ -288,7 +288,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
         <div className="cabinet__play" ref={playArea}>
           <div className="hud" aria-live="off">
             <span>Score <b>{String(hud.score).padStart(6, '0')}</b></span>
-            {lives > 0 && <span className="hud__lives" aria-label={`${hud.lives} of ${lives} lives`}>{Array.from({ length: lives }, (_, i) => <span key={i} className={i < hud.lives ? 'on' : ''}><Icon name="heart" size={12} /></span>)}</span>}
+            {lives > 0 && <span className="hud__lives" role="img" aria-label={`${hud.lives} of ${lives} lives`}>{Array.from({ length: lives }, (_, i) => <span key={i} className={i < hud.lives ? 'on' : ''}><Icon name="heart" size={12} /></span>)}</span>}
             <span>{game.levelLabel ?? 'Lvl'} <b>{hud.level}</b></span>
             <span className="hide-sm">{mode === 'daily' ? 'Today' : 'Best'} <b>{fmt(best)}</b></span>
           </div>
@@ -338,7 +338,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
         </div>
 
         <div className="cabinet__side">
-          <aside className="panel cabinet__board">
+          <aside className="panel cabinet__board" aria-label="Top scores">
             <header className="panel__head"><h2>{boardDay != null ? `Daily #${dayNo} top 3` : 'Top 3'}</h2><a className="link" href="#/arcade/boards">Full board</a></header>
             {board.length ? (
               <ol className="mini-board">

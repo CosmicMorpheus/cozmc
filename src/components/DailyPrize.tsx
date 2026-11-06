@@ -68,7 +68,7 @@ export function DailyBanner() {
         </div>
       </div>
       <div className="dpb__side">
-        <a className="dpb__game" href={playHref(game.id)} aria-label={`Play ${game.title}`}>
+        <a className="dpb__game" href={playHref(game.id)}>
           <GameThumb game={game} />
           <span className="dpb__tag">{live ? 'Today’s prize game' : 'First prize game'}</span>
           <span className="dpb__title">{game.title}</span>
@@ -97,9 +97,9 @@ export function DailyChip() {
   useTick(30_000)
   const left = Math.max(0, dayEnd(utcDay()) - Date.now()), h = Math.floor(left / 3_600_000), m = Math.floor((left % 3_600_000) / 60_000)
   return (
-    <a className="gwchip" href="#/arcade/prizes" aria-label={`Daily prizes: ${fmt(PRIZE_TOTAL)} COZMC today, ends in ${h} hours ${m} minutes`}>
+    <a className="gwchip" href="#/arcade/prizes" aria-label={`${fmt(PRIZE_TOTAL / 1000)}K daily ${h ? `${h}h ${m}m` : `${m}m`}: daily prizes, ${fmt(PRIZE_TOTAL)} COZMC today, ends in ${h} hours ${m} minutes`}>
       <Icon name="trophy" size={13} />
-      <span className="gwchip__prize">{fmt(PRIZE_TOTAL / 1000)}K daily</span>
+      <span className="gwchip__prize">{fmt(PRIZE_TOTAL / 1000)}K daily</span>{' '}
       <span className="gwchip__time">{h ? `${h}h ${m}m` : `${m}m`}</span>
     </a>
   )

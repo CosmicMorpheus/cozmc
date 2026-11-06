@@ -6,7 +6,7 @@
 :root {
   --bg: #000; --bg-1: #070707; --bg-2: #0e0e0e; --bg-3: #151515;
   --line: #1e1e1e; --line-2: #2c2c2c; --line-3: #3d3d3d;
-  --text: #f1efe6; --mist: #a3a199; --dim: #6c6b65;
+  --text: #f1efe6; --mist: #a3a199; --dim: #7d7c76;
   --phos: #8dff6a; --phos-deep: #2c6b1f; --phos-ink: #061404;
   --fire: #ff5a1f; --ember: #ffb020; --blood: #ff2d2d; --fire-deep: #7a2408;
   --gold: #f2c45c; --silver: #cfd3d8; --bronze: #d08a4e;
@@ -540,6 +540,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* ---------- badge pop-up ---------- */
 .unlock { position: fixed; left: 16px; bottom: 16px; z-index: 170; display: flex; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; max-width: min(380px, calc(100vw - 92px)); background: #000; border: 2px solid var(--gold); box-shadow: 4px 4px 0 #5a4410, 0 0 34px rgba(242,196,92,.22); animation: unlock-in .45s var(--out) both, unlock-out .35s ease-in 3.25s forwards }
 .unlock svg { flex: none }
+/* taps pass through to whatever it covers (the burn button, game pads); only its link is clickable */
+.unlock { pointer-events: none }
+.unlock__link { pointer-events: auto }
 .unlock__kicker { font: 700 10px var(--pixel); color: var(--gold); text-transform: uppercase; letter-spacing: .06em }
 .unlock__name { font: 800 1.4rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase; margin-top: 3px }
 .unlock__desc { font-size: 13px; color: var(--mist); margin-top: 3px; line-height: 1.35 }
@@ -716,8 +719,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 @keyframes page-in { 0% { opacity: 0; filter: brightness(1.9) contrast(1.3) } 40% { opacity: 1 } 100% { opacity: 1; filter: none } }
 
 /* footer links */
-.foot__nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; margin: 4px 0 2px }
-.foot__nav a { font: 700 11px var(--pixel); text-transform: uppercase; letter-spacing: .06em; color: var(--dim); text-decoration: none }
+.foot__nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 24px; margin: 4px 0 2px }
+.foot__nav a { padding-block: 6px; font: 700 11px var(--pixel); text-transform: uppercase; letter-spacing: .06em; color: var(--dim); text-decoration: none }
 .foot__nav a:hover, .foot__nav a:focus-visible { color: var(--phos) }
 
 /* ↑↑↓↓←→←→BA */
@@ -928,6 +931,13 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .gw__stats dd { font: 700 24px var(--pixel); color: var(--text); margin-top: 6px }
 .gw__stats small { display: block; font: 400 12px var(--sans); color: var(--gold); margin-top: 4px }
 .gw__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px }
+/* long action labels wrap inside the button instead of running off narrow phones */
+.gw__actions .btn { max-width: 100%; white-space: normal; text-align: center; line-height: 1.3; height: auto; min-height: 46px; padding-block: 8px }
+/* small phones: the game title gets its own row so Back and Sound both stay on screen */
+@media (max-width: 420px) {
+  .cabinet__bar { flex-wrap: wrap; gap: 12px }
+  .cabinet__title { order: -1; flex-basis: 100% }
+}
 .gw__claimed { font: 700 11px var(--pixel); text-transform: uppercase; color: var(--gold); padding: 10px 12px; border: 1px dashed #6b4f12 }
 .gw__fine { flex-basis: 100%; font-size: 13px; color: var(--dim) }
 .gw__list .mb__score small { font: 400 12px var(--sans); color: var(--dim) }
@@ -1349,6 +1359,9 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 .music.is-intro { border-color: var(--phos); animation: music-flash .7s ease-in-out 6 }
 @keyframes music-flash { 50% { box-shadow: 0 0 0 6px #8dff6a55, 0 0 24px #8dff6a; background: var(--phos-ink) } }
 .music-hint { position: fixed; right: 16px; bottom: 72px; z-index: 91; padding: 8px 11px; background: #000; border: 2px solid var(--phos); box-shadow: 3px 3px 0 var(--phos-deep); font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos); white-space: nowrap; animation: music-hint 6s ease forwards; pointer-events: none }
+/* on a touchscreen the floating music buttons would sit on the game's touch pad (right arrow, TAP), so they step aside
+   while a run is in play and come back at game over; the music itself keeps playing */
+@media (pointer: coarse) { body:has(.cabinet.is-playing) :is(.music, .music-hint) { visibility: hidden; pointer-events: none } }
 .music-hint::after { content: ""; position: absolute; right: 16px; bottom: -8px; width: 12px; height: 12px; background: #000; border-right: 2px solid var(--phos); border-bottom: 2px solid var(--phos); rotate: 45deg }
 @keyframes music-hint { 0% { opacity: 0; translate: 0 6px } 8%, 85% { opacity: 1; translate: 0 0 } 100% { opacity: 0 } }
 @media (prefers-reduced-motion: reduce) { .music.is-intro { animation: none; box-shadow: 0 0 0 3px #8dff6a88 } .music-hint { animation: none } }

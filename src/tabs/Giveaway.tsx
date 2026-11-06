@@ -4,14 +4,15 @@ import { useChain } from '../lib/data'
 import { buildOptInTxn, buildPrizeTxn, buildTicketTxn, fetchCozmcBalance, fetchDrawBlock, signAndSend } from '../lib/chain'
 import { countdownTo, entrants, eligible, extraFor, finalDrawAt, isFinalWeek, localWhen, prizeFor, utcDate, weekEnd, weekOf, weekStart, weekTickets, winnerIndex, type Ticket } from '../lib/giveaway'
 import { compact, fmt } from '../lib/format'
-import { Addr, Loading, useToast } from '../components/ui'
+import { friendlyError } from '../lib/errors'
+import { Addr, Failed, Loading, useToast } from '../components/ui'
 import { Icon } from '../components/Pixel'
 import { useMe } from '../components/Wallet'
 import { EXPLORER_TX, GIVEAWAY } from '../config'
 import type { TabId } from '../App'
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-const errText = (e: any) => { const m = String(e?.message ?? e); return /reject|cancel|closed|denied/i.test(m) ? 'Signature cancelled.' : /overspend|below min/i.test(m) ? 'This wallet needs a little ALGO for the network fee.' : m.slice(0, 160) }
+const errText = (e: unknown) => friendlyError(e, { cancelled: 'Signature cancelled.', lowAlgo: 'This wallet needs a little ALGO for the network fee.' })
 
 /** The draw block for a finished week, cached forever once known (blocks never change). */
 function useDraw(n: number) {
@@ -37,7 +38,10 @@ export function Giveaway({ go }: { go: (t: TabId, sub?: string) => void }) {
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(t) }, [])
 
-  if (!scores.data || !tickets.data || !pets.data) return <><Head /><Loading what="this week’s tickets" /></>
+  if (!scores.data || !tickets.data || !pets.data) {
+    const down = (!scores.data && scores.error) || (!tickets.data && tickets.error) || (!pets.data && pets.error)
+    return <><Head />{down ? <Failed what="this week’s tickets" retry={() => { reload('scores'); reload('giveaway') }} /> : <Loading what="this week’s tickets" />}</>
+  }
 
   // the weekly giveaway ended with GIVEAWAY.lastWeek; after that this page is its archive
   if (weekOf() > GIVEAWAY.lastWeek) {

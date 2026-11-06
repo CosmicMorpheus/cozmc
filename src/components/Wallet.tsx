@@ -13,26 +13,28 @@ import { useChain } from '../lib/data'
 /* ---------- the connected wallet's COZMC, shared app-wide ----------
    balance = spendable COZMC in the wallet (burns, max buttons)
    holding = balance + COZMC in ALGO/COZMC LP + COZMC staked in Pact farms (tiers, ranks, skins) */
-interface Me { balance: number | null; holding: number | null; loading: boolean; refresh: () => void; openConnect: () => void }
-const MeCtx = createContext<Me>({ balance: null, holding: null, loading: false, refresh: () => {}, openConnect: () => {} })
+interface Me { balance: number | null; holding: number | null; loading: boolean; balanceError: boolean; refresh: () => void; openConnect: () => void }
+const MeCtx = createContext<Me>({ balance: null, holding: null, loading: false, balanceError: false, refresh: () => {}, openConnect: () => {} })
 export const useMe = () => useContext(MeCtx)
 
 export function MeProvider({ children }: { children: ReactNode }) {
   const { activeAddress } = useWallet()
   const [balance, setBalance] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
+  const [balanceError, setBalanceError] = useState(false)   // the node didn't answer: not the same as holding no COZMC
   const [connectOpen, setConnectOpen] = useState(false)
   const refresh = useCallback(() => {
+    setBalanceError(false)
     if (!activeAddress) { setBalance(null); return }
     setLoading(true)
-    fetchCozmcBalance(activeAddress).then(b => setBalance(b), () => setBalance(null)).finally(() => setLoading(false))
+    fetchCozmcBalance(activeAddress).then(b => setBalance(b), () => { setBalance(null); setBalanceError(true) }).finally(() => setLoading(false))
   }, [activeAddress])
   useEffect(refresh, [refresh])
   const { holders } = useChain()
   const row = activeAddress ? holders.data?.find(h => h.address === activeAddress) : undefined
   const holding = row ? row.amount : balance
   return (
-    <MeCtx.Provider value={{ balance, holding, loading, refresh, openConnect: () => setConnectOpen(true) }}>
+    <MeCtx.Provider value={{ balance, holding, loading, balanceError, refresh, openConnect: () => setConnectOpen(true) }}>
       {children}
       <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />
     </MeCtx.Provider>
@@ -105,7 +107,7 @@ function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void })
 /* ---------- header button + account menu ---------- */
 export function WalletButton() {
   const { activeAddress, activeWallet } = useWallet()
-  const { balance, holding, openConnect } = useMe()
+  const { balance, holding, balanceError, openConnect } = useMe()
   const nfd = useNfd(activeAddress)
   const toast = useToast()
   const [menu, setMenu] = useState(false)
@@ -128,7 +130,7 @@ export function WalletButton() {
       </button>
       {menu && (
         <div className="acct__menu" role="menu">
-          <p className="acct__bal">{holding == null ? 'No COZMC yet' : <><b>{fmt(holding, 2)}</b> COZMC{tier && <> · {tier.name}</>}{holding !== balance && <span className="acct__sub">{fmt(balance ?? 0, 2)} in wallet, the rest in Pact LP and farms</span>}</>}</p>
+          <p className="acct__bal">{holding == null ? (balanceError ? 'Balance unavailable right now' : 'No COZMC yet') : <><b>{fmt(holding, 2)}</b> COZMC{tier && <> · {tier.name}</>}{holding !== balance && <span className="acct__sub">{fmt(balance ?? 0, 2)} in wallet, the rest in Pact LP and farms</span>}</>}</p>
           {activeWallet && activeWallet.accounts.length > 1 && activeWallet.accounts.map(a => (
             <button key={a.address} role="menuitem" className={a.address === activeAddress ? 'on' : ''} onClick={() => { activeWallet.setActiveAccount(a.address); setMenu(false) }}>{a.name || short(a.address)}</button>
           ))}

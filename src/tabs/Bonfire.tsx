@@ -3,13 +3,13 @@ import { useChain } from '../lib/data'
 import { GoalMeter, WishFeed } from '../components/Burn'
 import { burnerBoard } from '../lib/boards'
 import { compact, fmt } from '../lib/format'
-import { Addr, Loading } from '../components/ui'
+import { Addr, Failed, Loading } from '../components/ui'
 import { Flame } from '../components/Pixel'
 import { BONFIRE_ADDRESS, EXPLORER_ACCOUNT } from '../config'
 
 /* Community › Bonfire: everything burned, the community goal, and the wishes people left. */
 export function Bonfire({ onBurn }: { onBurn: () => void }) {
-  const { burned, burns } = useChain()
+  const { burned, burns, reload } = useChain()
   const { activeAddress } = useWallet()
   const top = burns.data ? burnerBoard(burns.data).slice(0, 10) : null
   const wallets = burns.data ? new Set(burns.data.map(b => b.sender)).size : null
@@ -40,7 +40,7 @@ export function Bonfire({ onBurn }: { onBurn: () => void }) {
         </div>
         <div className="panel">
           <header className="panel__head"><h2>Top burners</h2></header>
-          {!top ? <Loading what="the Bonfire" /> : top.length ? (
+          {!top ? (burns.error ? <Failed what="the Bonfire" retry={() => reload('burns')} /> : <Loading what="the Bonfire" />) : top.length ? (
             <ol className="mini-board">
               {top.map((r, i) => (
                 <li key={r.sender} className={r.sender === activeAddress ? 'me' : ''}>

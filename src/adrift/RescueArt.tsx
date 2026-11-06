@@ -16,7 +16,8 @@ export function RescueArt({ id = 'ad', still = false }: { id?: string; still?: b
   const actorAt = `translate(${p.x} ${p.y}) rotate(${p.angle}) scale(${p.scale}) translate(-220 -250)`
   const ropeAt = `M${WINCH.x} ${WINCH.y} Q${(WINCH.x + end.x) / 2} ${(WINCH.y + end.y) / 2 + 22} ${end.x} ${end.y}`
   return (
-    <svg className="ad-art" viewBox="0 0 520 530" preserveAspectRatio={still ? 'xMidYMid slice' : 'xMidYMid meet'} role="img" aria-label="The COZMC explorer, tethered to a rescue ship in deep space">
+    <svg className="ad-art" viewBox="0 0 520 530" preserveAspectRatio={still ? 'xMidYMid slice' : 'xMidYMid meet'}
+      {...(still ? { 'aria-hidden': true } : { role: 'img', 'aria-label': 'The COZMC explorer, tethered to a rescue ship in deep space' })}>
       <defs>
         <linearGradient id={u('wood')} x1="0" y1="0" x2=".6" y2="1"><stop stopColor="#c9a172" /><stop offset=".55" stopColor="#8f6a42" /><stop offset="1" stopColor="#4e3520" /></linearGradient>
         <linearGradient id={u('suit')} x1="0" x2="1" y2="1"><stop stopColor="#fffef6" /><stop offset=".45" stopColor="#d6dee0" /><stop offset="1" stopColor="#7d8d92" /></linearGradient>

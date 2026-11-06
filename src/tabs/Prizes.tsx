@@ -3,9 +3,10 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { useChain } from '../lib/data'
 import { buildOptInTxn, fetchCozmcBalance, signAndSend } from '../lib/chain'
 import { fmt } from '../lib/format'
+import { friendlyError } from '../lib/errors'
 import { DAY_MS, utcDay } from '../lib/daily'
 import { dailyLive, dayEnd, featuredGame, payoutAt, PRIZE_START_DAY, PRIZE_TOTAL, standings, winners, type DailyPayout, type Standing } from '../lib/dailyPrize'
-import { Addr, Loading, useToast } from '../components/ui'
+import { Addr, Failed, Loading, useToast } from '../components/ui'
 import { Icon } from '../components/Pixel'
 import { GameThumb } from '../components/GameThumb'
 import { gameById } from '../arcade/games'
@@ -18,13 +19,13 @@ const at = (ms: number) => `${weekday(Math.floor(ms / DAY_MS), 'short')} ${new D
 
 export function Prizes() {
   useTick(1000)
-  const { scores, payouts } = useChain()
+  const { scores, payouts, reload } = useChain()
   const { activeAddress } = useWallet()
   const { openConnect } = useMe()
   const live = dailyLive(), today = utcDay(), day = live ? today : PRIZE_START_DAY
   const game = featuredGame(day)
 
-  if (!scores.data) return <><Head /><Loading what="today’s board" /></>
+  if (!scores.data) return <><Head />{scores.error ? <Failed what="today’s board" retry={() => reload('scores')} /> : <Loading what="today’s board" />}</>
   const board = live ? standings(today, scores.data) : []
   const mine = activeAddress ? board.find(s => s.player === activeAddress) : undefined
   const past = Array.from({ length: Math.max(0, Math.min(14, today - PRIZE_START_DAY)) }, (_, i) => today - 1 - i)
@@ -148,7 +149,7 @@ function Pending({ winner, amount, me }: { winner: string; amount: number; me?: 
     <button className="btn btn--sm btn--gold" disabled={busy} onClick={async () => {
       setBusy(true)
       try { await signAndSend(algodClient, signTransactions, [await buildOptInTxn(algodClient, winner)]); setOptedIn(true); toast('Opted in. Your prize goes out at the next daily payout (00:05 UTC).'); setTimeout(() => reload('giveaway'), 2500) }
-      catch (e: any) { toast(/reject|cancel|closed|denied/i.test(String(e?.message ?? e)) ? 'Signature cancelled.' : String(e?.message ?? e).slice(0, 160)) }
+      catch (e) { toast(friendlyError(e, { cancelled: 'Signature cancelled.', lowAlgo: 'This wallet needs a little ALGO (about 0.1) to opt in.' })) }
       finally { setBusy(false) }
     }}>Opt in to get {fmt(amount)} COZMC</button>
   )

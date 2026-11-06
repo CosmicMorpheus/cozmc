@@ -133,7 +133,7 @@ export function Adrift() {
           </div>
           <p className="ad-desc">{desc}</p>
 
-          <div className="ad-word" aria-label={`${word.length} letters: ${[...word].map(c => (done || guesses.includes(c) ? c : 'blank')).join(', ')}`}>
+          <div className="ad-word" role="img" aria-label={`${word.length} letters: ${[...word].map(c => (done || guesses.includes(c) ? c : 'blank')).join(', ')}`}>
             {[...word].map((c, i) => {
               const shown = done || guesses.includes(c)
               return <span key={`${i}${shown}`} className={`ad-letter${shown ? ' is-on' : ''}${done && !guesses.includes(c) ? ' is-missed' : ''}`} aria-hidden="true">{shown ? c : ''}</span>
@@ -142,7 +142,7 @@ export function Adrift() {
 
           <div className="ad-tele">
             <span>Rescue signal</span>
-            <div className="ad-lives" aria-label={`${CONFIG.misses - wrong} misses remaining`}>{Array.from({ length: CONFIG.misses }, (_, i) => <b key={i} className={i < wrong ? 'is-used' : ''} />)}</div>
+            <div className="ad-lives" role="img" aria-label={`${CONFIG.misses - wrong} misses remaining`}>{Array.from({ length: CONFIG.misses }, (_, i) => <b key={i} className={i < wrong ? 'is-used' : ''} />)}</div>
             <span>{CONFIG.misses - wrong} {CONFIG.misses - wrong === 1 ? 'miss' : 'misses'} {s ? 'left' : 'allowed'}</span>
           </div>
 
@@ -158,8 +158,17 @@ export function Adrift() {
                 <li><b>03</b><span><strong>One mission per day</strong> (UTC). The clock keeps running if you leave.</span></li>
               </ol>
               <button className="btn btn--phos ad-start" disabled={blocked} onClick={() => transact('start').then(() => {
-                // on a phone, bring the word and the letter keys into view
-                if (matchMedia('(max-width: 860px)').matches) document.querySelector('.ad-console')?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+                // on a phone, bring the word and the letter keys into view, once the mission has replaced the (taller) briefing
+                // (if they can't both fit, as on a phone held sideways, keep the word just under the sticky header)
+                if (matchMedia('(max-width: 860px)').matches) requestAnimationFrame(() => requestAnimationFrame(() => {
+                  const con = document.querySelector('.ad-console'), word = document.querySelector('.ad-word')
+                  if (!con || !word) return
+                  const head = document.querySelector('.top')?.getBoundingClientRect().bottom ?? 0
+                  let dy = con.getBoundingClientRect().bottom - innerHeight
+                  const wordTop = word.getBoundingClientRect().top
+                  if (wordTop - dy < head + 8) dy = wordTop - head - 8
+                  scrollBy({ top: dy, behavior: 'smooth' })
+                }))
               })}><Icon name="play" size={11} /> Start today’s rescue</button>
               <p className="ad-fine">Your attempt only begins when you press start.</p>
             </div>

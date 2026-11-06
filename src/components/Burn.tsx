@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Modal, HoldButton, Addr } from './ui'
+import { Modal, HoldButton, Addr, Failed } from './ui'
 import { Flame } from './Pixel'
 import { useMe } from './Wallet'
 import { useChain } from '../lib/data'
@@ -12,6 +12,7 @@ import { burnShare } from '../lib/sharePayloads'
 import { GAMES } from '../arcade/games'
 import { BONFIRE_ADDRESS, BONFIRE_APP_ID, BURN_GOAL, EXPLORER_ACCOUNT, EXPLORER_TX, HAYSTACK_INVITE } from '../config'
 import { unlock } from '../lib/profile'
+import { friendlyError } from '../lib/errors'
 
 const WISH_MAX = 280
 
@@ -51,7 +52,7 @@ export function BurnBar({ onBurn }: { onBurn: () => void }) {
   const { burned, burns } = useChain()
   const count = burns.data?.length ?? 0
   return (
-    <div className="burnbar">
+    <div className="burnbar" role="region" aria-label="Burn COZMC">
       <div className="wrap burnbar__in">
         <Flame size={16} className="burnbar__flame" />
         <p className="burnbar__msg"><b>Support COZMC: burn some.</b> <span className="hide-sm">Every burn shrinks the supply forever and carries a wish on-chain.</span></p>
@@ -70,7 +71,7 @@ type Step = 'form' | 'sign' | 'send' | 'done' | 'error'
 /* ---------- the burn dialog ---------- */
 export function BurnModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activeAddress, algodClient, signTransactions } = useWallet()
-  const { balance, refresh, openConnect } = useMe()
+  const { balance, loading, balanceError, refresh, openConnect } = useMe()
   const { reload, burned } = useChain()
   const [amount, setAmount] = useState('')
   const [wish, setWish] = useState('')
@@ -93,7 +94,7 @@ export function BurnModal({ open, onClose }: { open: boolean; onClose: () => voi
   const whole = base != null ? toWhole(base) : 0
   const problem =
     !activeAddress ? null :
-    balance == null ? 'This wallet doesn’t hold COZMC yet.' :
+    balance == null ? (balanceError ? 'Couldn’t check your COZMC balance just now.' : loading ? 'Checking your COZMC balance…' : 'This wallet doesn’t hold COZMC yet.') :
     amount && base == null ? 'Enter a number, up to 6 decimal places.' :
     base != null && base <= 0n ? 'Enter more than zero.' :
     whole > balance ? `You only hold ${fmt(balance, 2)} COZMC.` : null
@@ -112,10 +113,7 @@ export function BurnModal({ open, onClose }: { open: boolean; onClose: () => voi
       ;[392, 523, 659, 784, 1046].forEach((f, i) => setTimeout(() => sfx.tone(f, 0.14, 'square', 0.05), i * 90))
       refresh(); setTimeout(() => reload('burns'), 2500)
     } catch (e: any) {
-      const m = String(e?.message ?? e)
-      setErr(/reject|cancel|closed|denied/i.test(m) ? 'You cancelled the signature. Nothing was burned.' :
-        /overspend|below min/i.test(m) ? 'Not enough ALGO to cover the network fee.' :
-        `The burn didn’t go through: ${m.slice(0, 160)}`)
+      setErr(friendlyError(e, { cancelled: 'You cancelled the signature. Nothing was burned.', lowAlgo: 'Not enough ALGO to cover the network fee.', prefix: 'The burn didn’t go through: ' }))
       setStep('error')
     }
   }
@@ -149,7 +147,7 @@ export function BurnModal({ open, onClose }: { open: boolean; onClose: () => voi
             {wishBytes > 0 && <div><dt>On-chain note</dt><dd>{wishBytes + 14} bytes</dd></div>}
           </dl>
 
-          {problem && <p className="state state--err">{problem}{balance == null && activeAddress && <> <a href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC on Haystack ↗</a></>}</p>}
+          {problem && <p className="state state--err">{problem}{balance == null && activeAddress && (balanceError ? <> <button type="button" className="link" onClick={refresh}>Try again</button></> : !loading && <> <a href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC on Haystack ↗</a></>)}</p>}
           {step === 'error' && <p className="state state--err">{err}</p>}
 
           {!activeAddress ? (
@@ -188,10 +186,11 @@ function Legendary({ amount, wish, txid, onClose }: { amount: number; wish: stri
 
 /* ---------- wishes feed (used on Home) ---------- */
 export function WishFeed({ limit = 6, onBurn }: { limit?: number; onBurn: () => void }) {
-  const { burns } = useChain()
+  const { burns, reload } = useChain()
   const { activeAddress } = useWallet()
   const list = (burns.data ?? []).slice(0, limit)
   if (burns.loading && !burns.data) return <p className="state state--load"><span className="blink">▮</span> Reading the Bonfire…</p>
+  if (burns.error && !burns.data) return <Failed what="the wishes" retry={() => reload('burns')} />
   if (!list.length) return (
     <div className="empty">
       <p>The Bonfire is waiting. Burn some COZMC and leave the first wish on-chain.</p>

@@ -5,6 +5,7 @@ import { BODIES, DEFAULT_LOOK, drawBulbGlow, drawCozmling, EYES, GLOWS, STAGE_NA
 import { CH, CW, homeThumb, THUMB_H, THUMB_W } from '../companion/scene'
 import { adopt, ageText, clamp, growth, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
 import { buildPetTxn, fetchPetNote, signSendConfirm } from '../lib/chain'
+import { friendlyError } from '../lib/errors'
 import { useChain } from '../lib/data'
 import { checkinDays, weekOf, weekStart } from '../lib/giveaway'
 import { Icon, PixelArt } from '../components/Pixel'
@@ -14,7 +15,7 @@ import { EXPLORER_TX, GIVEAWAY } from '../config'
 
 const NAMES: Record<Form, string[]> = { boy: ['Zib', 'Blip', 'Orbit', 'Comet', 'Kip', 'Zorp', 'Rigel', 'Bolt'], girl: ['Nova', 'Luna', 'Zuzu', 'Vega', 'Lyra', 'Mira', 'Pixie', 'Stella'] }
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
-const errText = (e: any) => { const m = String(e?.message ?? e); return /reject|cancel|closed|denied/i.test(m) ? 'Signature cancelled. Nothing was saved.' : /overspend|below min/i.test(m) ? 'This wallet needs a little ALGO for the 0.001 ALGO network fee.' : m.slice(0, 160) }
+const errText = (e: unknown) => friendlyError(e, { cancelled: 'Signature cancelled. Nothing was saved.', lowAlgo: 'This wallet needs a little ALGO for the 0.001 ALGO network fee.' })
 type Busy = '' | 'sign' | 'send'
 
 /** A Cozmling belongs to a wallet: connect one to adopt, or to bring yours back. */
