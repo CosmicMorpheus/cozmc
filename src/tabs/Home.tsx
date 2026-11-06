@@ -38,7 +38,7 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
             {discord && <a className="btn btn--discord" href={discord.url} target="_blank" rel="noopener"><SocialIcon name="discord" size={16} /> Join our community</a>}
             <button className="btn btn--phos" onClick={() => go('arcade')}><Icon name="play" size={10} /> Play the arcade</button>
             <a className="btn btn--fire" href="#/community/bonfire"><Flame size={14} /> Visit the Bonfire</a>
-            <a className="btn btn--ghost" href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC ↗</a>
+            <a className="btn btn--ghost btn--zap" href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC ↗</a>
           </div>
           <div className="asa"><span>ASA ID</span><code>{ASA_ID}</code><CopyBtn text={String(ASA_ID)} what="ASA ID" /></div>
         </div>

@@ -64,6 +64,13 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn--ghost { background: var(--bg-1); color: var(--text); border-color: var(--line-3); --sh: #1b1b1b }
 .btn--ghost:hover { border-color: var(--phos) }
 .btn--ghost.is-done { border-color: var(--phos); color: var(--phos) }
+/* Home's "Get COZMC": a soft electric-blue pulse in the site's cyan (reduced motion leaves it steady blue) */
+.btn--zap { color: var(--cyan); border-color: #2fb4d6; --sh: #0e5563; animation: zap 2.4s ease-in-out infinite }
+.btn--zap:hover, .btn--zap:focus-visible { border-color: var(--cyan); color: #c9f7ff }
+@keyframes zap {
+  0%, 100% { border-color: #2fb4d6; box-shadow: 4px 4px 0 var(--sh), 0 0 0 rgba(89, 230, 255, 0); text-shadow: none }
+  50% { border-color: var(--cyan); box-shadow: 4px 4px 0 var(--sh), 0 0 16px rgba(89, 230, 255, .5); text-shadow: 0 0 8px rgba(89, 230, 255, .7) }
+}
 .btn--hold { width: 100%; height: 54px; overflow: hidden; isolation: isolate; font-size: 13px }
 .btn--hold__fill { position: absolute; inset: 0; z-index: -1; background: #fff; transform-origin: 0 50%; transform: scaleX(var(--hold, 0)); mix-blend-mode: overlay; opacity: .7 }
 .btn--hold__label { position: relative }
