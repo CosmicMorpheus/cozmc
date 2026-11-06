@@ -20,11 +20,11 @@ const PAGES: Destination[] = [
   { path: 'cozmling', label: 'Cozmling', description: 'Your cosmic companion', icon: 'cozmling', group: 'Start here', keywords: 'pet companion care feed check in check-in' },
   { path: 'arcade', label: 'Arcade', description: 'Free games & daily challenges', icon: 'arcade', group: 'Start here', keywords: 'games play daily challenge' },
   { path: 'community/holders', label: 'Community', description: 'Holders, ranks & community', icon: 'holders', group: 'Start here', keywords: 'holders rankings tiers people token balance' },
+  { path: 'community/bonfire', label: 'The Bonfire', description: 'Burn COZMC and make a wish', icon: 'fire', group: 'Start here', keywords: 'bonfire burn fire wishes goal supply' },
   { path: 'about', label: 'About COZMC', description: 'Our story & official links', icon: 'about', group: 'Start here', keywords: 'algorand asa discord socials contact buy pact liquidity token' },
   { path: 'arcade/boards', label: 'Leaderboards', description: 'See the scores to beat', icon: 'leaderboard', group: 'Explore more', keywords: 'scores high score rankings boards' },
   { path: 'arcade/prizes', label: 'Daily prizes', description: '9,000 COZMC up for grabs every day', icon: 'trophy', group: 'Explore more', keywords: 'giveaway win prizes rewards daily high score competition contest winners' },
   { path: 'arcade/card', label: 'Your card', description: 'Your profile & achievements', icon: 'card', group: 'Explore more', keywords: 'profile badges achievements unlocks' },
-  { path: 'community/bonfire', label: 'Bonfire', description: 'Burn COZMC and make a wish', icon: 'fire', group: 'Explore more', keywords: 'burn fire wishes' },
   { path: 'community/wisdom', label: 'Wisdom', description: 'The philosophy behind COZMC', icon: 'philosophy', group: 'Explore more', keywords: 'philosophy ideas principles' },
 ]
 
@@ -77,7 +77,7 @@ export function SiteMenu({ currentPath }: { currentPath: string }) {
   function destination(item: Destination) {
     const active = currentPath === item.path
     return (
-      <a key={item.path} className={`site-menu__link${item.path === 'cozmling' ? ' site-menu__link--cz' : ''}`} href={`#/${item.path}`} aria-current={active ? 'page' : undefined} onClick={() => close(true)}>
+      <a key={item.path} className={`site-menu__link${item.path === 'cozmling' ? ' site-menu__link--cz' : ''}${item.path === 'community/bonfire' ? ' site-menu__link--fire' : ''}`} href={`#/${item.path}`} aria-current={active ? 'page' : undefined} onClick={() => close(true)}>
         <span className="site-menu__icon"><Icon name={item.icon} size={18} /></span>
         <span className="site-menu__copy"><span className="site-menu__label">{item.label}</span><span className="site-menu__description">{item.description}</span></span>
         <ArrowRightIcon className="site-menu__arrow" size={16} aria-hidden="true" />

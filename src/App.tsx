@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BurnBar, BurnModal } from './components/Burn'
 import { WalletButton } from './components/Wallet'
 import { Icon, ICONS } from './components/Pixel'
@@ -56,7 +56,7 @@ const SECTIONS: Partial<Record<TabId, Section[]>> = {
   ],
   community: [
     { id: 'holders', label: 'Holders', icon: 'holders' },
-    { id: 'bonfire', label: 'Bonfire', icon: 'fire' },
+    { id: 'bonfire', label: 'The Bonfire', icon: 'fire' },
     { id: 'wisdom', label: 'Wisdom', icon: 'philosophy' },
   ],
 }
@@ -92,7 +92,7 @@ function SubNav({ tab, active }: { tab: TabId; active: string }) {
 
 const SITEMAP: [string, string][] = [
   ['cozmling', 'Cozmling'], ['arcade', 'Arcade'], ['arcade/boards', 'Leaderboards'], ['arcade/prizes', 'Daily prizes'], ['arcade/card', 'Your card'],
-  ['community/holders', 'Holders'], ['community/bonfire', 'Bonfire'], ['community/wisdom', 'Wisdom'], ['about', 'About'],
+  ['community/holders', 'Holders'], ['community/bonfire', 'The Bonfire'], ['community/wisdom', 'Wisdom'], ['about', 'About'],
 ]
 
 export function App() {
@@ -105,6 +105,7 @@ export function App() {
   }, [])
   const go = useCallback((t: TabId, sub?: string) => { location.hash = `#/${t}${sub ? `/${sub}` : ''}` }, [])
   const openBurn = useCallback(() => setBurnOpen(true), [])
+  const onBonfire = route.tab === 'community' && route.sub === 'bonfire'
   useEffect(() => { if (import.meta.env.DEV && location.search.includes('legend')) setBurnOpen(true) }, [])
 
   // the browser tab says where you are
@@ -154,9 +155,17 @@ export function App() {
           <a className="logo" href="#/home" aria-label="COZMC home"><img src="/assets/cozmc-logo-272.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w, /assets/cozmc-wordmark.png 912w" sizes="(max-width: 380px) 99px, (max-width: 600px) 114px, 129px" alt="COZMC" width={456} height={120} /></a>
           <nav className="tabs" aria-label="Sections" ref={tabsRef}>
             {TABS.map(t => (
-              <a key={t.id} href={`#/${t.id}`} className={`tabs__tab${t.id === 'arcade' ? ' tabs__tab--arcade' : ''}${t.id === 'cozmling' ? ' tabs__tab--cz' : ''}`} aria-current={route.tab === t.id ? 'page' : undefined}>
-                <Icon name={t.icon} size={13} /><span>{t.label}</span>
-              </a>
+              <Fragment key={t.id}>
+                <a href={`#/${t.id}`} className={`tabs__tab${t.id === 'arcade' ? ' tabs__tab--arcade' : ''}${t.id === 'cozmling' ? ' tabs__tab--cz' : ''}`} aria-current={route.tab === t.id && !onBonfire ? 'page' : undefined}>
+                  <Icon name={t.icon} size={13} /><span>{t.label}</span>
+                </a>
+                {/* the Bonfire gets its own tab, one click from every page */}
+                {t.id === 'community' && (
+                  <a href="#/community/bonfire" className="tabs__tab tabs__tab--fire" aria-current={onBonfire ? 'page' : undefined}>
+                    <Icon name="fire" size={13} /><span>The Bonfire</span>
+                  </a>
+                )}
+              </Fragment>
             ))}
           </nav>
           {dailyLive() ? <DailyChip /> : <GiveawayChip />}

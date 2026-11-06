@@ -74,6 +74,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 @keyframes fireline { to { background-position: -200% 0 } }
 .burnbar__in { display: flex; align-items: center; gap: 14px; min-height: 48px; padding-block: 6px }
 .burnbar__flame { animation: flicker .5s steps(2) infinite; flex: none }
+.burnbar__link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; min-height: 36px; color: inherit; text-decoration: none }
+.burnbar__link:hover .burnbar__msg b { text-decoration: underline; text-underline-offset: 3px }
+.burnbar__go { flex: none; font: 700 18px/1 var(--pixel); color: var(--ember) }
 @keyframes flicker { 50% { transform: scaleY(.9) translateY(1px); filter: brightness(1.3) } }
 .burnbar__msg { flex: 1; font-size: 14px; color: #f3d7c7; min-width: 0 }
 .burnbar__msg b { color: var(--text); font-weight: 600 }
@@ -1065,6 +1068,21 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .bf { display: grid; gap: 20px; padding: clamp(20px, 3vw, 32px); border: 1px solid var(--fire-deep); background: radial-gradient(120% 140% at 0% 100%, #ff5a1f26, transparent 60%), var(--bg-1) }
 .bf__num { font: 800 clamp(3.2rem, 9vw, 6rem)/.86 var(--sans); font-stretch: 70%; background: var(--flame); -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums }
 .bf__lbl { margin-top: 8px; color: var(--mist) }
+.bf__lbl b { color: var(--text) }
+/* the Bonfire on Home: what it is on the left, the live numbers and the actions on the right */
+.bf--home { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: clamp(24px, 4vw, 52px); margin-bottom: clamp(36px, 5vw, 56px); border-width: 2px; box-shadow: 4px 4px 0 var(--fire-deep), 0 0 40px rgba(255, 90, 31, .12) }
+.bf__panel { display: grid; gap: 20px; min-width: 0 }
+.bf__title { font: 800 clamp(1.9rem, 3.6vw, 2.8rem)/.95 var(--sans); font-stretch: 70%; text-transform: uppercase; margin-top: 14px }
+.bf__lead { color: var(--mist); margin: 14px 0 12px; max-width: 34rem; text-wrap: pretty }
+.kicker--fire { color: var(--fire) }
+.bf__flame { animation: flicker .5s steps(2) infinite }   /* the same flicker as the burn strip; reduced motion stills it */
+.bf__visit { display: inline-block; padding-block: 6px; color: var(--ember) }
+.tabs__tab--fire { color: var(--fire) }
+.tabs__tab--fire[aria-current="page"] { color: #ff8a1f }
+.tabs__tab--fire[aria-current="page"]::after { background: var(--fire); box-shadow: 0 0 12px rgba(255, 90, 31, .5) }
+.site-menu__link--fire .site-menu__icon { color: var(--fire) }
+@media (max-width: 860px) { .bf--home { grid-template-columns: minmax(0, 1fr) } }
+@media (max-width: 560px) { .bf__actions .btn { flex: 1 1 100% } }   /* full-width, easy to tap */
 .mb__score.fire { color: var(--ember) }
 
 /* ============ Home › Cozmling spotlight ============ */

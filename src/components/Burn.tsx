@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Modal, HoldButton, Addr, Failed } from './ui'
 import { Flame } from './Pixel'
@@ -47,6 +47,29 @@ export function GoalMeter({ burned, add = 0, full = false }: { burned: number; a
   )
 }
 
+/* ---------- the Bonfire at a glance: total burned, wallets, the goal, and the two actions ----------
+   Shared by Home and Community › Bonfire so both always show the same live numbers.
+   A fragment, so it drops into the .bf grid as before; `children` adds more buttons to the row. */
+export function BonfireStats({ onBurn, children }: { onBurn: () => void; children?: ReactNode }) {
+  const { burned, burns, reload } = useChain()
+  const wallets = burns.data ? new Set(burns.data.map(b => b.sender)).size : null
+  const down = burned.data == null && !!burned.error
+  return (
+    <>
+      <div>
+        <p className="bf__num">{burned.data != null ? compact(burned.data) : down ? '–' : '…'}</p>
+        <p className="bf__lbl">COZMC burned{wallets != null && <> by <b>{fmt(wallets)}</b> {wallets === 1 ? 'wallet' : 'wallets'}</>}</p>
+      </div>
+      {burned.data != null ? <GoalMeter burned={burned.data} full /> : down && <Failed what="the Bonfire total" retry={() => reload('burns')} />}
+      <div className="row bf__actions">
+        <button className="btn btn--fire" onClick={onBurn}><Flame size={14} /> Burn COZMC</button>
+        <a className="btn btn--ghost" href={EXPLORER_ACCOUNT(BONFIRE_ADDRESS)} target="_blank" rel="noopener">View on Algorand ↗</a>
+        {children}
+      </div>
+    </>
+  )
+}
+
 /* ---------- the strip across the top of every page ---------- */
 export function BurnBar({ onBurn }: { onBurn: () => void }) {
   const { burned, burns } = useChain()
@@ -54,12 +77,17 @@ export function BurnBar({ onBurn }: { onBurn: () => void }) {
   return (
     <div className="burnbar" role="region" aria-label="Burn COZMC">
       <div className="wrap burnbar__in">
-        <Flame size={16} className="burnbar__flame" />
-        <p className="burnbar__msg"><b>Support COZMC: burn some.</b> <span className="hide-sm">Every burn shrinks the supply forever and carries a wish on-chain.</span></p>
-        {burned.data != null
-          ? <GoalMeter burned={burned.data} />
-          : <p className="burnbar__total"><span className="burnbar__num">…</span> burned</p>}
-        {count > 0 && <p className="burnbar__total hide-sm">{count} {count === 1 ? 'wish' : 'wishes'}</p>}
+        {/* the whole strip (but the Burn button) is one tap to the Bonfire page, from every page, phones included */}
+        <a className="burnbar__link" href="#/community/bonfire">
+          <span className="sr-only">Visit the Bonfire: </span>
+          <Flame size={16} className="burnbar__flame" />
+          <p className="burnbar__msg"><b>Support COZMC: burn some.</b> <span className="hide-sm">Every burn shrinks the supply forever and carries a wish on-chain.</span></p>
+          {burned.data != null
+            ? <GoalMeter burned={burned.data} />
+            : <p className="burnbar__total"><span className="burnbar__num">…</span> burned</p>}
+          {count > 0 && <p className="burnbar__total hide-sm">{count} {count === 1 ? 'wish' : 'wishes'}</p>}
+          <span className="burnbar__go" aria-hidden="true">›</span>
+        </a>
         <button className="btn btn--sm btn--fire" onClick={onBurn}>Burn</button>
       </div>
     </div>

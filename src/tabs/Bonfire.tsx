@@ -1,18 +1,15 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import { useChain } from '../lib/data'
-import { GoalMeter, WishFeed } from '../components/Burn'
+import { BonfireStats, WishFeed } from '../components/Burn'
 import { burnerBoard } from '../lib/boards'
-import { compact, fmt } from '../lib/format'
+import { compact } from '../lib/format'
 import { Addr, Failed, Loading } from '../components/ui'
-import { Flame } from '../components/Pixel'
-import { BONFIRE_ADDRESS, EXPLORER_ACCOUNT } from '../config'
 
 /* Community › Bonfire: everything burned, the community goal, and the wishes people left. */
 export function Bonfire({ onBurn }: { onBurn: () => void }) {
-  const { burned, burns, reload } = useChain()
+  const { burns, reload } = useChain()
   const { activeAddress } = useWallet()
   const top = burns.data ? burnerBoard(burns.data).slice(0, 10) : null
-  const wallets = burns.data ? new Set(burns.data.map(b => b.sender)).size : null
 
   return (
     <>
@@ -22,15 +19,7 @@ export function Bonfire({ onBurn }: { onBurn: () => void }) {
       </header>
 
       <section className="bf" aria-label="Burned so far">
-        <div>
-          <p className="bf__num">{burned.data != null ? compact(burned.data) : '…'}</p>
-          <p className="bf__lbl">COZMC burned{wallets != null && <> by {fmt(wallets)} {wallets === 1 ? 'wallet' : 'wallets'}</>}</p>
-        </div>
-        {burned.data != null && <GoalMeter burned={burned.data} full />}
-        <div className="row">
-          <button className="btn btn--fire" onClick={onBurn}><Flame size={14} /> Burn COZMC</button>
-          <a className="link" href={EXPLORER_ACCOUNT(BONFIRE_ADDRESS)} target="_blank" rel="noopener">See the Bonfire on-chain ↗</a>
-        </div>
+        <BonfireStats onBurn={onBurn} />
       </section>
 
       <section className="split">

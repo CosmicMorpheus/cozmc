@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { HoloCard } from '../components/HoloCard'
 import { CopyBtn } from '../components/ui'
-import { Icon } from '../components/Pixel'
+import { Flame, Icon } from '../components/Pixel'
+import { BonfireStats } from '../components/Burn'
 import { useChain } from '../lib/data'
 import { compact, fmt } from '../lib/format'
 import { GAMES } from '../arcade/games'
@@ -36,11 +37,23 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
           <div className="row">
             {discord && <a className="btn btn--discord" href={discord.url} target="_blank" rel="noopener"><SocialIcon name="discord" size={16} /> Join our community</a>}
             <button className="btn btn--phos" onClick={() => go('arcade')}><Icon name="play" size={10} /> Play the arcade</button>
+            <a className="btn btn--fire" href="#/community/bonfire"><Flame size={14} /> Visit the Bonfire</a>
             <a className="btn btn--ghost" href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC ↗</a>
           </div>
           <div className="asa"><span>ASA ID</span><code>{ASA_ID}</code><CopyBtn text={String(ASA_ID)} what="ASA ID" /></div>
         </div>
         <div className="hero__card"><HoloCard /><p className="hint">Move to tilt · click to flip</p></div>
+      </section>
+
+      {/* the Bonfire, right under the hero: live total, wallets, the goal, and one click to burn or visit */}
+      <section className="bf bf--home" aria-labelledby="bf-home-h">
+        <div className="bf__intro">
+          <p className="kicker kicker--fire"><Flame size={12} className="bf__flame" /> The Bonfire</p>
+          <h2 id="bf-home-h" className="bf__title">Burn COZMC. Leave a wish.</h2>
+          <p className="bf__lead">COZMC sent to the Bonfire is gone for good, so every burn shrinks the supply. Each one can carry a wish written on Algorand, and every score posted in the arcade feeds the fire too.</p>
+          <a className="link bf__visit" href="#/community/bonfire">Visit the Bonfire: wishes &amp; top burners →</a>
+        </div>
+        <div className="bf__panel"><BonfireStats onBurn={onBurn} /></div>
       </section>
 
       {!live && <><DailyStrip /><GiveawayBanner /></>}
