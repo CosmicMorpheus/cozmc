@@ -87,6 +87,8 @@ export function Prizes() {
         <header className="panel__head"><h2 id="dp-past-h">Previous winners</h2>{payouts.error && <span className="muted small">Payouts couldn’t be loaded</span>}</header>
         {past.length ? <ul className="gw__past">{past.map(d => <PastDay key={d} day={d} rows={winners(d, scores.data!)} paid={payouts.data ?? []} me={activeAddress} today={today} />)}</ul>
           : <p className="muted small">The first winners are announced {weekday(PRIZE_START_DAY + 1)} at 00:00 UTC.</p>}
+        {/* the weekly giveaway's archive (its final draw and winner) stays one click away after the switch */}
+        {live && <p className="muted small dp-archive">Looking for the weekly 100K giveaway? It ended {weekday(PRIZE_START_DAY)}. <a href="#/arcade/giveaway">See its final draw and winners →</a></p>}
       </section>
 
       <Rules />

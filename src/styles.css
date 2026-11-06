@@ -1216,6 +1216,7 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 .dp-sched li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid transparent; color: var(--mist) }
 .dp-sched li.is-today { border-color: #6b5212; background: #120d03 }
 .dp-sched b { color: var(--text); font-weight: 600 }
+.dp-archive { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-2) }
 .dp-past { margin-top: 18px }
 .dp-winners { list-style: none; display: grid; gap: 6px }
 .dp-winners li { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto auto; gap: 10px; align-items: center }
@@ -1229,9 +1230,10 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 }
 @media (max-width: 560px) {
   .dp-steps { grid-template-columns: minmax(0, 1fr) }
-  .dp-winners li { grid-template-columns: 2.6rem minmax(0, 1fr) auto; }
+  .dp-winners li { grid-template-columns: 2.6rem minmax(0, 1fr); row-gap: 2px }
   .dp-winners li > .muted { display: none }
-  .dp-sched li { grid-template-columns: 5.5rem minmax(0, 1fr) auto }
+  .dp-winners li > .dp-status { grid-column: 2; justify-self: start; text-align: left }   /* under the address: a phone row can't fit both */
+  .dp-sched li { grid-template-columns: 6.6rem minmax(0, 1fr) auto }   /* "Wed, Nov 11" on one line */
   .dp-ladder li { min-width: 0; flex: 1 }
 }
 .gwb__final { margin-top: 10px; padding: 10px 12px; border: 1px dashed #6b4f12; background: rgba(0,0,0,.45) }

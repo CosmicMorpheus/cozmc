@@ -5,6 +5,8 @@ import { compact } from '../lib/format'
 import { countdownTo, entrants, extraFor, finalDrawAt, isFinalWeek, localWhen, prizeFor, utcDate, weekEnd, weekOf, weekTickets } from '../lib/giveaway'
 import { GIVEAWAY } from '../config'
 import { Icon } from './Pixel'
+import { dailyLive } from '../lib/dailyPrize'
+import { DailyChip } from './DailyPrize'
 
 /** This week's tickets (null while loading), re-read every `ms`. */
 function useThisWeek(ms: number) {
@@ -76,6 +78,7 @@ export function GiveawayChip() {
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(t) }, [])
   const week = Math.max(1, weekOf())
+  if (dailyLive()) return <DailyChip />   // a tab left open across the Nov 9 switch: the header picks it up within 30 s
   return (
     <a className="gwchip" href="#/arcade/giveaway" aria-label={`${isFinalWeek(week) ? 'Last' : 'Win'} ${compact(prizeFor(week))} ${countdownTo(weekEnd(week))}: ${isFinalWeek(week) ? 'the final weekly giveaway' : 'the weekly giveaway'}, ${compact(prizeFor(week))} COZMC, drawn in ${countdownTo(weekEnd(week))}`}>
       <Icon name="gift" size={13} />
