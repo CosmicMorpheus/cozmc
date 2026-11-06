@@ -78,7 +78,7 @@ export function SiteMenu({ currentPath }: { currentPath: string }) {
     const active = currentPath === item.path
     return (
       <a key={item.path} className={`site-menu__link${item.path === 'cozmling' ? ' site-menu__link--cz' : ''}${item.path === 'community/bonfire' ? ' site-menu__link--fire' : ''}`} href={`#/${item.path}`} aria-current={active ? 'page' : undefined} onClick={() => close(true)}>
-        <span className="site-menu__icon"><Icon name={item.icon} size={18} /></span>
+        <span className="site-menu__icon">{item.path === 'community/bonfire' ? <span className="site-menu__emoji" aria-hidden="true">🔥</span> : <Icon name={item.icon} size={18} />}</span>
         <span className="site-menu__copy"><span className="site-menu__label">{item.label}</span><span className="site-menu__description">{item.description}</span></span>
         <ArrowRightIcon className="site-menu__arrow" size={16} aria-hidden="true" />
       </a>

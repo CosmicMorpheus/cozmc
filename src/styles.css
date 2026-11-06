@@ -1081,6 +1081,8 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .tabs__tab--fire[aria-current="page"] { color: #ff8a1f }
 .tabs__tab--fire[aria-current="page"]::after { background: var(--fire); box-shadow: 0 0 12px rgba(255, 90, 31, .5) }
 .site-menu__link--fire .site-menu__icon { color: var(--fire) }
+.tabs__emoji { flex: none; font-size: 14px; line-height: 1 }
+.site-menu__emoji { display: block; width: 18px; font-size: 17px; line-height: 18px; text-align: center }
 @media (max-width: 860px) { .bf--home { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .bf__actions .btn { flex: 1 1 100% } }   /* full-width, easy to tap */
 .mb__score.fire { color: var(--ember) }

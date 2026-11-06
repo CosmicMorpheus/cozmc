@@ -162,7 +162,7 @@ export function App() {
                 {/* the Bonfire gets its own tab, one click from every page */}
                 {t.id === 'community' && (
                   <a href="#/community/bonfire" className="tabs__tab tabs__tab--fire" aria-current={onBonfire ? 'page' : undefined}>
-                    <Icon name="fire" size={13} /><span>The Bonfire</span>
+                    <span className="tabs__emoji" aria-hidden="true">🔥</span><span>The Bonfire</span>
                   </a>
                 )}
               </Fragment>

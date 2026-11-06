@@ -45,7 +45,10 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         <div className="hero__card"><HoloCard /><p className="hint">Move to tilt · click to flip</p></div>
       </section>
 
-      {/* the Bonfire, right under the hero: live total, wallets, the goal, and one click to burn or visit */}
+      {!live && <><DailyStrip /><GiveawayBanner /></>}
+
+      {/* the Bonfire: live total, wallets, the goal, and one click to burn or visit. Right under the hero once the
+          weekly giveaway is over; until Nov 9 its final-week banner stays above */}
       <section className="bf bf--home" aria-labelledby="bf-home-h">
         <div className="bf__intro">
           <p className="kicker kicker--fire"><Flame size={12} className="bf__flame" /> The Bonfire</p>
@@ -55,8 +58,6 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         </div>
         <div className="bf__panel"><BonfireStats onBurn={onBurn} /></div>
       </section>
-
-      {!live && <><DailyStrip /><GiveawayBanner /></>}
 
       <Suspense fallback={<div className="spot spot--wait" aria-hidden="true" />}><Spotlight /></Suspense>
 
