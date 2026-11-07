@@ -164,7 +164,8 @@ export function Adrift() {
                   const con = document.querySelector('.ad-console'), word = document.querySelector('.ad-word')
                   if (!con || !word) return
                   const head = document.querySelector('.top')?.getBoundingClientRect().bottom ?? 0
-                  let dy = con.getBoundingClientRect().bottom - innerHeight
+                  const mp = document.querySelector('.mp'), mpTop = mp && getComputedStyle(mp).visibility !== 'hidden' ? mp.getBoundingClientRect().top - 8 : innerHeight
+                  let dy = con.getBoundingClientRect().bottom - Math.min(innerHeight, mpTop)     // keep the keys above the music player
                   const wordTop = word.getBoundingClientRect().top
                   if (wordTop - dy < head + 8) dy = wordTop - head - 8
                   scrollBy({ top: dy, behavior: 'smooth' })

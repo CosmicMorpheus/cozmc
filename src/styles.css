@@ -496,21 +496,6 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .foot__legal { max-width: 44rem; font-size: 12.5px; color: var(--dim) }
 .toast { position: fixed; left: 50%; bottom: 24px; z-index: 180; translate: -50% 20px; opacity: 0; pointer-events: none; padding: 12px 16px; background: #000; border: 2px solid var(--phos); box-shadow: 4px 4px 0 var(--phos-deep); font: 700 12px var(--pixel); color: var(--phos); text-transform: uppercase; transition: opacity .25s, translate .3s var(--out); max-width: calc(100vw - 100px) }
 .toast.show { opacity: 1; translate: -50% 0 }
-.music { position: fixed; right: 16px; bottom: 16px; z-index: 90; width: 44px; height: 44px; display: grid; place-items: center; background: #000; border: 2px solid var(--line-3); box-shadow: 3px 3px 0 #1b1b1b }
-.music:hover { border-color: var(--phos) }
-.music--skip { right: 68px; color: var(--dim) }
-.music--skip:hover { color: var(--phos) }
-.music__eq { display: flex; align-items: flex-end; gap: 2px; height: 16px }
-.music__eq i { width: 3px; height: 4px; background: var(--dim) }
-.music.is-on .music__eq i { background: var(--phos); animation: eq .9s steps(4) infinite }
-.music.is-on .music__eq i:nth-child(2) { animation-delay: -.3s } .music.is-on .music__eq i:nth-child(3) { animation-delay: -.6s } .music.is-on .music__eq i:nth-child(4) { animation-delay: -.15s }
-@keyframes eq { 0%, 100% { height: 4px } 50% { height: 16px } }
-.music__idle { display: grid; font-size: 18px; line-height: 1 }
-.music__idle b { grid-area: 1 / 1; display: grid; place-items: center; font-weight: normal; color: var(--phos); animation: idle-swap 6s ease-in-out infinite }
-.music__idle b + b { animation-delay: -3s }
-@keyframes idle-swap { 0%, 40% { opacity: 1 } 50%, 90% { opacity: 0 } 100% { opacity: 1 } }
-.music__idle.is-still b, .music__idle.is-still b + b { animation: none } .music__idle.is-still b + b { opacity: 0 }
-@media (prefers-reduced-motion: reduce) { .music__idle b { animation: none } .music__idle b + b { opacity: 0 } }
 .modal__box--share { width: min(760px, 100%) }
 .share__preview { margin: 14px 0 4px; border: 2px solid var(--line-3); background: #000; aspect-ratio: 1200 / 675; display: grid; place-items: center }
 .share__preview img { width: 100%; height: 100%; display: block }
@@ -522,6 +507,62 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .board .share-col { width: 48px; text-align: right; padding-left: 0 }
 .row--center { justify-content: center }
 .yt-hidden { position: fixed; left: -9999px; top: 0; width: 200px; height: 200px; opacity: 0; pointer-events: none }
+
+/* ---------- the music mini-player: a little piece of arcade hardware ----------
+   A chunky phosphor-green shell with a recessed CRT screen (the track title) and clicky buttons.
+   Fixed bottom-right, 56 px tall; on touchscreens it steps aside while a game is being played. */
+.mp { position: fixed; right: 16px; bottom: 16px; z-index: 90; display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 24px;
+  background: linear-gradient(180deg, #c3ffad 0%, var(--phos) 34%, #62d943 72%, #3c9a26 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .6), inset 0 -3px 0 rgba(0, 0, 0, .28), 0 0 0 2px #0a2405, 4px 5px 0 2px #000, 0 12px 28px rgba(0, 0, 0, .5) }
+.mp__grille { flex: none; width: 14px; height: 30px; margin-left: 2px; border-radius: 7px; background: radial-gradient(circle, #0a2405 1.2px, transparent 1.6px) 0 0 / 5px 5px, #4fbf34; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45), 0 1px 0 rgba(255, 255, 255, .5) }
+.mp__screen { position: relative; flex: none; width: 168px; height: 44px; padding: 5px 10px; display: grid; align-content: center; gap: 3px; overflow: hidden; border-radius: 13px;
+  background: radial-gradient(140% 160% at 30% 15%, #11200c, #020402 72%);
+  box-shadow: inset 0 3px 7px rgba(0, 0, 0, .95), inset 0 0 0 2px #133a0b, 0 1px 0 rgba(255, 255, 255, .55) }
+.mp__screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px), linear-gradient(115deg, rgba(255, 255, 255, .09), transparent 42%) }
+.mp__status { display: flex; align-items: center; gap: 6px; min-width: 0; font: 700 9px/1 var(--pixel); text-transform: uppercase; letter-spacing: .06em; color: #6fc457 }
+.mp__state { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.mp__no { flex: none; color: #4c8f3b }
+.mp__eq { flex: none; display: flex; align-items: flex-end; gap: 1px; height: 9px }
+.mp__eq i { width: 2px; height: 2px; background: #3f7a31 }
+.mp.is-on .mp__eq i { background: var(--phos); animation: eq .9s steps(4) infinite }
+.mp.is-on .mp__eq i:nth-child(2) { animation-delay: -.3s } .mp.is-on .mp__eq i:nth-child(3) { animation-delay: -.6s } .mp.is-on .mp__eq i:nth-child(4) { animation-delay: -.15s }
+@keyframes eq { 0%, 100% { height: 2px } 50% { height: 9px } }
+.mp__title { display: block; overflow: hidden; white-space: nowrap; font: 700 12px/1.2 var(--pixel); color: var(--phos); text-shadow: 0 0 6px rgba(141, 255, 106, .55) }
+.mp__title > span { display: inline-block }
+.mp__title > .is-long { animation: mp-scroll var(--t, 8s) ease-in-out infinite alternate }
+@keyframes mp-scroll { 0%, 18% { transform: translateX(0) } 82%, 100% { transform: translateX(calc(-1 * var(--run))) } }
+.mp__btn { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--phos);
+  background: radial-gradient(circle at 34% 28%, #4d5249, #161a14 72%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .22), inset 0 -3px 0 rgba(0, 0, 0, .6), 0 3px 0 #0a2405, 0 4px 6px rgba(0, 0, 0, .35);
+  transition: transform .06s, box-shadow .06s, filter .15s }
+.mp__btn:hover { filter: brightness(1.15) }
+.mp__btn:active { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .12), inset 0 -1px 0 rgba(0, 0, 0, .6), 0 1px 0 #0a2405 }
+.mp__btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px }
+.mp__play { color: #fff; background: radial-gradient(circle at 34% 28%, #dcb4ff, var(--violet) 48%, #5d22a3 100%) }
+.mp__btn:disabled { opacity: .5; cursor: default; transform: none }
+.mp.is-broken .mp__title { color: #6fc457; text-shadow: none }
+.mp.is-intro .mp__play { animation: mp-flash .7s ease-in-out 6 }
+@keyframes mp-flash { 50% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, .22), 0 0 0 5px rgba(255, 255, 255, .85), 0 0 22px var(--violet) } }
+.foot { padding-bottom: 100px }   /* the end of the page never hides under the music player */
+.music-hint { position: fixed; right: 16px; bottom: 86px; z-index: 91; padding: 8px 11px; background: #000; border: 2px solid var(--phos); box-shadow: 3px 3px 0 var(--phos-deep); font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos); white-space: nowrap; animation: music-hint 6s ease forwards; pointer-events: none }
+.music-hint::after { content: ""; position: absolute; right: 72px; bottom: -8px; width: 12px; height: 12px; background: #000; border-right: 2px solid var(--phos); border-bottom: 2px solid var(--phos); rotate: 45deg }   /* points at the play button */
+@keyframes music-hint { 0% { opacity: 0; translate: 0 6px } 8%, 85% { opacity: 1; translate: 0 0 } 100% { opacity: 0 } }
+/* on a touchscreen the player would sit on the game's touch pad, so it steps aside while a run is in play; the music keeps playing */
+@media (pointer: coarse) { body:has(.cabinet.is-playing, .ad-play) :is(.mp, .music-hint) { visibility: hidden; pointer-events: none } }
+@media (max-width: 760px) { .unlock { bottom: 84px } .toast { bottom: 84px } }   /* pop-ups clear the player where they'd meet it */
+@media (max-width: 560px) {
+  .mp { right: 10px; bottom: 10px; border-radius: 22px }
+  .mp__grille { display: none }
+  .mp__screen { width: 132px }
+  .mp__w1 { display: none }
+  .music-hint { right: 10px; bottom: 78px }
+  .toast { bottom: 80px }                     /* toasts and badge pop-ups appear above the player */
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp__title > .is-long { animation: none; display: block; overflow: hidden; text-overflow: ellipsis }
+  .mp.is-intro .mp__play { animation: none; box-shadow: 0 0 0 4px rgba(255, 255, 255, .8) }
+  .music-hint { animation: none }
+}
 
 /* ============================================================
    v3.1 — daily challenge, player card, badges, skins, burn goal,
@@ -677,7 +718,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   .cab__stats div { grid-template-columns: minmax(0, 1fr) }
   .pb-list li { grid-template-columns: minmax(0, 1fr) auto }
   .pb-list em { display: none }
-  .unlock { left: 10px; right: 64px; bottom: 10px; max-width: none }
+  .unlock { left: 10px; right: 10px; bottom: 80px; max-width: none }   /* above the music player */
   .today__actions { position: static; margin-top: 16px }
 }
 
@@ -1391,12 +1432,3 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 @media (prefers-reduced-motion: reduce) { .ad-holo, .ad-holo-text, .ad-vent, .ad-strip-light, .ad-running rect, .ad-dreads, .ad-eyes { animation: none !important } }
 
 /* the music button announces itself when the music starts */
-.music.is-intro { border-color: var(--phos); animation: music-flash .7s ease-in-out 6 }
-@keyframes music-flash { 50% { box-shadow: 0 0 0 6px #8dff6a55, 0 0 24px #8dff6a; background: var(--phos-ink) } }
-.music-hint { position: fixed; right: 16px; bottom: 72px; z-index: 91; padding: 8px 11px; background: #000; border: 2px solid var(--phos); box-shadow: 3px 3px 0 var(--phos-deep); font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos); white-space: nowrap; animation: music-hint 6s ease forwards; pointer-events: none }
-/* on a touchscreen the floating music buttons would sit on the game's touch pad (right arrow, TAP), so they step aside
-   while a run is in play and come back at game over; the music itself keeps playing */
-@media (pointer: coarse) { body:has(.cabinet.is-playing) :is(.music, .music-hint) { visibility: hidden; pointer-events: none } }
-.music-hint::after { content: ""; position: absolute; right: 16px; bottom: -8px; width: 12px; height: 12px; background: #000; border-right: 2px solid var(--phos); border-bottom: 2px solid var(--phos); rotate: 45deg }
-@keyframes music-hint { 0% { opacity: 0; translate: 0 6px } 8%, 85% { opacity: 1; translate: 0 0 } 100% { opacity: 0 } }
-@media (prefers-reduced-motion: reduce) { .music.is-intro { animation: none; box-shadow: 0 0 0 3px #8dff6a88 } .music-hint { animation: none } }
