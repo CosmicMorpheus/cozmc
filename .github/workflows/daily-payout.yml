@@ -1,6 +1,8 @@
 # Pays the daily high-score prizes (see scripts/daily-payout.ts and DAILY_PRIZES in src/config.ts).
 # Runs every day at 00:05 UTC. Run it by hand from the Actions tab: "Dry run" (the default) only
 # prints who would be paid; untick it to pay now. It never pays the same prize twice.
+# With the DISCORD_WINNERS_WEBHOOK secret set, each scheduled run also posts the results to #winners;
+# tick "Post a test message" to check that connection.
 name: Daily prize payout
 
 on:
@@ -12,6 +14,10 @@ on:
         description: 'Dry run: only show what would be paid'
         type: boolean
         default: true
+      discord_test:
+        description: 'Post a test message to the Discord #winners channel'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,3 +42,5 @@ jobs:
         env:
           PRIZE_WALLET_MNEMONIC: ${{ secrets.PRIZE_WALLET_MNEMONIC }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+          DISCORD_WINNERS_WEBHOOK: ${{ secrets.DISCORD_WINNERS_WEBHOOK }}
+          DISCORD_TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.discord_test && '1' || '' }}

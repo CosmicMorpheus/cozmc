@@ -16,12 +16,16 @@
      ALGOD_URL=https://testnet-api.algonode.cloud INDEXER_URL=https://testnet-idx.algonode.cloud
      PAY_ASSET_ID=<test asset id> PAY_TO=<an address opted in to it>   (every prize goes to PAY_TO)
    TODAY_UTC=2026-11-12T00:05:00Z simulates a date (tests only).
+     DISCORD_WINNERS_WEBHOOK  a Discord webhook for #winners (a GitHub secret). When set, each scheduled
+                            run posts the day that just ended and the prizes it paid. Optional.
+     DISCORD_TEST=1         post one test message to that webhook (and nothing else to Discord).
+   Dry runs and test-mode runs never post results to Discord; they print the message instead.
    ============================================================ */
 import algosdk from 'algosdk'
 import { ALGOD, ASA_ID, DAILY_PRIZES, EXPLORER_TX, INDEXER, NOTE_DAILY_PRIZE } from '../src/config'
 import { buildDailyPrizeTxn, fetchBurns, fetchScores } from '../src/lib/chain'
 import { joinScoresAndBurns } from '../src/lib/boards'
-import { featuredGame, PRIZE_START_DAY, standings, winners, payoutNote } from '../src/lib/dailyPrize'
+import { featuredGame, PRIZE_START_DAY, standings, winners, payoutNote, payoutAt, type Standing } from '../src/lib/dailyPrize'
 import { utcDay } from '../src/lib/daily'
 
 const env = process.env
@@ -32,6 +36,15 @@ const ASSET = Number(env.PAY_ASSET_ID || ASA_ID)
 const PAY_TO = env.PAY_TO || ''
 const TEST = ASSET !== ASA_ID || ALGOD_URL !== ALGOD || !!PAY_TO
 const NOW = env.TODAY_UTC ? Date.parse(env.TODAY_UTC) : Date.now()       // TODAY_UTC: simulate a date (tests only)
+const WEBHOOK = (env.DISCORD_WINNERS_WEBHOOK || '').trim()
+const DISCORD_TEST = !!env.DISCORD_TEST && env.DISCORD_TEST !== '0' && env.DISCORD_TEST !== 'false'
+
+/** What this run found and did, for the Discord post. */
+const report: {
+  today?: number; closed?: number; final: Standing[]
+  paid: { day: number; rank: number; to: string; amount: number; txid: string }[]
+  waiting: { day: number; rank: number; to: string; amount: number }[]
+} = { final: [], paid: [], waiting: [] }
 
 const lines: string[] = []
 const say = (s = '') => { console.log(s); lines.push(s) }
@@ -74,6 +87,7 @@ async function holding(addr: string): Promise<number | null> {
 
 async function main() {
   const today = utcDay(NOW)
+  report.today = today
   say(`# Daily prize payout · ${new Date(NOW).toISOString().slice(0, 16).replace('T', ' ')} UTC${DRY ? ' · DRY RUN (nothing is sent)' : ''}${TEST ? ' · TEST MODE' : ''}`)
   if (today - 1 < PRIZE_START_DAY) { say(`The daily prizes start on ${DAILY_PRIZES.start}. Nothing to announce or pay yet.`); return }
 
@@ -89,6 +103,7 @@ async function main() {
   // 1. announce the day that just ended
   const closed = today - 1
   const final = standings(closed, scores)
+  report.closed = closed; report.final = final.filter(s => s.prize > 0)
   say(`\n## ${dateOf(closed)} · ${featuredGame(closed).title}: final standings (in review, paid ${dateOf(today + 1)} 00:05 UTC)`)
   if (!final.length) say('No eligible scores.')
   for (const s of final.slice(0, 5)) say(`${s.rank}. ${s.player}  ${s.score}${s.prize ? `  → ${s.prize} COZMC` : ''}`)
@@ -117,18 +132,81 @@ async function main() {
   let failed = 0
   for (const d of due) {
     const label = `${dateOf(d.day)} #${d.rank} ${d.amount} → ${short(d.to)}`
-    if ((await holding(d.to)) == null) { say(`- ${label}: skipped, the winner hasn't opted in to COZMC yet (retried daily)`); continue }
+    if ((await holding(d.to)) == null) { say(`- ${label}: skipped, the winner hasn't opted in to COZMC yet (retried daily)`); report.waiting.push(d); continue }
     if (DRY) { say(`- ${label}: would send`); continue }
     try {
       const txn = await buildDailyPrizeTxn(algod, sender, d.to, payoutNote(d.day, d.rank, d.game), d.amount, ASSET)
       const { txid } = await algod.sendRawTransaction(txn.signTxn(acct!.sk)).do()
       await algosdk.waitForConfirmation(algod, txid, 8)
       say(`- ${label}: paid ${TEST ? txid : EXPLORER_TX(txid)}`)
+      report.paid.push({ ...d, txid })
     } catch (e: any) { failed++; say(`- ${label}: FAILED ${String(e?.message ?? e).slice(0, 200)}`) }
   }
   if (failed) throw new Error(`${failed} payout(s) failed; they'll be retried on the next run.`)
 }
 
+/* ---------------- Discord: the public #winners post ---------------- */
+const MEDAL = ['🥇', '🥈', '🥉']
+const num = (n: number) => n.toLocaleString('en-US')
+const dayName = (day: number, style: 'long' | 'short' = 'long') => new Date(day * 86_400_000).toLocaleDateString('en-US', { weekday: style, month: 'short', day: 'numeric', timeZone: 'UTC' })
+
+/** The post for #winners: the day that just ended, the prizes this run paid, and today's game. Public facts only. */
+export function discordMessage(): string | null {
+  const { closed, today } = report
+  if (closed == null || today == null) return null
+  const out = [`🏆 **Daily prizes · ${dayName(closed)} · ${featuredGame(closed).title}**`]
+  if (!report.final.length) out.push('Nobody posted a run that day.')
+  else {
+    out.push(`Final standings, paid <t:${Math.floor(payoutAt(closed) / 1000)}:F> after a one-day review:`)
+    for (const s of report.final) out.push(`${MEDAL[s.rank - 1]} \`${short(s.player)}\` · ${num(s.score)} → **${num(s.prize)} COZMC**`)
+  }
+  if (report.paid.length) {
+    out.push('', '💸 **Paid just now**')
+    for (const p of report.paid) out.push(`${MEDAL[p.rank - 1]} ${dayName(p.day, 'short')} · \`${short(p.to)}\` · ${num(p.amount)} COZMC · <${EXPLORER_TX(p.txid)}>`)
+  }
+  if (report.waiting.length) {
+    out.push('', `⏳ **Waiting to be paid:** opt in to COZMC (ASA ${ASA_ID}) to receive it. It's retried every day.`)
+    for (const w of report.waiting) out.push(`${MEDAL[w.rank - 1]} ${dayName(w.day, 'short')} · \`${short(w.to)}\` · ${num(w.amount)} COZMC`)
+  }
+  const g = featuredGame(today)
+  out.push('', `🎮 Today's prize game: **${g.title}** · <https://cozmc.us/#/arcade/${g.id}/daily>`, '📋 Full board, rules and every payout: <https://cozmc.us/#/arcade/prizes>')
+  const text = out.join('\n')
+  return text.length > 1900 ? text.slice(0, 1890) + '\n…' : text      // Discord's limit is 2,000 characters
+}
+
+/** Discord webhooks only: never post this run's results anywhere else. */
+const isDiscordWebhook = (u: string) => /^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(u)
+
+async function postToDiscord(content: string) {
+  const r = await fetch(`${WEBHOOK}?wait=true`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    // no pings of any kind, and no link previews
+    body: JSON.stringify({ username: 'COZMC Prizes', content, allowed_mentions: { parse: [] }, flags: 4 }),
+  })
+  if (!r.ok) throw new Error(`Discord replied HTTP ${r.status}`)
+}
+
+async function discordStep() {
+  if (!WEBHOOK) { say('\nDiscord: not connected (no DISCORD_WINNERS_WEBHOOK secret), so nothing was posted.'); return }
+  if (!isDiscordWebhook(WEBHOOK)) { say('\n⚠️ Discord: DISCORD_WINNERS_WEBHOOK is not a Discord webhook link, so nothing was posted.'); console.log('::warning::DISCORD_WINNERS_WEBHOOK is not a Discord webhook link'); return }
+  try {
+    if (DISCORD_TEST) {
+      await postToDiscord('🧪 Test from the COZMC daily prize job: this channel is connected. Daily results will be posted here automatically at 00:05 UTC.')
+      say('\nDiscord: test message posted to #winners.')
+      return
+    }
+    const msg = discordMessage()
+    if (!msg) { say('\nDiscord: nothing to announce yet.'); return }
+    if (DRY || TEST) { say(`\nDiscord message (not posted: ${DRY ? 'dry run' : 'test mode'}):\n\n${msg}`); return }
+    await postToDiscord(msg)
+    say('\nDiscord: results posted to #winners.')
+  } catch (e: any) {
+    say(`\n⚠️ Discord post failed: ${String(e?.message ?? e).slice(0, 200)}. Prizes were not affected.`)
+    console.log(`::warning::Discord post failed: ${String(e?.message ?? e).slice(0, 200)}`)
+  }
+}
+
 main().catch(e => { say(`\n❌ ${e?.message ?? e}`); process.exitCode = 1 }).finally(async () => {
+  await discordStep()
   if (env.GITHUB_STEP_SUMMARY) { const { appendFileSync } = await import('node:fs'); appendFileSync(env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n') }
 })
