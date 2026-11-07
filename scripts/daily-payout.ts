@@ -19,6 +19,7 @@
      DISCORD_WINNERS_WEBHOOK  a Discord webhook for #winners (a GitHub secret). When set, each scheduled
                             run posts the day that just ended and the prizes it paid. Optional.
      DISCORD_TEST=1         post one test message to that webhook (and nothing else to Discord).
+     BACKUP_RUN=1           the 01:41 UTC backup run: it posts to Discord only if it paid something.
    Dry runs and test-mode runs never post results to Discord; they print the message instead.
    ============================================================ */
 import algosdk from 'algosdk'
@@ -38,6 +39,7 @@ const TEST = ASSET !== ASA_ID || ALGOD_URL !== ALGOD || !!PAY_TO
 const NOW = env.TODAY_UTC ? Date.parse(env.TODAY_UTC) : Date.now()       // TODAY_UTC: simulate a date (tests only)
 const WEBHOOK = (env.DISCORD_WINNERS_WEBHOOK || '').trim()
 const DISCORD_TEST = !!env.DISCORD_TEST && env.DISCORD_TEST !== '0' && env.DISCORD_TEST !== 'false'
+const BACKUP = !!env.BACKUP_RUN && env.BACKUP_RUN !== '0' && env.BACKUP_RUN !== 'false'
 
 /** What this run found and did, for the Discord post. */
 const report: {
@@ -88,7 +90,7 @@ async function holding(addr: string): Promise<number | null> {
 async function main() {
   const today = utcDay(NOW)
   report.today = today
-  say(`# Daily prize payout · ${new Date(NOW).toISOString().slice(0, 16).replace('T', ' ')} UTC${DRY ? ' · DRY RUN (nothing is sent)' : ''}${TEST ? ' · TEST MODE' : ''}`)
+  say(`# Daily prize payout · ${new Date(NOW).toISOString().slice(0, 16).replace('T', ' ')} UTC${BACKUP ? ' · backup run' : ''}${DRY ? ' · DRY RUN (nothing is sent)' : ''}${TEST ? ' · TEST MODE' : ''}`)
   if (today - 1 < PRIZE_START_DAY) { say(`The daily prizes start on ${DAILY_PRIZES.start}. Nothing to announce or pay yet.`); return }
 
   // whose wallet pays
@@ -157,7 +159,7 @@ export function discordMessage(): string | null {
   const out = [`🏆 **Daily prizes · ${dayName(closed)} · ${featuredGame(closed).title}**`]
   if (!report.final.length) out.push('Nobody posted a run that day.')
   else {
-    out.push(`Final standings, paid <t:${Math.floor(payoutAt(closed) / 1000)}:F> after a one-day review:`)
+    out.push(`Final standings, paid shortly after <t:${Math.floor(payoutAt(closed) / 1000)}:F> following a one-day review:`)
     for (const s of report.final) out.push(`${MEDAL[s.rank - 1]} \`${short(s.player)}\` · ${num(s.score)} → **${num(s.prize)} COZMC**`)
   }
   if (report.paid.length) {
@@ -197,6 +199,7 @@ async function discordStep() {
     }
     const msg = discordMessage()
     if (!msg) { say('\nDiscord: nothing to announce yet.'); return }
+    if (BACKUP && !report.paid.length) { say('\nDiscord: backup run with nothing new, so nothing was posted (the 00:05 run already did).'); return }
     if (DRY || TEST) { say(`\nDiscord message (not posted: ${DRY ? 'dry run' : 'test mode'}):\n\n${msg}`); return }
     await postToDiscord(msg)
     say('\nDiscord: results posted to #winners.')

@@ -1,5 +1,8 @@
 # Pays the daily high-score prizes (see scripts/daily-payout.ts and DAILY_PRIZES in src/config.ts).
-# Runs every day at 00:05 UTC. Run it by hand from the Actions tab: "Dry run" (the default) only
+# Runs every day at 00:05 UTC, with a backup run at 01:41 UTC: GitHub can delay or even drop scheduled
+# runs near the top of the hour, and the job never pays the same prize twice, so a second run is safe.
+# The backup only posts to Discord if it actually paid something (i.e. the 00:05 run was missed).
+# Run it by hand from the Actions tab: "Dry run" (the default) only
 # prints who would be paid; untick it to pay now. It never pays the same prize twice.
 # With the DISCORD_WINNERS_WEBHOOK secret set, each scheduled run also posts the results to #winners;
 # tick "Post a test message" to check that connection.
@@ -8,6 +11,7 @@ name: Daily prize payout
 on:
   schedule:
     - cron: '5 0 * * *'
+    - cron: '41 1 * * *'     # backup (see above); keep in sync with BACKUP_RUN below
   workflow_dispatch:
     inputs:
       dry_run:
@@ -31,8 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -44,3 +48,4 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
           DISCORD_WINNERS_WEBHOOK: ${{ secrets.DISCORD_WINNERS_WEBHOOK }}
           DISCORD_TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.discord_test && '1' || '' }}
+          BACKUP_RUN: ${{ github.event.schedule == '41 1 * * *' && '1' || '' }}
