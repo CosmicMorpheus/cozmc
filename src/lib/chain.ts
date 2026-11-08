@@ -230,6 +230,12 @@ export async function fetchBonfireTotal(): Promise<number> {
 }
 
 /* ---------------- writes ---------------- */
+/** A flat fee covering this transaction plus `inner` inner transactions, at the network's current minimum fee,
+    so app calls keep working if Algorand ever raises the minimum (it's 0.001 ALGO today). */
+export const coverInner = (sp: algosdk.SuggestedParams, inner: number): algosdk.SuggestedParams => {
+  const min = BigInt(sp.minFee || 1000) > 1000n ? BigInt(sp.minFee) : 1000n
+  return { ...sp, fee: min * BigInt(inner + 1), flatFee: true }
+}
 const ARC54_OPT_IN = new algosdk.ABIMethod({ name: 'arc54_optIntoASA', args: [{ type: 'asset', name: 'asa' }], returns: { type: 'void' } })
 
 /**
@@ -248,7 +254,7 @@ export async function buildBurnGroup(algod: algosdk.Algodv2, sender: string, amo
     }
     txns.push(algosdk.makeApplicationNoOpTxnFromObject({
       sender, appIndex: BONFIRE_APP_ID, appArgs: [ARC54_OPT_IN.getSelector(), new Uint8Array([0])], foreignAssets: [ASA_ID],
-      suggestedParams: { ...sp, fee: 2000, flatFee: true }, // covers the app's inner opt-in transaction
+      suggestedParams: coverInner(sp, 1), // covers the app's inner opt-in transaction
     }))
   }
   const note = enc.encode(NOTE_BURN + wish.trim())
@@ -298,7 +304,7 @@ export async function buildScoreGroup(algod: algosdk.Algodv2, sender: string, ga
   const [sp, held, signer] = await Promise.all([algod.getTransactionParams().do(), fetchCozmcBalance(sender), signerOf(sender)])
   const optedIn = held != null
   const note = enc.encode(NOTE_SCORE + JSON.stringify({ g: game, s: Math.floor(score), d: Math.round(ms), ...(day != null ? { day } : {}) }))
-  const needAlgo = SCORE_FEE_ALGO + 0.007 + (optedIn ? 0 : 0.1)
+  const needAlgo = SCORE_FEE_ALGO + 7 * Math.max(1000, Number(sp.minFee || 1000)) / 1e6 + (optedIn ? 0 : 0.1)   // fees: about 7 × the minimum fee
   const group = (minOut: bigint, burn: bigint | null) => {
     const txns: algosdk.Transaction[] = []
     if (!optedIn) txns.push(algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({ sender, receiver: sender, assetIndex: ASA_ID, amount: 0, suggestedParams: sp }))
@@ -307,7 +313,7 @@ export async function buildScoreGroup(algod: algosdk.Algodv2, sender: string, ga
       sender, appIndex: PACT_POOL_APP, appArgs: [SWAP.getSelector(), algosdk.encodeUint64(minOut)],
       foreignAssets: [ASA_ID], foreignApps: [PACT_VAULT_APP],
       boxes: [{ appIndex: PACT_VAULT_APP, name: algosdk.encodeUint64(0) }, { appIndex: PACT_VAULT_APP, name: algosdk.encodeUint64(ASA_ID) }],
-      suggestedParams: { ...sp, fee: 4000, flatFee: true },   // covers the pool's and the Vault's inner transactions
+      suggestedParams: coverInner(sp, 3),   // covers the pool's and the Vault's inner transactions
     }))
     if (burn != null) txns.push(algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender, receiver: BONFIRE_ADDRESS, assetIndex: ASA_ID, amount: burn, note: enc.encode(NOTE_BURN),
