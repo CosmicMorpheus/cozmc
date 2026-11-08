@@ -25,6 +25,7 @@ const PAGES: Destination[] = [
   { path: 'arcade/boards', label: 'Leaderboards', description: 'See the scores to beat', icon: 'leaderboard', group: 'Explore more', keywords: 'scores high score rankings boards' },
   { path: 'arcade/prizes', label: 'Daily prizes', description: '9,000 COZMC up for grabs every day', icon: 'trophy', group: 'Explore more', keywords: 'giveaway win prizes rewards daily high score competition contest winners' },
   { path: 'arcade/card', label: 'Your card', description: 'Your profile & achievements', icon: 'card', group: 'Explore more', keywords: 'profile badges achievements unlocks' },
+  { path: 'community/token', label: 'COZMC token', description: 'Supply, official wallets & history', icon: 'lock', group: 'Explore more', keywords: 'token asa supply tokenomics wallets creator prize wallet burn clawback freeze allocation' },
   { path: 'community/wisdom', label: 'Wisdom', description: 'The philosophy behind COZMC', icon: 'philosophy', group: 'Explore more', keywords: 'philosophy ideas principles' },
 ]
 

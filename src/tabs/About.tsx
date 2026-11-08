@@ -86,6 +86,7 @@ export function About() {
           <p className="small muted" style={{ marginTop: 16 }}>Creator &amp; manager</p>
           <code className="addr">{a?.creator ?? CREATOR}</code>
           <CopyBtn text={a?.creator ?? CREATOR} what="Creator address" label="Copy address" />
+          <p className="small" style={{ marginTop: 14 }}><a className="link" href="#/community/token">Full token details: supply breakdown, wallets &amp; history →</a></p>
         </div>
         <div className="stack">
           <div className="panel">

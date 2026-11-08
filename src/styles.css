@@ -396,6 +396,39 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .facts dt::after { content: ""; flex: 1; border-bottom: 1px dotted var(--line-3); translate: 0 -.3em }
 .facts dd { font: 500 14px var(--mono); font-stretch: 87.5%; text-align: right }
 .facts dd.ok { color: var(--phos) }
+/* ---------- Community › Token ---------- */
+.tk-note { margin-top: 14px }
+.tk-verify { margin-top: 12px }
+.tk-panel { margin-top: 18px }
+.tk-bar { display: flex; height: 18px; margin: 4px 0 16px; border: 2px solid var(--line-3); background: #000; overflow: hidden }
+.tk-bar > span { min-width: 3px }
+.tk-bar__community { background: var(--phos) } .tk-bar__pools { background: var(--cyan) } .tk-bar__creator { background: var(--gold) } .tk-bar__prize { background: var(--violet) } .tk-bar__burned { background: var(--fire) }
+.tk-rows { list-style: none; display: grid }
+.tk-rows li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--line-2) }
+.tk-dot { width: 12px; height: 12px }
+.tk-rows__what, .tk-rows__amt { display: grid; gap: 2px; min-width: 0 }
+.tk-rows__what small, .tk-rows__amt small { color: var(--dim); font-size: 13px }
+.tk-rows__amt { text-align: right; font: 500 14px var(--mono); font-stretch: 87.5% }
+.tk-rows__amt b { font-size: 16px; color: var(--text) }
+.tk-wallets { list-style: none; display: grid; gap: 16px }
+.tk-wallets li { display: grid; gap: 6px; padding-bottom: 16px; border-bottom: 1px dashed var(--line-2) }
+.tk-wallets li > b { font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos) }
+.tk-wallets__addr { display: flex; flex-wrap: wrap; align-items: center; gap: 10px }
+.tk-wallets__addr .addr { word-break: break-all }
+.tk-wallets li > small { color: var(--mist); font-size: 14px }
+.tk-steps { list-style: none; display: grid; gap: 14px }
+.tk-steps li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 14px; align-items: start; padding-bottom: 14px; border-bottom: 1px dashed var(--line-2) }
+.tk-steps b { font-weight: 700 }
+.tk-steps p { color: var(--mist); font-size: 15px; margin-top: 4px }
+.tk-when { margin-left: 10px; font: 700 11px var(--pixel); text-transform: uppercase; color: var(--dim) }
+.tk-status { justify-self: start; padding: 4px 8px; font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; border: 1px solid var(--line-3); color: var(--mist) }
+.tk-status--live, .tk-status--reached { color: var(--phos); border-color: var(--phos-deep) }
+.tk-status--done, .tk-status--ended { color: var(--dim) }
+.tk-status--final-week, .tk-status--starts-soon { color: var(--gold); border-color: #6b4f12 }
+@media (max-width: 560px) {
+  .tk-steps li { grid-template-columns: minmax(0, 1fr); gap: 6px }
+  .tk-when { display: block; margin: 4px 0 0 }
+}
 .live { font: 700 10px var(--pixel); color: var(--dim); text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px }
 .live::before { content: ""; width: 7px; height: 7px; background: currentColor }
 .live.is-live { color: var(--phos) }

@@ -32,6 +32,7 @@ const Prizes = lazy(() => import('./tabs/Prizes').then(m => ({ default: m.Prizes
 const Adrift = lazy(() => import('./tabs/Adrift').then(m => ({ default: m.Adrift })))
 const Philosophy = lazy(() => import('./tabs/Philosophy').then(m => ({ default: m.Philosophy })))
 const Bonfire = lazy(() => import('./tabs/Bonfire').then(m => ({ default: m.Bonfire })))
+const Token = lazy(() => import('./tabs/Token').then(m => ({ default: m.Token })))
 const About = lazy(() => import('./tabs/About').then(m => ({ default: m.About })))
 
 export type TabId = 'home' | 'cozmling' | 'arcade' | 'community' | 'about'
@@ -58,6 +59,7 @@ const SECTIONS: Partial<Record<TabId, Section[]>> = {
     { id: 'holders', label: 'Holders', icon: 'holders' },
     { id: 'bonfire', label: 'The Bonfire', icon: 'fire' },
     { id: 'wisdom', label: 'Wisdom', icon: 'philosophy' },
+    { id: 'token', label: 'Token', icon: 'lock' },
   ],
 }
 /* links from before the restructure still land in the right place */
@@ -92,7 +94,7 @@ function SubNav({ tab, active }: { tab: TabId; active: string }) {
 
 const SITEMAP: [string, string][] = [
   ['cozmling', 'Cozmling'], ['arcade', 'Arcade'], ['arcade/boards', 'Leaderboards'], ['arcade/prizes', 'Daily prizes'], ['arcade/card', 'Your card'],
-  ['community/holders', 'Holders'], ['community/bonfire', 'The Bonfire'], ['community/wisdom', 'Wisdom'], ['about', 'About'],
+  ['community/holders', 'Holders'], ['community/bonfire', 'The Bonfire'], ['community/wisdom', 'Wisdom'], ['community/token', 'Token'], ['about', 'About'],
 ]
 
 export function App() {
@@ -193,6 +195,7 @@ export function App() {
         )}
         {route.tab === 'community' && (
           route.sub === 'bonfire' ? <Bonfire onBurn={openBurn} />
+          : route.sub === 'token' ? <Token />
           : route.sub === 'wisdom' ? <Philosophy />
           : <Holders />
         )}
