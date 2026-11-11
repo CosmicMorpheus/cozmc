@@ -159,7 +159,7 @@ export function discordMessage(): string | null {
   const out = [`🏆 **Daily prizes · ${dayName(closed)} · ${featuredGame(closed).title}**`]
   if (!report.final.length) out.push('Nobody posted a run that day.')
   else {
-    out.push(`Final standings, paid shortly after <t:${Math.floor(payoutAt(closed) / 1000)}:F> following a one-day review:`)
+    out.push(`Final standings, paid from <t:${Math.floor(payoutAt(closed) / 1000)}:F> (it can take a few hours) after a one-day review:`)
     for (const s of report.final) out.push(`${MEDAL[s.rank - 1]} \`${short(s.player)}\` · ${num(s.score)} → **${num(s.prize)} COZMC**`)
   }
   if (report.paid.length) {
@@ -193,7 +193,7 @@ async function discordStep() {
   if (!isDiscordWebhook(WEBHOOK)) { say('\n⚠️ Discord: DISCORD_WINNERS_WEBHOOK is not a Discord webhook link, so nothing was posted.'); console.log('::warning::DISCORD_WINNERS_WEBHOOK is not a Discord webhook link'); return }
   try {
     if (DISCORD_TEST) {
-      await postToDiscord('🧪 Test from the COZMC daily prize job: this channel is connected. Daily results will be posted here automatically at 00:05 UTC.')
+      await postToDiscord('🧪 Test from the COZMC daily prize job: this channel is connected. Daily results will be posted here automatically each day, from 00:05 UTC.')
       say('\nDiscord: test message posted to #winners.')
       return
     }

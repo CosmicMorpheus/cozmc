@@ -59,7 +59,7 @@ export function Prizes() {
         <li><b>1. Play</b><span>Today’s prize game in Daily mode. It’s the same run for everyone, so it’s pure skill.</span></li>
         <li><b>2. Post</b><span>Connect a wallet and post your score (0.1 ALGO, which buys and burns COZMC). Post as often as you like; your best counts.</span></li>
         <li><b>3. Win</b><span>At 00:00 UTC the board closes. The top three win {DAILY_PRIZES.prizes.map(fmt).join(' / ')} COZMC.</span></li>
-        <li><b>4. Get paid</b><span>After a one-day review, prizes go to winners’ wallets automatically, shortly after 00:05 UTC.</span></li>
+        <li><b>4. Get paid</b><span>After a one-day review, prizes go to winners’ wallets automatically. Payouts start at 00:05 UTC and can take a few hours to arrive.</span></li>
       </ol>
 
       <section className="split">
@@ -150,12 +150,12 @@ function Pending({ winner, amount, me }: { winner: string; amount: number; me?: 
   if (optedIn === false && me === winner) return (
     <button className="btn btn--sm btn--gold" disabled={busy} onClick={async () => {
       setBusy(true)
-      try { await signAndSend(algodClient, signTransactions, [await buildOptInTxn(algodClient, winner)]); setOptedIn(true); toast('Opted in. Your prize goes out with the next daily payout, shortly after 00:05 UTC.'); setTimeout(() => reload('giveaway'), 2500) }
+      try { await signAndSend(algodClient, signTransactions, [await buildOptInTxn(algodClient, winner)]); setOptedIn(true); toast('Opted in. Your prize goes out with the next daily payout (from 00:05 UTC; it can take a few hours).'); setTimeout(() => reload('giveaway'), 2500) }
       catch (e) { toast(friendlyError(e, { cancelled: 'Signature cancelled.', lowAlgo: 'This wallet needs a little ALGO (about 0.1) to opt in.' })) }
       finally { setBusy(false) }
     }}>Opt in to get {fmt(amount)} COZMC</button>
   )
-  return <span className="muted small">{optedIn === false ? 'Waiting for the winner to opt in to COZMC' : `${fmt(amount)} COZMC · paid in the next daily run (shortly after 00:05 UTC)`}</span>
+  return <span className="muted small">{optedIn === false ? 'Waiting for the winner to opt in to COZMC' : `${fmt(amount)} COZMC · paid in the next daily run (from 00:05 UTC)`}</span>
 }
 
 function Rules() {
@@ -168,7 +168,7 @@ function Rules() {
         <li><b>One entry per wallet.</b> Each wallet’s best run of the day is its entry; posting more runs only helps if you beat your score. Ties go to whoever posted the score first. Using several wallets to take more than one place is against the rules and can be disqualified.</li>
         <li><b>Fair play.</b> Everyone gets the same seeded run each day. Scores that are impossible for the game (too high, or too fast for the time played) are left off automatically. Every day’s final standings are reviewed for a full day before payout; runs or wallets found cheating are disqualified, and the next player moves up. Each post costs 0.1 ALGO (it buys and burns COZMC), which keeps spam off the board.</li>
         <li><b>Who can win.</b> Anyone with an Algorand wallet, except the prize wallet ({short(DAILY_PRIZES.payer)}), the team’s wallets ({short(GIVEAWAY.payer)}) and pool or contract accounts.</li>
-        <li><b>Payouts are automatic.</b> Shortly after 00:05 UTC each day, the final standings of the day that just ended are announced, and the winners from the day before are paid from the prize wallet {short(DAILY_PRIZES.payer)}. If that run is ever delayed or missed, a backup run later that night picks it up; nothing is ever paid twice. Each payout is an on-chain transfer you can check from this page. To receive COZMC your wallet must be opted in to it; if it isn’t, the prize waits and is retried daily for {DAILY_PRIZES.claimDays} days.</li>
+        <li><b>Payouts are automatic.</b> Every day from 00:05 UTC, the final standings of the day that just ended are announced, and the winners from the day before are paid from the prize wallet {short(DAILY_PRIZES.payer)}. The run can take a few hours to start. If it’s ever missed, a backup run picks it up later the same day; nothing is ever paid twice. Each payout is an on-chain transfer you can check from this page. To receive COZMC your wallet must be opted in to it; if it isn’t, the prize waits and is retried daily for {DAILY_PRIZES.claimDays} days.</li>
         <li><b>Changes.</b> Prizes, games and rules can change; changes are announced on this page and in our Discord before they apply. Void where prohibited; it’s on you to check that taking part is allowed where you live.</li>
       </ul>
     </details>
