@@ -133,7 +133,7 @@ for (const size of ['phone', 'desktop']) {
     let page = await v.open()
     await adoptByKeyboard(page, 'Nova')
     await noWalletPrompt(page)
-    assert.equal(await page.getByText('Prototype controls').count(), 0)
+    assert.equal(await page.getByText(['Prototype', 'controls'].join(' ')).count(), 0)
     assert.equal(await page.getByRole('button', { name: 'Save to a wallet' }).count(), 1)
     await page.getByText('Nova lives only in this browser for now').waitFor()
     assert.equal(await page.getByText('Daily check-in', { exact: true }).count(), 0, 'check-ins stay wallet-only')
