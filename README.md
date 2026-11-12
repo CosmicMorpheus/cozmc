@@ -150,6 +150,7 @@ From **Monday 9 Nov 2026** the weekly giveaway is replaced by daily high-score p
 - **No double payments:** a run never pays the same prize twice. A winner who isn't opted in to COZMC is retried daily for `claimDays` (30).
 - **One-time setup:** fund the prize wallet with COZMC (about 63,000 a week) and a little ALGO. Save its 25-word recovery phrase as the repo secret `PRIZE_WALLET_MNEMONIC` (Settings → Secrets and variables → Actions).
 - **Check it by hand:** Actions → Daily prize payout → Run workflow, with "Dry run" ticked, shows who would be paid and sends nothing. A failed run (an empty wallet, a missing secret) turns red and GitHub emails you.
+- **The Discord post:** with the `DISCORD_WINNERS_WEBHOOK` secret set, each run posts the day's standings and the prizes it paid to #winners. If a prize that's due can't be sent (a missing or wrong secret, an empty prize wallet, a failed transaction), the post lists it under "Delayed: we're on it" every day until it's paid, with no technical details. A dry run prints the message a real run would post right now.
 
 **Disqualifying cheaters** during the review day (`DAILY_PRIZES` in `src/config.ts`), then push live before the payout:
 - `voidScores: { '<score txid>': 'reason' }` drops one run. That wallet's next-best run still counts.

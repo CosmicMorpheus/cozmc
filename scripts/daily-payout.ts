@@ -8,6 +8,8 @@
    - Never pays twice: a (day, rank) that already has a payout note from the
      prize wallet is skipped, so running it again is always safe.
    - A winner who hasn't opted in to COZMC is skipped and retried every day.
+   - A prize that is due but couldn't be sent (no key, the wrong key, an empty prize wallet, a failed
+     transaction) is recorded as delayed. The run still fails, and the #winners post says so.
 
    Environment:
      PRIZE_WALLET_MNEMONIC  the prize wallet's 25 words (a GitHub secret). Not needed for a dry run.
@@ -20,7 +22,8 @@
                             run posts the day that just ended and the prizes it paid. Optional.
      DISCORD_TEST=1         post one test message to that webhook (and nothing else to Discord).
      BACKUP_RUN=1           the 01:41 UTC backup run: it posts to Discord only if it paid something.
-   Dry runs and test-mode runs never post results to Discord; they print the message instead.
+   Dry runs and test-mode runs never post results to Discord; they print the message instead
+   (even with no webhook connected). A dry run shows what a real run would post right now.
    ============================================================ */
 import algosdk from 'algosdk'
 import { ALGOD, ASA_ID, DAILY_PRIZES, EXPLORER_TX, INDEXER, NOTE_DAILY_PRIZE } from '../src/config'
@@ -41,12 +44,19 @@ const WEBHOOK = (env.DISCORD_WINNERS_WEBHOOK || '').trim()
 const DISCORD_TEST = !!env.DISCORD_TEST && env.DISCORD_TEST !== '0' && env.DISCORD_TEST !== 'false'
 const BACKUP = !!env.BACKUP_RUN && env.BACKUP_RUN !== '0' && env.BACKUP_RUN !== 'false'
 
+/** Why a prize that was due wasn't paid, in words that are safe to post in public.
+    These two phrases are the only reasons the Discord post can ever show: no error text, no setting names. */
+const SETUP = 'a setup issue on our side', RETRY = 'being retried'
+type Reason = typeof SETUP | typeof RETRY
+type Prize = { day: number; rank: number; to: string; amount: number }
+
 /** What this run found and did, for the Discord post. */
 const report: {
   today?: number; closed?: number; final: Standing[]
-  paid: { day: number; rank: number; to: string; amount: number; txid: string }[]
-  waiting: { day: number; rank: number; to: string; amount: number }[]
-} = { final: [], paid: [], waiting: [] }
+  paid: (Prize & { txid: string })[]
+  waiting: Prize[]                          // the winner hasn't opted in to COZMC: theirs to fix
+  delayed: (Prize & { reason: Reason })[]   // due, the winner is ready, and we didn't pay it: ours to fix
+} = { final: [], paid: [], waiting: [], delayed: [] }
 
 const lines: string[] = []
 const say = (s = '') => { console.log(s); lines.push(s) }
@@ -93,11 +103,22 @@ async function main() {
   say(`# Daily prize payout · ${new Date(NOW).toISOString().slice(0, 16).replace('T', ' ')} UTC${BACKUP ? ' · backup run' : ''}${DRY ? ' · DRY RUN (nothing is sent)' : ''}${TEST ? ' · TEST MODE' : ''}`)
   if (today - 1 < PRIZE_START_DAY) { say(`The daily prizes start on ${DAILY_PRIZES.start}. Nothing to announce or pay yet.`); return }
 
-  // whose wallet pays
+  // whose wallet pays. A problem with the key doesn't stop the announcement: it's raised further down,
+  // once the prizes that are due are known, so the Discord post can say which ones are late.
   const words = (env.PRIZE_WALLET_MNEMONIC || '').trim()
-  const acct = words ? algosdk.mnemonicToSecretKey(words) : null
+  let acct: algosdk.Account | null = null
+  let keyError = ''          // why this run can't sign a payment ('' = it can)
+  let badKey = false         // a wrong or unreadable key fails the run even on a dry run or with nothing due
+  if (!words) keyError = 'PRIZE_WALLET_MNEMONIC is not set, so prizes that are due could not be paid. Add it under Settings → Secrets and variables → Actions.'
+  else {
+    try { acct = algosdk.mnemonicToSecretKey(words) }
+    catch { badKey = true; keyError = "PRIZE_WALLET_MNEMONIC could not be read: it should be the prize wallet's 25 words. Nothing was sent." }   // never echo the library's message or the words
+    if (acct && !TEST && acct.addr.toString() !== DAILY_PRIZES.payer) {
+      badKey = true; keyError = `PRIZE_WALLET_MNEMONIC is for ${short(acct.addr.toString())}, not the prize wallet ${short(DAILY_PRIZES.payer)}. Nothing was sent.`
+      acct = null
+    }
+  }
   const sender = acct ? acct.addr.toString() : DAILY_PRIZES.payer
-  if (!TEST && sender !== DAILY_PRIZES.payer) throw new Error(`PRIZE_WALLET_MNEMONIC is for ${short(sender)}, not the prize wallet ${short(DAILY_PRIZES.payer)}. Nothing was sent.`)
 
   const [rawScores, rawBurns] = await Promise.all([fetchScores(), fetchBurns()])
   const { scores } = joinScoresAndBurns(rawScores, rawBurns)
@@ -119,31 +140,43 @@ async function main() {
       if (!paid.has(`${day}:${w.rank}`)) due.push({ day, rank: w.rank, to: PAY_TO || w.player, amount: w.prize, game: featuredGame(day).id })
 
   say(`\n## Payouts due: ${due.length}`)
-  if (!due.length) { say('Everything due has been paid.'); return }
+  if (!due.length) { say('Everything due has been paid.'); if (badKey) throw new Error(keyError); return }
 
   const need = due.reduce((a, d) => a + d.amount, 0)
   const have = await holding(sender)
   say(`Prize wallet ${short(sender)} holds ${have ?? 'no (not opted in)'} of asset ${ASSET}; due now: ${need}.`)
-  if (!acct && !DRY) throw new Error('PRIZE_WALLET_MNEMONIC is not set, so prizes that are due could not be paid. Add it under Settings → Secrets and variables → Actions.')
-  if (have == null || have < need) {
-    if (!DRY) throw new Error(`The prize wallet needs ${need} but holds ${have ?? 0}. Top it up; nothing was sent.`)
-    say('⚠️ Not enough in the prize wallet for these payouts.')
-  }
+  // What stops this run from paying, if anything. Nothing is sent in that case (as before); the prizes
+  // are recorded as delayed so the Discord post can say so, and the run then fails with this message.
+  const low = have == null || have < need
+  const blocked = keyError || (low ? `The prize wallet needs ${need} but holds ${have ?? 0}. Top it up; nothing was sent.` : '')
+  if (DRY && low) say('⚠️ Not enough in the prize wallet for these payouts.')
+  if (DRY && blocked && !badKey) say(`⚠️ A real run right now would not pay these${keyError ? ': PRIZE_WALLET_MNEMONIC is not set' : ''}. They are shown as delayed below.`)
 
   const algod = new algosdk.Algodv2('', ALGOD_URL, '')
-  let failed = 0
-  for (const d of due) {
-    const label = `${dateOf(d.day)} #${d.rank} ${d.amount} → ${short(d.to)}`
-    if ((await holding(d.to)) == null) { say(`- ${label}: skipped, the winner hasn't opted in to COZMC yet (retried daily)`); report.waiting.push(d); continue }
-    if (DRY) { say(`- ${label}: would send`); continue }
-    try {
-      const txn = await buildDailyPrizeTxn(algod, sender, d.to, payoutNote(d.day, d.rank, d.game), d.amount, ASSET)
-      const { txid } = await algod.sendRawTransaction(txn.signTxn(acct!.sk)).do()
-      await algosdk.waitForConfirmation(algod, txid, 8)
-      say(`- ${label}: paid ${TEST ? txid : EXPLORER_TX(txid)}`)
-      report.paid.push({ ...d, txid })
-    } catch (e: any) { failed++; say(`- ${label}: FAILED ${String(e?.message ?? e).slice(0, 200)}`) }
+  let failed = 0, i = 0
+  try {
+    for (; i < due.length; i++) {
+      const d = due[i]
+      const label = `${dateOf(d.day)} #${d.rank} ${d.amount} → ${short(d.to)}`
+      // when the run can't pay anyway, a failed lookup here mustn't hide the delay: count the winner as ready
+      const optedIn = blocked ? await holding(d.to).then(h => h != null, () => true) : (await holding(d.to)) != null
+      if (!optedIn) { say(`- ${label}: skipped, the winner hasn't opted in to COZMC yet (retried daily)`); report.waiting.push(d); continue }
+      if (blocked) { say(`- ${label}: ${DRY ? 'would send, but a real run right now would leave it delayed' : 'not sent, delayed'}`); report.delayed.push({ ...d, reason: SETUP }); continue }
+      if (DRY) { say(`- ${label}: would send`); continue }
+      try {
+        const txn = await buildDailyPrizeTxn(algod, sender, d.to, payoutNote(d.day, d.rank, d.game), d.amount, ASSET)
+        const { txid } = await algod.sendRawTransaction(txn.signTxn(acct!.sk)).do()
+        await algosdk.waitForConfirmation(algod, txid, 8)
+        say(`- ${label}: paid ${TEST ? txid : EXPLORER_TX(txid)}`)
+        report.paid.push({ ...d, txid })
+      } catch (e: any) { failed++; say(`- ${label}: FAILED ${String(e?.message ?? e).slice(0, 200)}`); report.delayed.push({ ...d, reason: RETRY }) }
+    }
+  } catch (e) {
+    // the run stopped part-way (the network, say): whatever wasn't reached is late too
+    for (const d of due.slice(i)) report.delayed.push({ ...d, reason: RETRY })
+    throw e
   }
+  if (blocked && (!DRY || badKey)) throw new Error(blocked)
   if (failed) throw new Error(`${failed} payout(s) failed; they'll be retried on the next run.`)
 }
 
@@ -152,28 +185,44 @@ const MEDAL = ['🥇', '🥈', '🥉']
 const num = (n: number) => n.toLocaleString('en-US')
 const dayName = (day: number, style: 'long' | 'short' = 'long') => new Date(day * 86_400_000).toLocaleDateString('en-US', { weekday: style, month: 'short', day: 'numeric', timeZone: 'UTC' })
 
-/** The post for #winners: the day that just ended, the prizes this run paid, and today's game. Public facts only. */
+const LIMIT = 1900      // Discord's limit is 2,000 characters
+
+/** The post for #winners: the day that just ended, the prizes this run paid, any that are late, and today's game. Public facts only. */
 export function discordMessage(): string | null {
-  const { closed, today } = report
+  const { closed, today, delayed } = report
   if (closed == null || today == null) return null
-  const out = [`🏆 **Daily prizes · ${dayName(closed)} · ${featuredGame(closed).title}**`]
-  if (!report.final.length) out.push('Nobody posted a run that day.')
+  const prize = (p: Prize) => `${MEDAL[p.rank - 1]} ${dayName(p.day, 'short')} · \`${short(p.to)}\` · ${num(p.amount)} COZMC`
+  const head = [`🏆 **Daily prizes · ${dayName(closed)} · ${featuredGame(closed).title}**`]
+  if (!report.final.length) head.push('Nobody posted a run that day.')
   else {
-    out.push(`Final standings, paid from <t:${Math.floor(payoutAt(closed) / 1000)}:F> (it can take a few hours) after a one-day review:`)
-    for (const s of report.final) out.push(`${MEDAL[s.rank - 1]} \`${short(s.player)}\` · ${num(s.score)} → **${num(s.prize)} COZMC**`)
+    const due = `<t:${Math.floor(payoutAt(closed) / 1000)}:F>`
+    // don't repeat the usual promise while something on our side is holding every payout up
+    head.push(delayed.some(d => d.reason === SETUP)
+      ? `Final standings. These are due from ${due} after a one-day review, but payouts are running late right now (see below):`
+      : `Final standings, paid from ${due} (it can take a few hours) after a one-day review:`)
+    for (const s of report.final) head.push(`${MEDAL[s.rank - 1]} \`${short(s.player)}\` · ${num(s.score)} → **${num(s.prize)} COZMC**`)
   }
-  if (report.paid.length) {
-    out.push('', '💸 **Paid just now**')
-    for (const p of report.paid) out.push(`${MEDAL[p.rank - 1]} ${dayName(p.day, 'short')} · \`${short(p.to)}\` · ${num(p.amount)} COZMC · <${EXPLORER_TX(p.txid)}>`)
+  const paid = report.paid.length ? ['', '💸 **Paid just now**', ...report.paid.map(p => `${prize(p)} · <${EXPLORER_TX(p.txid)}>`)] : []
+  // ours to fix. Kept apart from "waiting", which is the winner's to fix
+  const late = (shown: number) => {
+    if (!delayed.length) return []
+    const one = delayed.every(d => d.reason === delayed[0].reason) ? delayed[0].reason : null, more = delayed.slice(shown)
+    return ['', `⏳ **Delayed: we're on it**${one ? ` (${one})` : ''}`,
+      ...delayed.slice(0, shown).map(d => prize(d) + (one ? '' : ` · ${d.reason}`)),
+      ...(more.length ? [`+${more.length} more · ${num(more.reduce((a, d) => a + d.amount, 0))} COZMC`] : []),
+      `${one === RETRY ? 'These are retried automatically on every run.' : "These will be paid automatically as soon as it's fixed."} Nothing is lost. We never DM winners.`]
   }
-  if (report.waiting.length) {
-    out.push('', `⏳ **Waiting to be paid:** opt in to COZMC (ASA ${ASA_ID}) to receive it. It's retried every day.`)
-    for (const w of report.waiting) out.push(`${MEDAL[w.rank - 1]} ${dayName(w.day, 'short')} · \`${short(w.to)}\` · ${num(w.amount)} COZMC`)
-  }
+  const waiting = report.waiting.length ? ['', `⏳ **Waiting to be paid:** opt in to COZMC (ASA ${ASA_ID}) to receive it. It's retried every day.`, ...report.waiting.map(prize)] : []
   const g = featuredGame(today)
-  out.push('', `🎮 Today's prize game: **${g.title}** · <https://cozmc.us/#/arcade/${g.id}/daily>`, '📋 Full board, rules and every payout: <https://cozmc.us/#/arcade/prizes>')
-  const text = out.join('\n')
-  return text.length > 1900 ? text.slice(0, 1890) + '\n…' : text      // Discord's limit is 2,000 characters
+  const foot = ['', `🎮 Today's prize game: **${g.title}** · <https://cozmc.us/#/arcade/${g.id}/daily>`, '📋 Full board, rules and every payout: <https://cozmc.us/#/arcade/prizes>']
+  // a long delayed list is cut to fit, with "+N more"; at least one line always shows
+  let shown = delayed.length, text = ''
+  for (;;) {
+    text = [...head, ...paid, ...late(shown), ...waiting, ...foot].join('\n')
+    if (text.length <= LIMIT || shown <= 1) break
+    shown--
+  }
+  return text.length > LIMIT ? text.slice(0, LIMIT - 10) + '\n…' : text
 }
 
 /** Discord webhooks only: never post this run's results anywhere else. */
@@ -189,8 +238,9 @@ async function postToDiscord(content: string) {
 }
 
 async function discordStep() {
-  if (!WEBHOOK) { say('\nDiscord: not connected (no DISCORD_WINNERS_WEBHOOK secret), so nothing was posted.'); return }
-  if (!isDiscordWebhook(WEBHOOK)) { say('\n⚠️ Discord: DISCORD_WINNERS_WEBHOOK is not a Discord webhook link, so nothing was posted.'); console.log('::warning::DISCORD_WINNERS_WEBHOOK is not a Discord webhook link'); return }
+  const preview = (DRY || TEST) && !DISCORD_TEST      // nothing is posted: the message is printed, webhook or not
+  if (!WEBHOOK) { if (!preview) { say('\nDiscord: not connected (no DISCORD_WINNERS_WEBHOOK secret), so nothing was posted.'); return } }
+  else if (!isDiscordWebhook(WEBHOOK)) { say('\n⚠️ Discord: DISCORD_WINNERS_WEBHOOK is not a Discord webhook link, so nothing was posted.'); console.log('::warning::DISCORD_WINNERS_WEBHOOK is not a Discord webhook link'); if (!preview) return }
   try {
     if (DISCORD_TEST) {
       await postToDiscord('🧪 Test from the COZMC daily prize job: this channel is connected. Daily results will be posted here automatically each day, from 00:05 UTC.')
@@ -199,8 +249,9 @@ async function discordStep() {
     }
     const msg = discordMessage()
     if (!msg) { say('\nDiscord: nothing to announce yet.'); return }
+    // the backup run only speaks when it paid something, which includes a prize an earlier run left delayed
     if (BACKUP && !report.paid.length) { say('\nDiscord: backup run with nothing new, so nothing was posted (the 00:05 run already did).'); return }
-    if (DRY || TEST) { say(`\nDiscord message (not posted: ${DRY ? 'dry run' : 'test mode'}):\n\n${msg}`); return }
+    if (preview) { say(`\nDiscord message (not posted: ${DRY ? 'dry run' : 'test mode'}):\n\n${msg}`); return }
     await postToDiscord(msg)
     say('\nDiscord: results posted to #winners.')
   } catch (e: any) {
