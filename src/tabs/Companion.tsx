@@ -3,7 +3,7 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { Room, ART } from '../companion/room'
 import { BODIES, DEFAULT_LOOK, drawBulbGlow, drawCozmling, EYES, GLOWS, STAGE_NAME, STAGES, type Form, type Look, type Stage } from '../companion/look'
 import { CH, CW, homeThumb, THUMB_H, THUMB_W } from '../companion/scene'
-import { adopt, ageText, clamp, growth, cleanName, clearUnclaimed, FOODS, feed, fromNote, HOMES, load, loadUnclaimed, mood, pat, play, restore, save, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
+import { adopt, ageText, claimFor, clamp, clearGuest, growth, cleanName, FOODS, feed, fromNote, guestKept, HOMES, load, loadGuest, mood, pat, play, restore, save, saveGuest, settle, stageOf, toggleSleep, toNote, utcDay, type HomeId, type Outcome, type Pet } from '../companion/care'
 import { buildPetTxn, fetchPetNote, signSendConfirm } from '../lib/chain'
 import { friendlyError } from '../lib/errors'
 import { useChain } from '../lib/data'
@@ -18,10 +18,25 @@ const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
 const errText = (e: unknown) => friendlyError(e, { cancelled: 'Signature cancelled. Nothing was saved.', lowAlgo: 'This wallet needs a little ALGO for the 0.001 ALGO network fee.' })
 type Busy = '' | 'sign' | 'send'
 
-/** A Cozmling belongs to a wallet: connect one to adopt, or to bring yours back. */
+/** A Cozmling starts as a guest in this browser, no wallet needed. Connect a wallet to save it there, or to bring yours back. */
 export function Companion() {
   const { activeAddress } = useWallet()
-  return activeAddress ? <Owned key={activeAddress} owner={activeAddress} /> : <Gate />
+  return activeAddress ? <Owned key={activeAddress} owner={activeAddress} /> : <Guest />
+}
+
+/** No wallet: adopt and care for a guest Cozmling kept in this browser, and nowhere else. */
+function Guest() {
+  const { openConnect } = useMe()
+  const [pet, setPet] = useState<Pet | null>(() => { const p = loadGuest(); return p ? settle(p) : null })
+  const [editing, setEditing] = useState(false)
+  const [kept] = useState(guestKept)
+  useEffect(() => { if (pet) saveGuest(pet); else clearGuest() }, [pet])
+  // needs tick down in real time
+  useEffect(() => { const t = setInterval(() => setPet(p => p && settle(p)), 4000); return () => clearInterval(t) }, [])
+
+  if (!pet) return <Adopt guest busy="" onConnect={openConnect} onDone={(name, look, home) => setPet(adopt(name, look, home))} />
+  if (editing) return <Adopt guest pet={pet} busy="" onCancel={() => setEditing(false)} onDone={(name, look, home) => { setPet({ ...settle(pet), name, look, home }); setEditing(false) }} />
+  return <Habitat pet={pet} setPet={setPet} greeting="" onEdit={() => setEditing(true)} onStartOver={() => setPet(null)} guest={{ kept, onSave: openConnect }} />
 }
 
 function Owned({ owner }: { owner: string }) {
@@ -33,6 +48,8 @@ function Owned({ owner }: { owner: string }) {
   const [busy, setBusy] = useState<Busy>('')
   const [greeting, setGreeting] = useState('')
   const startingOver = useRef(false)
+  const [guest, setGuest] = useState<Pet | null>(loadGuest)   // a guest Cozmling adopted here before this wallet connected
+  const [later, setLater] = useState(false)
   const { pets: notes, reload } = useChain()
   const [checkedToday, setCheckedToday] = useState<number[]>([])   // check-ins the indexer may not show yet
   const current = useRef(pet)
@@ -90,16 +107,27 @@ function Owned({ owner }: { owner: string }) {
 
   if (!pet && find === 'looking') return <><Head /><Loading what="your Cozmling" /></>
   if (!pet && find === 'error') return <><Head /><Failed what="your Cozmling" retry={lookUp} /></>
+  // a guest meets this wallet: save it here, or, if the wallet already has a Cozmling, ask which to keep
+  const claim = startingOver.current || later ? 'none' : claimFor(guest, !!pet)
   if (!pet) {
-    const unclaimed = startingOver.current ? null : loadUnclaimed()
+    const unclaimed = claim === 'save' ? guest : null
     return <Adopt claim={unclaimed} busy={busy} onDone={async (name, look, home) => {
       const p = await write(unclaimed ? { ...settle(unclaimed), name, look, home } : adopt(name, look, home))
       if (!p) return
-      if (unclaimed) clearUnclaimed()
+      if (unclaimed) { clearGuest(); setGuest(null) }
       startingOver.current = false
       setPet(p)
     }} />
   }
+  if (claim === 'choose' && guest) return <Choose mine={settle(pet)} guest={settle(guest)} busy={busy}
+    onKeepMine={() => { clearGuest(); setGuest(null) }}
+    onKeepGuest={async () => {
+      const p = await write(settle(guest))
+      if (!p) return
+      clearGuest(); setGuest(null); setPet(p)
+      toast(`${p.name} is saved to your wallet.`)
+    }}
+    onLater={() => setLater(true)} />
   if (editing) return <Adopt pet={pet} busy={busy} onCancel={() => setEditing(false)} onDone={async (name, look, home) => {
     const p = await write({ ...settle(pet), name, look, home })
     if (p) { setPet(p); setEditing(false); toast('Saved to your wallet.') }
@@ -117,30 +145,45 @@ function Head() {
   )
 }
 
-function Gate() {
-  const { openConnect } = useMe()
-  const [form, setForm] = useState<Form>('boy')
-  useEffect(() => { const t = setInterval(() => setForm(f => (f === 'boy' ? 'girl' : 'boy')), 4800); return () => clearInterval(t) }, [])
+/* A guest and a wallet Cozmling, side by side: the visitor picks one. Nothing is replaced until they do. */
+function Choose({ mine, guest, busy, onKeepMine, onKeepGuest, onLater }: { mine: Pet; guest: Pet; busy: Busy; onKeepMine: () => void; onKeepGuest: () => void; onLater: () => void }) {
   return (
     <>
-      <Head />
-      <section className="cz">
-        <div className="cz__stage"><Preview look={DEFAULT_LOOK[form]} home="loft" /></div>
-        <div className="panel cz-gate">
-          <h2>Adopt one, free</h2>
-          <p>Connect a wallet to adopt your Cozmling, or to find the one you already have. It’s saved to your wallet on Algorand, so it comes back on any device, even if this browser forgets it.</p>
-          <button className="btn btn--phos" onClick={openConnect}>Connect a wallet</button>
-          <p className="cz__fine">Adopting signs one short note from your wallet to itself. The only cost is the 0.001 ALGO network fee, and you don’t need any COZMC.</p>
+      <header className="page-head">
+        <h1>Which one stays?</h1>
+        <p>This wallet already has a Cozmling, {mine.name}, and this browser has a guest, {guest.name}. A wallet holds one Cozmling, so choose which to keep. Nothing changes until you do.</p>
+      </header>
+      <section className="cz-pick">
+        <div className="panel cz-pick__one">
+          <p className="kicker">In your wallet</p>
+          <Mini look={mine.look} stage={stageOf(mine)} />
+          <h2>{mine.name}</h2>
+          <p className="cz-pick__facts">{STAGE_NAME[stageOf(mine)]} · {ageText(mine)} · {growth(mine).points} growth points</p>
+          <HoldButton onDone={onKeepMine} disabled={!!busy}>Hold to keep {mine.name}</HoldButton>
+          <p className="cz__fine">{mine.name} stays as it is. {guest.name}, the guest, is removed from this browser for good.</p>
+        </div>
+        <div className="panel cz-pick__one">
+          <p className="kicker">Guest, in this browser</p>
+          <Mini look={guest.look} stage={stageOf(guest)} />
+          <h2>{guest.name}</h2>
+          <p className="cz-pick__facts">{STAGE_NAME[stageOf(guest)]} · {ageText(guest)} · {growth(guest).points} growth points</p>
+          <button className="btn btn--phos" onClick={onKeepGuest} disabled={!!busy}>
+            {busy === 'sign' ? 'Approve in your wallet…' : busy === 'send' ? 'Saving to Algorand…' : `Keep ${guest.name}`}
+          </button>
+          <p className="cz__fine">{guest.name} is saved to this wallet and replaces {mine.name} there for good. You sign one short note (0.001 ALGO network fee).</p>
         </div>
       </section>
+      <p className="cz-pick__later"><button className="btn btn--ghost" onClick={onLater} disabled={!!busy}>Decide later</button> <span className="cz__fine">Both stay as they are, and you’ll be asked again next visit.</span></p>
     </>
   )
 }
 
 /* ---------------- the room ---------------- */
 interface CheckinProps { days: number[]; busy: Busy; onCheckIn: () => Promise<boolean> }
+/** A guest Cozmling: is this browser keeping it after the visit, and the way to save it to a wallet. */
+interface GuestProps { kept: boolean; onSave: () => void }
 
-function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin, onBackup }: { pet: Pet; setPet: (p: Pet) => void; greeting: string; onEdit: () => void; onStartOver: () => void; checkin: CheckinProps; onBackup: () => void }) {
+function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin, onBackup, guest }: { pet: Pet; setPet: (p: Pet) => void; greeting: string; onEdit: () => void; onStartOver: () => void; checkin?: CheckinProps; onBackup?: () => void; guest?: GuestProps }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const room = useRef<Room | null>(null)
   const live = useRef({ pet, crack: 0 })
@@ -243,6 +286,17 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin, onBackup
         </div>
 
         <aside className="cz__side">
+          {guest && (
+            <div className="panel cz-guest">
+              <header className="panel__head"><h2>A guest Cozmling</h2></header>
+              <p>{guest.kept
+                ? <>{pet.name} lives only in this browser for now. If its data is cleared, or this is a private window that gets closed, {pet.name} goes with it.</>
+                : <>This browser isn’t storing anything, as some private windows don’t, so {pet.name} will only last for this visit.</>}</p>
+              <button className="btn btn--phos" onClick={guest.onSave}>Save to a wallet</button>
+              <p className="cz__fine">Saving keeps {pet.name} safe and brings them back on any device. It costs only the 0.001 ALGO network fee. Daily check-ins need a wallet too.</p>
+            </div>
+          )}
+
           <div className="panel cz__needs">
             <p className={`cz__mood cz__mood--${m.mood}`}>{m.line}</p>
             <Need label="Food" value={now.food} kind="food" dim={!now.hatched} />
@@ -253,7 +307,7 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin, onBackup
 
           {now.hatched && <Growth pet={now} />}
 
-          {now.hatched && <CheckIn name={pet.name} {...checkin} onCheckIn={async () => {
+          {now.hatched && checkin && <CheckIn name={pet.name} {...checkin} onCheckIn={async () => {
             if (await checkin.onCheckIn()) { room.current?.pat(); setSay(`Checked in! ${pet.name} is so happy to see you.`) }
           }} />}
 
@@ -272,16 +326,20 @@ function Habitat({ pet, setPet, greeting, onEdit, onStartOver, checkin, onBackup
               <div><dt>Arcade runs</dt><dd>{pet.arcade ?? 0}</dd></div>
               <div><dt>Pats</dt><dd>{pet.pets}</dd></div>
             </dl>
-            <p className="cz__saved">{pet.txid
-              ? <>Saved to your wallet, so {pet.name} can always come back, asleep or awake. <a href={EXPLORER_TX(pet.txid)} target="_blank" rel="noopener">See the note ↗</a></>
-              : <>Not saved to your wallet yet.</>}</p>
-            <button className="btn btn--ghost btn--sm" onClick={onBackup} disabled={!!checkin.busy}>{checkin.busy ? 'Saving…' : 'Back up now'}</button>
-            <p className="cz__fine">Each daily check-in backs {pet.name} up too. Backing up signs a short note from your wallet to itself (0.001 ALGO network fee).</p>
+            {guest ? <p className="cz__saved">Kept in this browser only, not in a wallet.</p> : checkin && onBackup && (
+              <>
+                <p className="cz__saved">{pet.txid
+                  ? <>Saved to your wallet, so {pet.name} can always come back, asleep or awake. <a href={EXPLORER_TX(pet.txid)} target="_blank" rel="noopener">See the note ↗</a></>
+                  : <>Not saved to your wallet yet.</>}</p>
+                <button className="btn btn--ghost btn--sm" onClick={onBackup} disabled={!!checkin.busy}>{checkin.busy ? 'Saving…' : 'Back up now'}</button>
+                <p className="cz__fine">Each daily check-in backs {pet.name} up too. Backing up signs a short note from your wallet to itself (0.001 ALGO network fee).</p>
+              </>
+            )}
           </div>
         </aside>
       </section>
 
-      <Prototype pet={now} setPet={setPet} onStartOver={onStartOver} />
+      <Settings name={pet.name} guest={!!guest} onStartOver={onStartOver} />
     </>
   )
 }
@@ -348,32 +406,27 @@ function HomeThumb({ id }: { id: HomeId }) {
   return <canvas ref={ref} width={THUMB_W} height={THUMB_H} aria-hidden="true" />
 }
 
-/* Phase 1 is a prototype for sign-off: these controls let you see every stage and fast-forward time. */
-function Prototype({ pet, setPet, onStartOver }: { pet: Pet; setPet: (p: Pet) => void; onStartOver: () => void }) {
-  const show = (s: Stage) => {
-    if (s === 'egg') setPet({ ...pet, hatched: null, preview: undefined })
-    else setPet({ ...pet, hatched: pet.hatched ?? Date.now(), at: Date.now(), preview: s === growth({ ...pet, preview: undefined }).stage ? undefined : s })
-  }
-  const skip = (hours: number) => {
-    const later = settle(pet, Date.now() + hours * 3_600_000)
-    setPet({ ...later, at: Date.now(), asleep: later.asleep ? Date.now() : null })
-  }
+/* Tucked away under the room: starting over, behind a quiet link and a hold-to-confirm button. */
+function Settings({ name, guest, onStartOver }: { name: string; guest: boolean; onStartOver: () => void }) {
+  const [open, setOpen] = useState(false)
   return (
-    <section className="panel cz-proto" aria-labelledby="cz-proto-h">
-      <header className="panel__head"><h2 id="cz-proto-h">Prototype controls</h2></header>
-      <p className="muted small">{pet.name} now grows from arcade runs, check-ins and care. These buttons preview the other stages; pick {STAGE_NAME[growth(pet).stage]} to go back to the real one. Starting over lets you adopt a new Cozmling, which replaces this one in your wallet.</p>
-      <div className="chips">{STAGES.map(s => <button key={s} className={`chip${stageOf(pet) === s ? ' on' : ''}`} onClick={() => show(s)}>{STAGE_NAME[s]}</button>)}</div>
-      <div className="row">
-        <button className="btn btn--ghost btn--sm" onClick={() => skip(6)} disabled={!pet.hatched}>Skip 6 hours</button>
-        <button className="btn btn--ghost btn--sm" onClick={() => skip(24)} disabled={!pet.hatched}>Skip a day</button>
-        <HoldButton onDone={onStartOver}>Hold to start over</HoldButton>
-      </div>
+    <section className="cz-set">
+      <button className="cz-set__link" aria-expanded={open} aria-controls="cz-set-panel" onClick={() => setOpen(v => !v)}>Settings</button>
+      {open && (
+        <div className="panel cz-set__panel" id="cz-set-panel">
+          <header className="panel__head"><h2>Start over</h2></header>
+          <p className="muted small">{guest
+            ? <>Starting over lets {name} go and takes you back to adopt a new Cozmling. {name} only lives in this browser, so this can’t be undone.</>
+            : <>Starting over lets you adopt a new Cozmling, which replaces {name} in your wallet.</>}</p>
+          <HoldButton onDone={onStartOver}>Hold to start over</HoldButton>
+        </div>
+      )}
     </section>
   )
 }
 
 /* ---------------- adopting (and changing the look later) ---------------- */
-function Adopt({ pet, claim, busy, onDone, onCancel }: { pet?: Pet; claim?: Pet | null; busy: Busy; onDone: (name: string, look: Look, home: HomeId) => void; onCancel?: () => void }) {
+function Adopt({ pet, claim, guest, busy, onDone, onCancel, onConnect }: { pet?: Pet; claim?: Pet | null; guest?: boolean; busy: Busy; onDone: (name: string, look: Look, home: HomeId) => void; onCancel?: () => void; onConnect?: () => void }) {
   const from = pet ?? claim
   const [look, setLook] = useState<Look>(from?.look ?? DEFAULT_LOOK.boy)
   const [name, setName] = useState(from?.name ?? pick(NAMES.boy))
@@ -393,6 +446,7 @@ function Adopt({ pet, claim, busy, onDone, onCancel }: { pet?: Pet; claim?: Pet 
         <h1>{pet ? `${pet.name}’s look` : claim ? `Save ${claim.name}` : 'Adopt a Cozmling'}</h1>
         <p>{pet ? 'Change the colours, the name or the home. It stays the same Cozmling.'
           : claim ? `Right now ${claim.name} only lives in this browser. Save your Cozmling to your wallet so it can never get lost.`
+          : guest ? 'A little alien that lives on the site. Feed it, play with it and put it to bed, and it grows from a Star Egg into a Guardian. It’s free, and you don’t need a wallet.'
           : 'A little alien that lives on the site. Feed it, play with it and put it to bed, and it grows from a Star Egg into a Guardian.'}</p>
       </header>
       <section className="cz cz--adopt">
@@ -438,9 +492,13 @@ function Adopt({ pet, claim, busy, onDone, onCancel }: { pet?: Pet; claim?: Pet 
             </button>
             {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={!!busy}>Cancel</button>}
           </div>
-          <p className="cz__fine">{pet
-            ? 'Saving signs a new note from your wallet to itself (0.001 ALGO network fee). The newest note is the one that counts.'
+          <p className="cz__fine">{guest
+            ? pet ? 'Changes are kept in this browser.'
+              : 'Adopting is free and needs no wallet. Your Cozmling lives in this browser, and you can save it to a wallet whenever you like.'
+            : pet ? 'Saving signs a new note from your wallet to itself (0.001 ALGO network fee). The newest note is the one that counts.'
+            : claim ? `Saving is free. You sign one short note from your wallet to itself, so ${claim.name} is saved on Algorand and comes back on any device. The only cost is the 0.001 ALGO network fee. Not ready? Disconnect your wallet and ${claim.name} stays here as a guest.`
             : 'Adopting is free. You sign one short note from your wallet to itself, so your Cozmling is saved on Algorand and comes back on any device. The only cost is the 0.001 ALGO network fee.'}</p>
+          {onConnect && <p className="cz__fine">Already have a Cozmling in a wallet? <button type="button" className="cz-set__link" onClick={onConnect}>Connect it to bring yours back</button></p>}
         </form>
       </section>
     </>
@@ -488,12 +546,12 @@ function Preview({ look, home }: { look: Look; home: HomeId }) {
 }
 
 /** A small still of the Cozmling, for the boy/girl buttons. */
-function Mini({ look }: { look: Look }) {
+function Mini({ look, stage = 'cadet' }: { look: Look; stage?: Stage }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const c = ref.current!, ctx = c.getContext('2d')!
     ctx.clearRect(0, 0, 48, 52)
-    drawBulbGlow(ctx, drawCozmling(ctx, 24, 50, look, 'cadet', 'happy', 0.63), 0.63)
-  }, [look])
+    drawBulbGlow(ctx, drawCozmling(ctx, 24, 50, look, stage, 'happy', 0.63), 0.63)
+  }, [look, stage])
   return <canvas ref={ref} width={48} height={52} aria-hidden="true" />
 }

@@ -1096,13 +1096,25 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 .cz__saved { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--mist); font-size: 13px; text-wrap: pretty }
 .cz__saved a { color: var(--phos); white-space: nowrap }
 .cz__saved + .btn { margin-top: 10px }
-.cz-gate { display: grid; gap: 14px; align-content: start; justify-items: start }
-.cz-gate h2 { font: 800 1.7rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase }
-.cz-gate p:not(.cz__fine) { color: var(--mist); text-wrap: pretty }
+.cz-guest { display: grid; gap: 12px; justify-items: start; border-color: var(--phos) }
+.cz-guest > p:not(.cz__fine) { color: var(--mist); text-wrap: pretty }
+.cz-guest .cz__fine { margin-top: 0 }
 
-.cz-proto { margin-top: 32px; border-style: dashed }
-.cz-proto .row { margin-top: 6px }
-.cz-proto .btn--hold { width: auto; height: 36px; padding: 0 14px; font-size: 11px; box-shadow: 3px 3px 0 var(--sh) }
+.cz-set { margin-top: 28px; display: grid; gap: 12px; justify-items: start }
+.cz-set__link { min-height: 32px; padding: 0; border: 0; background: none; color: var(--dim); font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer }
+.cz-set__link:hover, .cz-set__link:focus-visible { color: var(--text) }
+.cz-set__panel { display: grid; gap: 10px; justify-items: start; max-width: 520px; border-style: dashed }
+.cz-set__panel .btn--hold { width: auto; height: 36px; padding: 0 14px; font-size: 11px; box-shadow: 3px 3px 0 var(--sh) }
+
+.cz-pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px }
+.cz-pick__one { display: grid; gap: 10px; justify-items: start; align-content: start }
+.cz-pick__one canvas { width: 96px; height: 104px; image-rendering: pixelated }
+.cz-pick__one h2 { font: 800 1.7rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase; overflow-wrap: anywhere }
+.cz-pick__facts { color: var(--mist); font-size: 14px }
+.cz-pick__one .btn, .cz-pick__one .btn--hold { width: 100%; height: 48px; font-size: 12px }
+.cz-pick__one .cz__fine { margin-top: 0 }
+.cz-pick__later { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px }
+.cz-pick__later .cz__fine { margin-top: 0 }
 
 .cz-form { display: grid; gap: 18px }
 .cz-form fieldset { border: 0; min-width: 0 }
