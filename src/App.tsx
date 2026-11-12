@@ -18,6 +18,7 @@ import { ASA_ID, HAYSTACK_INVITE } from './config'
 import { GAMES } from './arcade/games'
 import { unlock } from './lib/profile'
 import { sfx } from './arcade/sfx'
+import { COZMLING_DEV, CozmlingProvider } from './cozmling'
 
 const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a']
 
@@ -34,6 +35,8 @@ const Philosophy = lazy(() => import('./tabs/Philosophy').then(m => ({ default: 
 const Bonfire = lazy(() => import('./tabs/Bonfire').then(m => ({ default: m.Bonfire })))
 const Token = lazy(() => import('./tabs/Token').then(m => ({ default: m.Token })))
 const About = lazy(() => import('./tabs/About').then(m => ({ default: m.About })))
+// only in local work and on the preview site, and only when the rebuilt Cozmling is switched on
+const CozmlingDev = COZMLING_DEV ? lazy(() => import('./cozmling/dev/DevPanel').then(m => ({ default: m.DevPanel }))) : null
 
 export type TabId = 'home' | 'cozmling' | 'arcade' | 'community' | 'about'
 type IconName = keyof typeof ICONS
@@ -144,7 +147,7 @@ export function App() {
   }, [])
 
   return (
-    <>
+    <CozmlingProvider>
       <Starfield />
       <a className="skip" href="#main">Skip to content</a>
       {previewAsOf != null && (
@@ -184,7 +187,7 @@ export function App() {
         <SubNav tab={route.tab} active={pageOf(route.tab, route.sub)} />
         <div className="page" key={`${route.tab}/${pageOf(route.tab, route.sub)}`}>
         {route.tab === 'home' && <Home go={go} onBurn={openBurn} />}
-        {route.tab === 'cozmling' && <Companion />}
+        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev /> : <Companion />)}
         {route.tab === 'arcade' && (
           route.sub === 'boards' ? <Leaderboard go={go} onBurn={openBurn} />
           : route.sub === 'giveaway' ? <Giveaway go={go} />
@@ -225,6 +228,6 @@ export function App() {
       <BurnModal open={burnOpen} onClose={() => setBurnOpen(false)} />
       <MusicButton />
       <Unlocks />
-    </>
+    </CozmlingProvider>
   )
 }

@@ -1,0 +1,196 @@
+{
+  "generatedFrom": "care.toNote/fromNote/restore @ e407bdb",
+  "clockMs": 1794506400000,
+  "howToUse": "Mock indexer transactions (0-ALGO self-payments). note bytes = utf8(\"cozmc:pet:v1:\" + JSON.stringify(noteJson)), base64 in indexer responses. For the >100-notes test, generate 120 copies of note-full with rising rounds; the highest round must win.",
+  "notes": [
+    {
+      "id": "note-full",
+      "sender": "MFKCIOF3RA4LJDZ7GTXZT3EYCLTLSYUZRMX6UMEQCPYUWGKGWX2WTQQTJE",
+      "receiver": "MFKCIOF3RA4LJDZ7GTXZT3EYCLTLSYUZRMX6UMEQCPYUWGKGWX2WTQQTJE",
+      "amount": 0,
+      "confirmedRound": 55000000,
+      "roundTime": 1794420000,
+      "notePrefix": "cozmc:pet:v1:",
+      "noteJson": {
+        "n": "Comet",
+        "f": "b",
+        "b": 1,
+        "g": 4,
+        "e": 2,
+        "h": "m",
+        "s": 1792778400,
+        "m": 40,
+        "p": 30,
+        "t": 50,
+        "a": 20,
+        "x": 10,
+        "c": 5,
+        "k": [
+          70,
+          60,
+          80
+        ],
+        "u": 1794499200,
+        "z": 0
+      },
+      "expect": {
+        "parses": true,
+        "name": "Comet",
+        "hasState": true,
+        "restoredStage": "cadet",
+        "restoredHatched": true
+      },
+      "notes": "Full v1 note with needs (k), settle time (u) and sleep (z). Note: no hatch flag, so an EGG restored from a note comes back hatched (known defect)."
+    },
+    {
+      "id": "note-checkin",
+      "sender": "MFKCIOF3RA4LJDZ7GTXZT3EYCLTLSYUZRMX6UMEQCPYUWGKGWX2WTQQTJE",
+      "receiver": "MFKCIOF3RA4LJDZ7GTXZT3EYCLTLSYUZRMX6UMEQCPYUWGKGWX2WTQQTJE",
+      "amount": 0,
+      "confirmedRound": 55000100,
+      "roundTime": 1794506400,
+      "notePrefix": "cozmc:pet:v1:",
+      "noteJson": {
+        "n": "Comet",
+        "f": "b",
+        "b": 1,
+        "g": 4,
+        "e": 2,
+        "h": "m",
+        "s": 1792778400,
+        "m": 40,
+        "p": 30,
+        "t": 50,
+        "a": 20,
+        "x": 10,
+        "c": 5,
+        "k": [
+          70,
+          60,
+          80
+        ],
+        "u": 1794499200,
+        "z": 0,
+        "d": 20769
+      },
+      "expect": {
+        "parses": true,
+        "name": "Comet",
+        "hasState": true,
+        "restoredStage": "cadet",
+        "restoredHatched": true
+      },
+      "notes": "Check-in note: has the day field \"d\". Past giveaway draws count these; readers must keep working."
+    },
+    {
+      "id": "note-old-no-state",
+      "sender": "FVTVRIS2PJ57SZHC3PXA23TWSF2L4IJLY5JKJGYXD7STJUXIMLWFY4WNGE",
+      "receiver": "FVTVRIS2PJ57SZHC3PXA23TWSF2L4IJLY5JKJGYXD7STJUXIMLWFY4WNGE",
+      "amount": 0,
+      "confirmedRound": 54000000,
+      "roundTime": 1791914400,
+      "notePrefix": "cozmc:pet:v1:",
+      "noteJson": {
+        "n": "Comet",
+        "f": "b",
+        "b": 1,
+        "g": 4,
+        "e": 2,
+        "h": "m",
+        "s": 1792778400,
+        "m": 40,
+        "p": 30,
+        "t": 50,
+        "a": 20,
+        "x": 10,
+        "c": 5
+      },
+      "expect": {
+        "parses": true,
+        "name": "Comet",
+        "hasState": false,
+        "restoredStage": "cadet",
+        "restoredHatched": true
+      },
+      "notes": "Older note written before needs/sleep were backed up. restore() starts it fresh and awake."
+    },
+    {
+      "id": "note-bad-palette",
+      "sender": "2QWOBCT6MU6WIRKF7RU6TMJBXO5A4K4AZMS7Z5MV3LTZLDFWYXW7SP5QCU",
+      "receiver": "2QWOBCT6MU6WIRKF7RU6TMJBXO5A4K4AZMS7Z5MV3LTZLDFWYXW7SP5QCU",
+      "amount": 0,
+      "confirmedRound": 55000200,
+      "roundTime": 1794506400,
+      "notePrefix": "cozmc:pet:v1:",
+      "noteJson": {
+        "n": "Nova",
+        "f": "g",
+        "b": 63,
+        "g": 1,
+        "e": 1,
+        "h": "l",
+        "s": 1794074400,
+        "m": 5,
+        "p": 3,
+        "t": 10,
+        "a": 2,
+        "x": 1,
+        "c": 1,
+        "k": [
+          70,
+          60,
+          80
+        ],
+        "u": 1794499200,
+        "z": 0
+      },
+      "expect": {
+        "parses": true,
+        "name": "Nova",
+        "hasState": true,
+        "restoredStage": "sprout",
+        "restoredHatched": true
+      },
+      "notes": "Palette index 63 (palettes have 8/8/5 colours). Current parser ACCEPTS it (known defect). v2 validator must reject or clamp with a recorded warning."
+    },
+    {
+      "id": "note-egg",
+      "sender": "RZYBDSIRTYCZPR5QLCUILXFH3G7URGQBZL5WATF3AZAJTEPX4CJUNEGAC4",
+      "receiver": "RZYBDSIRTYCZPR5QLCUILXFH3G7URGQBZL5WATF3AZAJTEPX4CJUNEGAC4",
+      "amount": 0,
+      "confirmedRound": 55000300,
+      "roundTime": 1794506400,
+      "notePrefix": "cozmc:pet:v1:",
+      "noteJson": {
+        "n": "Pip",
+        "f": "b",
+        "b": 0,
+        "g": 0,
+        "e": 0,
+        "h": "l",
+        "s": 1794247200,
+        "m": 0,
+        "p": 0,
+        "t": 0,
+        "a": 0,
+        "x": 0,
+        "c": 0,
+        "k": [
+          80,
+          80,
+          90
+        ],
+        "u": 1794499200,
+        "z": 0
+      },
+      "expect": {
+        "parses": true,
+        "name": "Pip",
+        "hasState": true,
+        "restoredStage": "sprout",
+        "restoredHatched": true
+      },
+      "notes": "A note written from an unhatched egg. restore() turns it into a hatched Cozmling (known defect). v2 must record hatch provenance as unknown, never fabricate a hatch."
+    }
+  ]
+}

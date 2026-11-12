@@ -1,0 +1,236 @@
+{
+  "generatedFrom": "src/companion/care.ts @ e407bdb8867bcb31543425e67a517a8ca2015ed9",
+  "clockMs": 1794506400000,
+  "howToUse": "Scenarios: (1) each entry alone in a fresh browser; (2) guest-egg + wallet-cadet in the same browser = guest meets a wallet that already has a Cozmling (must ask, never overwrite); (3) all entries at once (multi-wallet browser). Each entry is a localStorage key and its exact raw value. Load raw into a fake localStorage, run migration, compare to expect (computed by the CURRENT v1 parser). v2 must preserve stage, counters, look and home exactly; malformed entries must be quarantined.",
+  "fixtures": [
+    {
+      "id": "guest-egg",
+      "storageKey": "cozmc-cozmling-v1",
+      "raw": "{\"v\":1,\"name\":\"Pip\",\"look\":{\"form\":\"boy\",\"body\":0,\"glow\":0,\"eyes\":0},\"home\":\"loft\",\"born\":1794247200000,\"hatched\":null,\"food\":80,\"fun\":80,\"energy\":90,\"at\":1794499200000,\"asleep\":null,\"fed\":0,\"played\":0,\"pets\":0}",
+      "expect": {
+        "parses": true,
+        "name": "Pip",
+        "look": {
+          "form": "boy",
+          "body": 0,
+          "glow": 0,
+          "eyes": 0
+        },
+        "home": "loft",
+        "hatched": false,
+        "stage": "egg",
+        "growthPoints": 0,
+        "counters": {
+          "fed": 0,
+          "played": 0,
+          "pets": 0,
+          "arcade": 0,
+          "cheered": 0,
+          "checkins": 0
+        }
+      },
+      "notes": "Guest Star Egg, never hatched. Must stay an egg after migration."
+    },
+    {
+      "id": "wallet-sprout",
+      "storageKey": "cozmc-cozmling-v1:2QWOBCT6MU6WIRKF7RU6TMJBXO5A4K4AZMS7Z5MV3LTZLDFWYXW7SP5QCU",
+      "raw": "{\"v\":1,\"name\":\"Nova\",\"look\":{\"form\":\"girl\",\"body\":2,\"glow\":1,\"eyes\":1},\"home\":\"loft\",\"born\":1794074400000,\"hatched\":1794078000000,\"food\":70,\"fun\":60,\"energy\":80,\"at\":1794499200000,\"asleep\":null,\"fed\":5,\"played\":3,\"pets\":10,\"arcade\":2,\"cheered\":1,\"checkins\":1,\"owner\":\"2QWOBCT6MU6WIRKF7RU6TMJBXO5A4K4AZMS7Z5MV3LTZLDFWYXW7SP5QCU\"}",
+      "expect": {
+        "parses": true,
+        "name": "Nova",
+        "look": {
+          "form": "girl",
+          "body": 2,
+          "glow": 1,
+          "eyes": 1
+        },
+        "home": "loft",
+        "hatched": true,
+        "stage": "sprout",
+        "growthPoints": 26,
+        "counters": {
+          "fed": 5,
+          "played": 3,
+          "pets": 10,
+          "arcade": 2,
+          "cheered": 1,
+          "checkins": 1
+        }
+      },
+      "notes": "Hatched Sprout (growth < 40)."
+    },
+    {
+      "id": "wallet-cadet",
+      "storageKey": "cozmc-cozmling-v1:MFKCIOF3RA4LJDZ7GTXZT3EYCLTLSYUZRMX6UMEQCPYUWGKGWX2WTQQTJE",
+      "raw": "{\"v\":1,\"name\":\"Comet\",\"look\":{\"form\":\"boy\",\"body\":1,\"glow\":4,\"eyes\":2},\"home\":\"moonbase\",\"born\":1792778400000,\"hatched\":1792782000000,\"food\":70,\"fun\":60,\"energy\":80,\"at\":1794499200000,\"asleep\":null,\"fed\":40,\"played\":30,\"pets\":50,\"arcade\":20,\"cheered\":10,\"checkins\":5,\"owner\":\"MFKCIOF3RA4LJDZ7GTXZT3EYCLTLSYUZRMX6UMEQCPYUWGKGWX2WTQQTJE\",\"txid\":\"FIXTURETXIDCADET\",\"round\":55000000}",
+      "expect": {
+        "parses": true,
+        "name": "Comet",
+        "look": {
+          "form": "boy",
+          "body": 1,
+          "glow": 4,
+          "eyes": 2
+        },
+        "home": "moonbase",
+        "hatched": true,
+        "stage": "cadet",
+        "growthPoints": 190,
+        "counters": {
+          "fed": 40,
+          "played": 30,
+          "pets": 50,
+          "arcade": 20,
+          "cheered": 10,
+          "checkins": 5
+        }
+      },
+      "notes": "Cadet (40 ≤ growth < 200), with a chain backup reference."
+    },
+    {
+      "id": "wallet-explorer",
+      "storageKey": "cozmc-cozmling-v1:FVTVRIS2PJ57SZHC3PXA23TWSF2L4IJLY5JKJGYXD7STJUXIMLWFY4WNGE",
+      "raw": "{\"v\":1,\"name\":\"Orbit\",\"look\":{\"form\":\"girl\",\"body\":5,\"glow\":2,\"eyes\":3},\"home\":\"grove\",\"born\":1789322400000,\"hatched\":1789326000000,\"food\":70,\"fun\":60,\"energy\":80,\"at\":1794499200000,\"asleep\":null,\"fed\":120,\"played\":90,\"pets\":200,\"arcade\":60,\"cheered\":40,\"checkins\":12,\"owner\":\"FVTVRIS2PJ57SZHC3PXA23TWSF2L4IJLY5JKJGYXD7STJUXIMLWFY4WNGE\"}",
+      "expect": {
+        "parses": true,
+        "name": "Orbit",
+        "look": {
+          "form": "girl",
+          "body": 5,
+          "glow": 2,
+          "eyes": 3
+        },
+        "home": "grove",
+        "hatched": true,
+        "stage": "explorer",
+        "growthPoints": 570,
+        "counters": {
+          "fed": 120,
+          "played": 90,
+          "pets": 200,
+          "arcade": 60,
+          "cheered": 40,
+          "checkins": 12
+        }
+      },
+      "notes": "Explorer (200 ≤ growth < 600)."
+    },
+    {
+      "id": "wallet-guardian",
+      "storageKey": "cozmc-cozmling-v1:NQAXEE4AJCWLM7QKGHKEYN6GLJIRSNXZB3RVLQNB6Y3QNGZHQUSGXZ6C6Q",
+      "raw": "{\"v\":1,\"name\":\"Atlas\",\"look\":{\"form\":\"boy\",\"body\":7,\"glow\":7,\"eyes\":4},\"home\":\"loft\",\"born\":1784138400000,\"hatched\":1784142000000,\"food\":70,\"fun\":60,\"energy\":80,\"at\":1794499200000,\"asleep\":null,\"fed\":300,\"played\":200,\"pets\":500,\"arcade\":150,\"cheered\":100,\"checkins\":30,\"owner\":\"NQAXEE4AJCWLM7QKGHKEYN6GLJIRSNXZB3RVLQNB6Y3QNGZHQUSGXZ6C6Q\"}",
+      "expect": {
+        "parses": true,
+        "name": "Atlas",
+        "look": {
+          "form": "boy",
+          "body": 7,
+          "glow": 7,
+          "eyes": 4
+        },
+        "home": "loft",
+        "hatched": true,
+        "stage": "guardian",
+        "growthPoints": 1400,
+        "counters": {
+          "fed": 300,
+          "played": 200,
+          "pets": 500,
+          "arcade": 150,
+          "cheered": 100,
+          "checkins": 30
+        }
+      },
+      "notes": "Guardian (growth ≥ 600). Must never be demoted by any rebalance."
+    },
+    {
+      "id": "wallet-asleep-low",
+      "storageKey": "cozmc-cozmling-v1:RZYBDSIRTYCZPR5QLCUILXFH3G7URGQBZL5WATF3AZAJTEPX4CJUNEGAC4",
+      "raw": "{\"v\":1,\"name\":\"Luna\",\"look\":{\"form\":\"girl\",\"body\":3,\"glow\":5,\"eyes\":0},\"home\":\"moonbase\",\"born\":1793642400000,\"hatched\":1793646000000,\"food\":12,\"fun\":8,\"energy\":30,\"at\":1794484800000,\"asleep\":1794484800000,\"fed\":15,\"played\":8,\"pets\":9,\"arcade\":6,\"cheered\":1,\"checkins\":2,\"owner\":\"RZYBDSIRTYCZPR5QLCUILXFH3G7URGQBZL5WATF3AZAJTEPX4CJUNEGAC4\"}",
+      "expect": {
+        "parses": true,
+        "name": "Luna",
+        "look": {
+          "form": "girl",
+          "body": 3,
+          "glow": 5,
+          "eyes": 0
+        },
+        "home": "moonbase",
+        "hatched": true,
+        "stage": "cadet",
+        "growthPoints": 58,
+        "counters": {
+          "fed": 15,
+          "played": 8,
+          "pets": 9,
+          "arcade": 6,
+          "cheered": 1,
+          "checkins": 2
+        }
+      },
+      "notes": "Asleep with low food/fun. Tests offline settle + sleep preservation."
+    },
+    {
+      "id": "wallet-pre-alien-look",
+      "storageKey": "cozmc-cozmling-v1:XCA4EH2OZXLJGEY4F7RYVI73E6PHOQQS5DGE3EQPHUOJ7USTQDKDASMECQ",
+      "raw": "{\"v\":1,\"name\":\"Rusty\",\"look\":{\"form\":\"girl\"},\"home\":\"loft\",\"born\":1791050400000,\"hatched\":1791054000000,\"food\":70,\"fun\":60,\"energy\":80,\"at\":1794499200000,\"asleep\":null,\"fed\":20,\"played\":10,\"pets\":10,\"owner\":\"XCA4EH2OZXLJGEY4F7RYVI73E6PHOQQS5DGE3EQPHUOJ7USTQDKDASMECQ\"}",
+      "expect": {
+        "parses": true,
+        "name": "Rusty",
+        "look": {
+          "form": "girl",
+          "body": 2,
+          "glow": 1,
+          "eyes": 1
+        },
+        "home": "loft",
+        "hatched": true,
+        "stage": "sprout",
+        "growthPoints": 32,
+        "counters": {
+          "fed": 20,
+          "played": 10,
+          "pets": 10,
+          "arcade": 0,
+          "cheered": 0,
+          "checkins": 0
+        }
+      },
+      "notes": "Saved before the alien redesign: look has no body/glow/eyes. Current parser upgrades it to the default girl look. Preserve the raw bytes; render as the parser does."
+    },
+    {
+      "id": "wallet-malformed-missing-fields",
+      "storageKey": "cozmc-cozmling-v1:G47JT3LHL24J4ORN46V3ZBPUX2BFG4HDO6YTG46MMSUXDVYRJAYLR3LWNI",
+      "raw": "{\"v\":1,\"name\":\"Ghost\",\"look\":{\"form\":\"boy\",\"body\":0,\"glow\":0,\"eyes\":0}}",
+      "expect": {
+        "parses": true,
+        "name": "Ghost",
+        "look": {
+          "form": "boy",
+          "body": 0,
+          "glow": 0,
+          "eyes": 0
+        },
+        "hatched": false,
+        "stage": "egg",
+        "growthPoints": null,
+        "counters": {
+          "arcade": 0,
+          "cheered": 0,
+          "checkins": 0
+        }
+      },
+      "notes": "Incomplete v1 record ({v:1} plus a name only). The CURRENT parser accepts it (known defect). v2 migration must QUARANTINE it, not \"fix\" it silently."
+    },
+    {
+      "id": "wallet-bad-json",
+      "storageKey": "cozmc-cozmling-v1:HL3XJ5KXVRKE6EJQLN7T4YQCXBUO5MBZSAPYP25VHYHNZYF6GZ23QSAAHY",
+      "raw": "{\"v\":1,\"name\":\"Brok",
+      "expect": {
+        "parses": false
+      },
+      "notes": "Corrupt JSON. Must be quarantined, never deleted, never crash the page."
+    }
+  ]
+}

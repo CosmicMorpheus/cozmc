@@ -34,7 +34,7 @@ npm install
 npm run dev       # http://localhost:5173
 npm run build     # production build in dist/
 npm run preview   # serve that build locally, exactly as it would go live
-npm test          # the Cozmling care tests
+npm test          # the tests: Cozmling care, the v2 save system, the prize wallet phrase
 ```
 
 **Trying a branch before merging it** (for example `TestVersion`). This runs on your computer only; nothing goes live:
@@ -209,6 +209,22 @@ A visitor can adopt and care for a Cozmling without a wallet. The logic is in `s
 - **Start over** is under the quiet "Settings" link below the room, behind a hold-to-confirm button.
 - **Tests:** `npm test` runs `tests/care.test.ts`.
 
+## The rebuilt Cozmling (v2, switched off)
+
+The Cozmling is being rebuilt in `src/cozmling/`: zodiac "Starprint" adventurers, a new Star Loft, and one companion shared by the Cozmling page, the Home band and the arcade panel. **It is behind a switch that is off.** A normal build contains none of it, and the site runs exactly as described above.
+
+- **Turning it on (your computer only).** `VITE_COZMLING_V2=1 npm run dev`. Add `VITE_COZMLING_DEV=1` to a build to get the inspection page at `#/cozmling/dev` (it is always there in `npm run dev` with the switch on).
+- **What is built so far: the save system.** No new screens yet. With the switch on, the site opens one store for the whole site and brings every first-version Cozmling into it.
+  - **Where it lives.** IndexedDB in the browser (`cozmc-cozmling-v2`). Every change is one all-or-nothing write, and the page only says "saved" after that write has succeeded. A browser that stores nothing keeps things for the visit and says so.
+  - **Each companion has its own permanent id.** It isn't its wallet, its name or its birthday, so connecting or switching wallets never changes which companion it is.
+  - **First-version Cozmlings are kept as they are.** Egg, Sprout, Cadet, Explorer and Guardian keep their look, home, stage, counts and wallet backup. They are drawn by the first version's own renderer and looked after by its own care rules. Nothing is converted, demoted, merged or deleted.
+  - **The old saves are never deleted or renamed.** The first value seen under each `cozmc-cozmling-v1…` key is kept untouched, with a checksum. A save that is incomplete or unreadable is set aside as it is, never "fixed".
+  - **Rolling back loses nothing.** While the switch is on, each change to a first-version Cozmling is also written back to its old key in the old shape. Switch it off (or republish an older deploy) and the old page finds the same Cozmling with the new values. If the old page then changes it, that is taken in the next time the switch is on; whatever gets replaced is kept in a short history first.
+  - **Two tabs can't trample each other.** A tab working from an older copy has its write refused and shows the newer one.
+  - **A file you can keep.** Everything can be exported to one JSON file and imported elsewhere. Importing only adds; it never overwrites without being told to.
+- **Never pay out on companion data.** Everything about a companion is written by the player's own browser and can be forged. It must never decide prizes, tickets, token amounts or leaderboard places.
+- **Tests.** `npm test` includes the save-system tests (`tests/cozmling-migration.test.ts`), built on real-shape first-version saves in `tests/fixtures/`. `tests/cozmling-store.mjs` checks the same things in a real browser (it needs Playwright; the instructions are at the top of the file).
+
 ## Add a Cozmling room
 
 Painted rooms are images with animation drawn on top.
@@ -247,6 +263,8 @@ src/lib/daily.ts       the Daily Challenge clock and seeded random numbers
 src/lib/profile.ts     bests, streaks, badges and skins kept in the browser
 src/arcade/            game contract, sound effects, games/
 src/lib/chain.ts       every Algorand read and write
+src/companion/         the Cozmling: care rules, looks, rooms, the Home band and arcade panel
+src/cozmling/          the rebuilt Cozmling (v2), behind a switch that is off
 src/data/quotes.ts     the Daily wisdom collection, every line sourced
 public/assets/         card video/poster, wordmark, share image
 public/icons/          app icons; public/manifest.webmanifest + public/sw.js make it installable
