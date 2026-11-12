@@ -147,7 +147,7 @@ test('rollback: the code from before guests reads a guest copy the way it read i
   for (const k of Object.keys(raw)) assert.ok(known.includes(k), `unexpected field ${k}`)
 })
 
-test('a stage preview left by the old prototype controls is dropped on load', () => {
+test('a stage preview left by the first prototype is dropped on load', () => {
   store.set(`${GUEST_KEY}:${WALLET}`, JSON.stringify({ ...hatchedGuest(), preview: 'guardian' }))
   assert.equal('preview' in load(WALLET)!, false)
   assert.equal(care.stageOf(load(WALLET)!), 'sprout')
