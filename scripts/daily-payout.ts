@@ -12,7 +12,8 @@
      transaction) is recorded as delayed. The run still fails, and the #winners post says so.
 
    Environment:
-     PRIZE_WALLET_MNEMONIC  the prize wallet's 25 words (a GitHub secret). Not needed for a dry run.
+     PRIZE_WALLET_MNEMONIC  the prize wallet's recovery phrase, 25 words (Algorand's own) or 24 (newer wallets): see
+                            scripts/phrase.ts. A GitHub secret. Not needed for a dry run.
      DRY_RUN=1              work everything out and print it, but send nothing.
    For a test on Algorand TestNet with a test wallet and test asset:
      ALGOD_URL=https://testnet-api.algonode.cloud INDEXER_URL=https://testnet-idx.algonode.cloud
@@ -31,6 +32,7 @@ import { buildDailyPrizeTxn, fetchBurns, fetchScores } from '../src/lib/chain'
 import { joinScoresAndBurns } from '../src/lib/boards'
 import { featuredGame, PRIZE_START_DAY, standings, winners, payoutNote, payoutAt, type Standing } from '../src/lib/dailyPrize'
 import { utcDay } from '../src/lib/daily'
+import { readPhrase, type Signer } from './phrase'
 
 const env = process.env
 const DRY = !!env.DRY_RUN && env.DRY_RUN !== '0' && env.DRY_RUN !== 'false'
@@ -97,9 +99,6 @@ async function holding(addr: string): Promise<number | null> {
   catch (e: any) { if (e.status === 404) return null; throw e }
 }
 
-/** Tidy a pasted recovery phrase: line breaks, extra spaces, commas, numbering, capitals or quotes around it are all fine. */
-const tidyPhrase = (s: string) => s.replace(/["'“”‘’`,;:]/g, ' ').replace(/(^|\s)\d+[.)]\s/g, ' ').toLowerCase().split(/\s+/).filter(Boolean).join(' ')
-
 async function main() {
   const today = utcDay(NOW)
   report.today = today
@@ -109,27 +108,20 @@ async function main() {
   // whose wallet pays. A problem with the key doesn't stop the announcement: it's raised further down,
   // once the prizes that are due are known, so the Discord post can say which ones are late.
   const words = (env.PRIZE_WALLET_MNEMONIC || '').trim()
-  let acct: algosdk.Account | null = null
+  let signer: Signer | null = null
   let keyError = ''          // why this run can't sign a payment ('' = it can)
   let badKey = false         // a wrong or unreadable key fails the run even on a dry run or with nothing due
   if (!words) keyError = 'PRIZE_WALLET_MNEMONIC is not set, so prizes that are due could not be paid. Add it under Settings → Secrets and variables → Actions.'
   else {
-    const phrase = tidyPhrase(words), count = phrase ? phrase.split(' ').length : 0
-    try { acct = algosdk.mnemonicToSecretKey(phrase) }
-    catch (e: any) {
-      // say what's wrong without echoing the words or the library's own text (this log is public)
-      badKey = true
-      const why = count !== 25 ? `${count} words were found and it needs 25${count === 24 ? ' (a 24-word phrase is a different kind, which this job cannot use)' : ''}`
-        : /wordlist/i.test(String(e?.message)) ? 'all 25 words are there, but at least one is not in the standard word list (a typo?)'
-        : 'all 25 words are there, but the check at the end fails (a word is wrong, missing or out of order)'
-      keyError = `PRIZE_WALLET_MNEMONIC could not be read: ${why}. Nothing was sent.`
+    try { signer = await readPhrase(words, DAILY_PRIZES.payer) }
+    catch (e: any) { badKey = true; keyError = String(e?.message ?? e) }       // its text never contains a word of the phrase
+    if (signer && !TEST && signer.addr !== DAILY_PRIZES.payer) {
+      badKey = true; keyError = `PRIZE_WALLET_MNEMONIC is for ${short(signer.addr)}, not the prize wallet ${short(DAILY_PRIZES.payer)}. Nothing was sent.`
+      signer = null
     }
-    if (acct && !TEST && acct.addr.toString() !== DAILY_PRIZES.payer) {
-      badKey = true; keyError = `PRIZE_WALLET_MNEMONIC is for ${short(acct.addr.toString())}, not the prize wallet ${short(DAILY_PRIZES.payer)}. Nothing was sent.`
-      acct = null
-    }
+    if (signer?.how) say(`Prize wallet key: read as ${signer.how}.`)         // which way a 24-word phrase was read; never the phrase
   }
-  const sender = acct ? acct.addr.toString() : DAILY_PRIZES.payer
+  const sender = signer ? signer.addr : DAILY_PRIZES.payer
 
   const [rawScores, rawBurns] = await Promise.all([fetchScores(), fetchBurns()])
   const { scores } = joinScoresAndBurns(rawScores, rawBurns)
@@ -176,7 +168,7 @@ async function main() {
       if (DRY) { say(`- ${label}: would send`); continue }
       try {
         const txn = await buildDailyPrizeTxn(algod, sender, d.to, payoutNote(d.day, d.rank, d.game), d.amount, ASSET)
-        const { txid } = await algod.sendRawTransaction(txn.signTxn(acct!.sk)).do()
+        const { txid } = await algod.sendRawTransaction(await signer!.sign(txn)).do()
         await algosdk.waitForConfirmation(algod, txid, 8)
         say(`- ${label}: paid ${TEST ? txid : EXPLORER_TX(txid)}`)
         report.paid.push({ ...d, txid })
