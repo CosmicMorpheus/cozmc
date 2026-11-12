@@ -97,6 +97,9 @@ async function holding(addr: string): Promise<number | null> {
   catch (e: any) { if (e.status === 404) return null; throw e }
 }
 
+/** Tidy a pasted recovery phrase: line breaks, extra spaces, commas, numbering, capitals or quotes around it are all fine. */
+const tidyPhrase = (s: string) => s.replace(/["'“”‘’`,;:]/g, ' ').replace(/(^|\s)\d+[.)]\s/g, ' ').toLowerCase().split(/\s+/).filter(Boolean).join(' ')
+
 async function main() {
   const today = utcDay(NOW)
   report.today = today
@@ -111,8 +114,16 @@ async function main() {
   let badKey = false         // a wrong or unreadable key fails the run even on a dry run or with nothing due
   if (!words) keyError = 'PRIZE_WALLET_MNEMONIC is not set, so prizes that are due could not be paid. Add it under Settings → Secrets and variables → Actions.'
   else {
-    try { acct = algosdk.mnemonicToSecretKey(words) }
-    catch { badKey = true; keyError = "PRIZE_WALLET_MNEMONIC could not be read: it should be the prize wallet's 25 words. Nothing was sent." }   // never echo the library's message or the words
+    const phrase = tidyPhrase(words), count = phrase ? phrase.split(' ').length : 0
+    try { acct = algosdk.mnemonicToSecretKey(phrase) }
+    catch (e: any) {
+      // say what's wrong without echoing the words or the library's own text (this log is public)
+      badKey = true
+      const why = count !== 25 ? `${count} words were found and it needs 25${count === 24 ? ' (a 24-word phrase is a different kind, which this job cannot use)' : ''}`
+        : /wordlist/i.test(String(e?.message)) ? 'all 25 words are there, but at least one is not in the standard word list (a typo?)'
+        : 'all 25 words are there, but the check at the end fails (a word is wrong, missing or out of order)'
+      keyError = `PRIZE_WALLET_MNEMONIC could not be read: ${why}. Nothing was sent.`
+    }
     if (acct && !TEST && acct.addr.toString() !== DAILY_PRIZES.payer) {
       badKey = true; keyError = `PRIZE_WALLET_MNEMONIC is for ${short(acct.addr.toString())}, not the prize wallet ${short(DAILY_PRIZES.payer)}. Nothing was sent.`
       acct = null
