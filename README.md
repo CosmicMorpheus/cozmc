@@ -11,7 +11,7 @@ Five tabs: **Home · Cozmling · Arcade · Community · About**. Arcade and Comm
 | Tab | Page | What it does |
 |---|---|---|
 | **Home** | | The holographic card hero, the **Cozmling spotlight** (your Cozmling live in its room, or an invite to adopt one), the three paths, the arcade shelf, live numbers, the giveaway strip and the community section |
-| **Cozmling** | | The companion game (prototype): adopt a little alien, boy or girl, free with a wallet. Feed it, play, pat it, put it to bed; it grows from a Star Egg to a Guardian. Saved to the wallet as a 0-ALGO note (`cozmc:pet:v1:`), so it comes back on any device. Its home is the **Star Loft**, a painted room with animated stars, lanterns and a jellyfish tank, or the Moon Base or Cosmic Grove |
+| **Cozmling** | | The companion game: adopt a little alien, boy or girl, free and with no wallet. Feed it, play, pat it, put it to bed; it grows from a Star Egg to a Guardian. It starts as a **guest Cozmling** kept in the visitor's browser only; **Save to a wallet** stores it as a 0-ALGO note (`cozmc:pet:v1:`), so it comes back on any device (see below). Its home is the **Star Loft**, a painted room with animated stars, lanterns and a jellyfish tank, or the Moon Base or Cosmic Grove |
 | **Arcade** | Games | Game cabinets: **Moon Bounce** (stomp aliens on a moon trampoline, chain for combos; inspired by Sunflat's PapiTrampoline) **Brick by Brick** (a falling-block puzzle: stack, clear lines, don't top out) and **Moonshot** (a Kitten Cannon-style launch game: lock the angle, lock the power, fire the astronaut across the moon; fuel cans and pads boost you, black holes swallow you unless you skim them for a slingshot, octos grab you). Free to play with no wallet. Each game has **Free play** and the **Daily Challenge**. Connect a wallet to post your run on-chain and to unlock tier skins |
 | | Leaderboards | One board per game (each wallet's best run), switchable between all-time and today's Daily, plus **Top Burners** |
 | | Giveaway | The weekly giveaway (see below) |
@@ -34,6 +34,7 @@ npm install
 npm run dev       # http://localhost:5173
 npm run build     # production build in dist/
 npm run preview   # serve that build locally, exactly as it would go live
+npm test          # the Cozmling care tests
 ```
 
 **Trying a branch before merging it** (for example `TestVersion`). This runs on your computer only; nothing goes live:
@@ -196,6 +197,17 @@ High scores (game over plus any leaderboard row), Daily Challenge runs ("COZMC D
 - X's share links can carry text but not images, so **Post on X** copies the graphic to the clipboard and opens X; paste it into the post.
 - On phones, **Share…** uses the native share sheet, which attaches the image directly.
 - The site URL used in posts is `SITE_URL` in `src/config.ts`.
+
+## Guest Cozmlings
+
+A visitor can adopt and care for a Cozmling without a wallet. The logic is in `src/companion/care.ts`.
+- **Where it lives.** A guest is one entry in the browser's `localStorage` (`cozmc-cozmling-v1`, the same wallet-free entry the first prototype used). It's sent nowhere. Each wallet's Cozmling keeps its own entry (`cozmc-cozmling-v1:<address>`).
+- **What works for a guest.** Everything except daily check-ins, which need a wallet. Arcade runs cheer a guest the same way, and the Home band and the arcade panel show it.
+- **Private windows.** A private window forgets the guest when it closes. A browser that stores nothing at all keeps the guest in memory for the visit, and the page says so.
+- **Saving to a wallet.** "Save to a wallet" opens the wallet list. Once a wallet is connected the page offers to save the guest there: one signature, the same note as any Cozmling, carrying its name, look, home, birth date and care counts. The guest entry is removed once that's confirmed.
+- **A wallet that already has a Cozmling** is never overwritten. The page shows both and asks which one to keep, or lets the visitor decide later.
+- **Start over** is under the quiet "Settings" link below the room, behind a hold-to-confirm button.
+- **Tests:** `npm test` runs `tests/care.test.ts`.
 
 ## Add a Cozmling room
 
