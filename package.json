@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@galaxypay/use-wallet-lute": "^1.0.0",

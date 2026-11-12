@@ -29,7 +29,6 @@ export interface Pet {
   owner?: string               // the wallet it belongs to
   txid?: string                // its latest save on Algorand
   round?: number               // …and the round it landed in
-  preview?: Stage              // prototype only: show a later stage
 }
 
 const KEY = 'cozmc-cozmling-v1'
@@ -42,21 +41,46 @@ const REFILL = 100 / (6 * H)
 export const clamp = (v: number) => Math.max(0, Math.min(100, v))
 
 /* ---- this browser's copy: one Cozmling per wallet ---- */
-function read(key: string): Pet | null {
+function parse(raw: string | null): Pet | null {
   try {
-    const p = JSON.parse(localStorage.getItem(key) || 'null')
+    const p = JSON.parse(raw || 'null')
     if (p?.v !== 1) return null
     if (!('body' in p.look)) p.look = { ...DEFAULT_LOOK[p.look?.form === 'girl' ? 'girl' : 'boy'] }   // saved before the alien redesign
+    delete p.preview                                                                                  // the first prototype could preview a later stage
     return p
   } catch { return null }
+}
+function read(key: string): Pet | null {
+  try { return parse(localStorage.getItem(key)) } catch { return null }
 }
 export const load = (owner: string) => read(`${KEY}:${owner}`)
 export function save(owner: string, p: Pet | null) {
   try { p ? localStorage.setItem(`${KEY}:${owner}`, JSON.stringify(p)) : localStorage.removeItem(`${KEY}:${owner}`) } catch { /* private mode */ }
 }
-/** The first prototype kept one Cozmling with no wallet; it can be saved to a wallet once. */
-export const loadUnclaimed = () => read(KEY)
-export const clearUnclaimed = () => { try { localStorage.removeItem(KEY) } catch { /* private mode */ } }
+
+/* ---- the guest Cozmling: no wallet, this browser only ----
+   It's kept where the first prototype kept its wallet-free Cozmling, in the same shape, so saving it
+   to a wallet is that same "unclaimed" step. A browser that won't store anything (some private
+   modes) keeps it in memory instead: it lasts for the visit. */
+let visitOnly: string | null = null
+export const loadGuest = (): Pet | null => read(KEY) ?? parse(visitOnly)
+export function saveGuest(p: Pet) {
+  const s = JSON.stringify(p)
+  try { localStorage.setItem(KEY, s); visitOnly = null } catch { visitOnly = s }
+}
+export function clearGuest() {
+  visitOnly = null
+  try { localStorage.removeItem(KEY) } catch { /* private mode */ }
+}
+/** Can this browser keep a guest Cozmling after the tab closes? False when storage is switched off. */
+export function guestKept(): boolean {
+  try { localStorage.setItem(`${KEY}:probe`, '1'); localStorage.removeItem(`${KEY}:probe`); return true } catch { return false }
+}
+
+/** A guest meets a connected wallet: nothing to do, save it there, or (the wallet already has a
+    Cozmling) ask which one to keep. A wallet's Cozmling is never replaced without that choice. */
+export type Claim = 'none' | 'save' | 'choose'
+export const claimFor = (guest: Pet | null, walletHasOne: boolean): Claim => (!guest ? 'none' : walletHasOne ? 'choose' : 'save')
 
 export function adopt(name: string, look: Look, home: HomeId, now = Date.now()): Pet {
   return { v: 1, name, look, home, born: now, hatched: null, food: 80, fun: 80, energy: 90, at: now, asleep: null, fed: 0, played: 0, pets: 0 }
@@ -201,6 +225,17 @@ export function arcadeRun(p0: Pet, r: RunInfo, now = Date.now()): RunOutcome {
   return { pet: next, say, fun: Math.round(next.fun - p.fun), energy: Math.round(next.energy - p.energy), food: Math.round(next.food - p.food) }
 }
 
+/** A finished arcade run cheers the Cozmling this browser shows: the wallet's, or else the guest.
+    (A local copy either way; a wallet's is backed up with its next check-in.) */
+export function cheer(owner: string | null | undefined, r: RunInfo, now = Date.now()): RunOutcome | null {
+  const mine = owner ? load(owner) : null
+  const pet = mine ?? loadGuest()
+  if (!pet) return null
+  const out = arcadeRun(pet, r, now)
+  if (mine) save(owner!, out.pet); else saveGuest(out.pet)
+  return out
+}
+
 /* ---- growing up ----
    Growth points come from everything you do together; the arcade counts most. */
 export const GROWTH: { stage: Stage; at: number }[] = [
@@ -230,8 +265,8 @@ export function mood(p: Pet): { mood: Mood; need: Need | null; line: string } {
   return { mood: 'great', need: null, line: `${n} is over the moon.` }
 }
 
-/** The stage it's at: grown from activity (the prototype controls can preview another). */
-export const stageOf = (p: Pet): Stage => (!p.hatched ? 'egg' : p.preview ?? growth(p).stage)
+/** The stage it's at, grown from activity. */
+export const stageOf = (p: Pet): Stage => (!p.hatched ? 'egg' : growth(p).stage)
 
 export const ageText = (p: Pet, now = Date.now()) => {
   const d = Math.floor((now - (p.hatched ?? p.born)) / 86_400_000)
