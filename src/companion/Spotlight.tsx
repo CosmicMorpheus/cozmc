@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Room } from './room'
 import { DEFAULT_LOOK, type Form } from './look'
-import { load, mood, settle, stageOf, type Need } from './care'
+import { load, loadGuest, mood, settle, stageOf, type Need } from './care'
 import { CH, CW } from './scene'
 
 const NEEDS: [Need, string][] = [['food', 'Food'], ['fun', 'Fun'], ['energy', 'Energy']]
@@ -12,7 +12,7 @@ export function Spotlight() {
   const { activeAddress } = useWallet()
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 20_000); return () => clearInterval(t) }, [])
-  const saved = activeAddress ? load(activeAddress) : null
+  const saved = (activeAddress ? load(activeAddress) : null) ?? loadGuest()
   const pet = saved && settle(saved)
   const [form, setForm] = useState<Form>('girl')
   const live = useRef({ pet, form })
@@ -56,7 +56,7 @@ export function Spotlight() {
           </>
         ) : (
           <>
-            <p>A little alien that lives on the site. Feed it, play with it and put it to bed, and it grows from a Star Egg into a Guardian. It’s free, and it’s saved to your wallet.</p>
+            <p>A little alien that lives on the site. Feed it, play with it and put it to bed, and it grows from a Star Egg into a Guardian. It’s free, and you don’t need a wallet to start.</p>
             <a className="btn btn--phos" href="#/cozmling">Adopt one, free</a>
           </>
         )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Room } from './room'
 import { STAGE_NAME } from './look'
-import { growth, load, mood, settle, stageOf, type Need, type RunOutcome } from './care'
+import { growth, load, loadGuest, mood, settle, stageOf, type Need, type RunOutcome } from './care'
 import { CH, CW } from './scene'
 
 const NEEDS: [Need, string][] = [['food', 'Food'], ['fun', 'Fun'], ['energy', 'Energy']]
@@ -9,10 +9,10 @@ const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`)
 
 /* The arcade's Cozmling panel: your Cozmling watches you play, and each run
    shows what it did for its needs and its growth. */
-export function Buddy({ owner, last, onConnect }: { owner: string | null; last: RunOutcome | null; onConnect: () => void }) {
+export function Buddy({ owner, last }: { owner: string | null; last: RunOutcome | null }) {
   const [, tick] = useState(0)
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 20_000); return () => clearInterval(t) }, [])
-  const saved = owner ? load(owner) : null
+  const saved = (owner ? load(owner) : null) ?? loadGuest()
   const pet = saved && settle(saved)
   const live = useRef(pet)
   live.current = pet
@@ -35,17 +35,10 @@ export function Buddy({ owner, last, onConnect }: { owner: string | null; last: 
   // it reacts to each run
   useEffect(() => { if (last) { if (last.fun > 0) room.current?.play(); else room.current?.refuse() } }, [last])
 
-  if (!owner) return (
-    <aside className="panel buddy">
-      <header className="panel__head"><h2>Your Cozmling</h2></header>
-      <p className="muted small">Connect a wallet and every game you play cheers your Cozmling up and helps it grow.</p>
-      <button className="btn btn--ghost btn--sm" onClick={onConnect}>Connect a wallet</button>
-    </aside>
-  )
   if (!pet) return (
     <aside className="panel buddy">
       <header className="panel__head"><h2>Your Cozmling</h2></header>
-      <p className="muted small">Adopt a Cozmling and it will watch you play. Every game cheers it up and helps it grow.</p>
+      <p className="muted small">Adopt a Cozmling and it will watch you play. Every game cheers it up and helps it grow. No wallet needed.</p>
       <a className="btn btn--ghost btn--sm" href="#/cozmling">Adopt one, free</a>
     </aside>
   )

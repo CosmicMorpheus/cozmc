@@ -30,14 +30,10 @@ import type { RunOutcome } from '../companion/care'
 // the Cozmling art loads with its own chunk
 const Buddy = lazy(() => import('../companion/Buddy').then(m => ({ default: m.Buddy })))
 
-/** Each finished run cheers up the wallet's Cozmling (a local copy; it's backed up with the next check-in). */
-async function cheerCozmling(owner: string, run: { daily: boolean; best: boolean }): Promise<RunOutcome | null> {
-  const { load, save, arcadeRun } = await import('../companion/care')
-  const pet = load(owner)
-  if (!pet) return null
-  const out = arcadeRun(pet, run)
-  save(owner, out.pet)
-  return out
+/** Each finished run cheers up your Cozmling: the wallet's, or a guest one kept in this browser. */
+async function cheerCozmling(owner: string | null | undefined, run: { daily: boolean; best: boolean }): Promise<RunOutcome | null> {
+  const { cheer } = await import('../companion/care')
+  return cheer(owner, run)
 }
 
 export function Arcade({ playing, daily, setPlaying }: { playing: string | null; daily: boolean; setPlaying: (id: string | null, daily?: boolean) => void }) {
@@ -204,7 +200,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
         const rec = recordRun(game.id, r.score, day)
         runBadges(day != null, rec.streak)
         setNewBest(day != null ? (rec.newDailyBest ? 'daily' : '') : rec.newBest ? 'best' : '')
-        if (owner.current && r.score > 0 && r.ms >= 5000) cheerCozmling(owner.current, { daily: day != null, best: day != null ? rec.newDailyBest : rec.newBest }).then(setCheer, () => {})
+        if (r.score > 0 && r.ms >= 5000) cheerCozmling(owner.current, { daily: day != null, best: day != null ? rec.newDailyBest : rec.newBest }).then(setCheer, () => {})
         setResult({ ...r, day }); setPhase('over'); setPost('idle'); setPostErr(''); setHud(h => ({ ...h, score: r.score, lives: 0 }))
       },
     }, { skin })
@@ -346,7 +342,7 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
               </ol>
             ) : <p className="muted small">{boardDay != null ? 'Nobody’s posted today’s run yet. First on the board wins the morning.' : 'Nobody’s on the board yet.'}</p>}
           </aside>
-          <Suspense fallback={null}><Buddy owner={activeAddress ?? null} last={cheer} onConnect={openConnect} /></Suspense>
+          <Suspense fallback={null}><Buddy owner={activeAddress ?? null} last={cheer} /></Suspense>
           <SkinPicker game={game} current={skin} tierIdx={tierIdx} disabled={phase === 'play'} onPick={id => saveSkin(game.id, id)} />
         </div>
       </div>
