@@ -165,6 +165,8 @@
 .sl-pglyph { display: inline-block; min-width: 1.4em; font: 400 15px/1 var(--sl-sym); color: var(--nebula); text-align: center }
 .sl-print .panel__head .link { font-size: 11px }
 .sl-inlink { color: var(--nebula); text-decoration: underline; text-underline-offset: 3px }
+.sl-today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line-2); color: var(--mist); font-size: 14px; line-height: 1.45; text-wrap: pretty }
+.sl-today__k { font: 700 10px/1 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula) }
 .sl-skyask { display: grid; gap: 10px; justify-items: start; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-2) }
 .sl-skyask p { color: var(--mist); font-size: 14px; line-height: 1.5; text-wrap: pretty }
 

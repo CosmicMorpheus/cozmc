@@ -1,6 +1,8 @@
-/* A Cozmling's birth sky in a real browser: read at hatch, saved for good, shown in the Star Loft and
-   the observatory; cusp birthdays; first-version Cozmlings only when asked; the astronomy failing to
-   load; phones, the keyboard and reduced motion. Nothing here touches Algorand or a wallet.
+/* A Cozmling's sky in a real browser: its birth sky read at hatch, saved for good, shown in the Star
+   Loft and the observatory; cusp birthdays; first-version Cozmlings only when asked; the astronomy
+   failing to load; phones, the keyboard and reduced motion; the Cosmic Vortex behind it; and today's
+   sky (read once a day, kept live, saved, offline, and a new day at the player's midnight).
+   Nothing here touches Algorand or a wallet.
 
    It needs Playwright (not one of the site's dependencies) and a dev server with v2 switched on:
      VITE_COZMLING_V2=1 VITE_COZMLING_DEV=1 npm run dev -- --port 5198
@@ -24,8 +26,8 @@ const ENGINE_FILES = /astronomy-engine|\/celestial\/engine\.ts|\/static\/engine-
 const browser = await chromium.launch({ ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), ...(process.env.PW_PROXY ? { proxy: { server: process.env.PW_PROXY } } : {}) })
 const results = []
 
-async function profile({ seed = [], viewport = PHONE, reducedMotion = 'no-preference', block = null } = {}) {
-  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion })
+async function profile({ seed = [], viewport = PHONE, reducedMotion = 'no-preference', block = null, timezoneId = undefined } = {}) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion, ...(timezoneId ? { timezoneId } : {}) })
   const errors = []
   await ctx.route(u => !['localhost', '127.0.0.1', HOME].includes(new URL(u).hostname), r => r.abort())
   if (block) await ctx.route(block, r => r.abort())
@@ -45,7 +47,11 @@ async function profile({ seed = [], viewport = PHONE, reducedMotion = 'no-prefer
   return { ctx, open, errors }
 }
 const button = (page, name) => page.getByRole('button', { name, exact: true })
-const mine = page => page.evaluate(() => { const s = window.__cozmling.getState(); return JSON.parse(JSON.stringify(s.companions.find(c => c.companionId === s.selectedId))) })
+const mine = page => page.evaluate(() => {
+  const s = window.__cozmling.getState(), c = s.companions.find(c => c.companionId === s.selectedId)
+  if (!c) throw new Error(`no Cozmling is selected: ${JSON.stringify({ status: s.status, selectedId: s.selectedId, ids: s.companions.map(x => x.companionId) })}`)
+  return JSON.parse(JSON.stringify(c))
+})
 const stored = (page, id) => page.evaluate(id => new Promise((res, rej) => {
   const r = indexedDB.open('cozmc-cozmling-v2'); r.onerror = () => rej(r.error)
   r.onsuccess = () => { const q = r.result.transaction('companions').objectStore('companions').get(id); q.onsuccess = () => { r.result.close(); res(q.result) } }
@@ -59,6 +65,8 @@ async function adopt(page, { birthday = '2026-05-05', name = 'Orbi' } = {}) {
   await page.locator('#sl-name').fill(name)
   await button(page, 'Create the Star Egg').click()
   await button(page, 'Warm the egg').waitFor({ timeout: 10000 })
+  // the egg shows as soon as it is saved; it is recorded as the selected one a moment later
+  await page.waitForFunction(() => { const s = window.__cozmling.getState(); return s.companions.some(c => c.companionId === s.selectedId) })
 }
 async function scenario(name, fn) {
   if (process.env.ONLY && !name.includes(process.env.ONLY)) return
@@ -327,6 +335,158 @@ await scenario('the cosmic vortex on a 360 px phone: the header, legend and pane
   assert.match(shade[0], /rgba\(4, 5, 11, 0\.8\d\)/); assert.match(shade[1], /radial-gradient/)
   await shot(page, 'vortex-observatory-360')
   await page.evaluate(() => scrollBy(0, 500)); await shot(page, 'vortex-observatory-360-scrolled')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+/* ---------------- today's sky ---------------- */
+
+const meta = (page, key) => page.evaluate(k => window.__cozmling.readMeta(k), key)
+const ready = () => window.__cozmling?.getState().status === 'ready'
+/** A hatched Cozmling with its birth sky, in the Star Loft. */
+async function hatched(p, birthday = '2026-05-05') {
+  const page = await p.open()
+  await adopt(page, { birthday })
+  await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
+  await page.waitForFunction(() => !!window.__cozmling.getState().companions[0].celestial)
+  return page
+}
+const dayName = day => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${day}T12:00:00Z`))
+const dayBefore = day => new Date(Date.parse(`${day}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+
+await scenario('today’s sky: the Star Loft reads it by itself; the observatory shows the day’s reading and the sky now, with when it was worked out', async () => {
+  const p = await profile({ viewport: DESK, timezoneId: 'America/New_York' }), page = await hatched(p)
+  const c = await mine(page), key = `daily:${c.companionId}`
+  // the Star Loft reads today's sky (once), saves it, and links to it
+  const line = page.locator('.sl-today a'); await line.waitFor({ timeout: 15000 })
+  const saved = await meta(page, key)
+  assert.equal(saved.companionId, c.companionId); assert.equal(saved.timeZone, 'America/New_York'); assert.equal(saved.natalMoment, c.celestial.moment.ms)
+  assert.equal(saved.day, await page.evaluate(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date())))
+  assert.equal(new Date(saved.at).toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }), '12:00 PM', 'read for midday, New York time')
+  await line.click()
+  await page.waitForURL(/#\/cozmling\/sky\/today$/); await page.locator('.sk-wheel').waitFor()
+  assert.match(await page.locator('h1').innerText(), /ORBI’S SKY TODAY/i)
+  assert.match(await page.locator('.sk-when').innerText(), new RegExp(`^${dayName(saved.day)}, where you are\\.`))
+  assert.equal(await page.getByRole('link', { name: 'Today’s sky' }).getAttribute('aria-current'), 'page')
+  assert.equal(await page.getByRole('link', { name: 'Birth sky' }).getAttribute('aria-current'), null)
+  await page.waitForFunction(() => document.querySelector('.sk-live')?.dataset.state === 'live')
+  assert.match(await page.locator('.sk-live').innerText(), /^LIVE · \d{1,2}:\d{2} (AM|PM)$/i)
+  assert.match(await page.locator('.sk-tablebox').innerText(), /Worked out at \d{1,2}:\d{2} (am|pm), your time, and again every 10 minutes/)
+  assert.equal((await meta(page, key)).calculatedAt, saved.calculatedAt, 'the day’s reading is the one saved, not read again')
+  const n = saved.transits.length
+  if (n) {
+    assert.equal(await page.locator('.sk-transits li').count(), Math.min(n, 6))
+    const first = await page.locator('.sk-transits li').first().innerText()
+    assert.match(first, /Orbi’s/); assert.match(first, /exact \d{1,2}:\d{2} (am|pm)|\d+°\d\d′/)
+    assert.match(await page.locator('.sk-reading h2').innerText(), /ORBI’S/i, 'the strongest transit is read first')
+    assert.match(await page.locator('.sk-reading').innerText(), /A theme to play with, if it feels right\. It doesn’t decide anything\./)
+    assert.equal(await page.locator('.sk-w-ghost').count(), 1, 'and drawn on the wheel')
+  } else assert.match(await page.locator('.sk-o3').innerText(), /quiet sky/i)
+  // a tap on today's Moon in the table
+  await page.locator('.sk-tablebox').getByRole('button', { name: /Moon$/ }).click()
+  assert.match(await page.locator('.sk-reading h2').innerText(), /^THE MOON IN \w+ TODAY$/i)
+  assert.match(await page.locator('.sk-reading').innerText(), /passing through Orbi’s \d+(st|nd|rd|th) house/)
+  assert.equal(await page.locator('.sk-w-ghost').count(), 0)
+  assert.equal(await page.locator('.sk-tablebox tbody tr').count(), 10)
+  assert.match(await page.locator('.sk-o4').innerText(), /The Moon is in \w+, [a-z ]+ and \d+% lit, passing through Orbi’s/)
+  assert.match(await page.locator('.sk-about').innerText(), /astronomy-engine 2\.1\.19[\s\S]*doesn’t change Orbi’s needs, rewards or scores/)
+  assert.deepEqual(await sticksOut(page), [])
+  await shot(page, 'today-1280', true)
+  // to the birth sky and back: the same vortex carries on behind both
+  await page.evaluate(() => { document.querySelector('.cv').dataset.mark = 'same' })
+  await page.getByRole('link', { name: 'Birth sky' }).click()
+  await page.waitForURL(/#\/cozmling\/sky$/); await page.locator('.sk-reading h2').filter({ hasText: /SUN IN/i }).waitFor()
+  assert.match(await page.locator('h1').innerText(), /ORBI’S BIRTH SKY/i)
+  await page.waitForTimeout(500)
+  const v = await vortex(page)
+  assert.equal(await page.evaluate(() => document.querySelector('.cv')?.dataset.mark), 'same'); assert.equal(v.state, 'running')
+  assert.ok(Math.abs(v.sphere[1] - v.wheel[1]) <= 1 && Math.abs(v.sphere[0] - v.wheel[0]) <= 1, 'behind the birth wheel')
+  // once today's reading is saved, the Star Loft shows it without loading the astronomy at all
+  const loft = await p.ctx.newPage(), asked = []
+  loft.on('request', r => { if (ENGINE_FILES.test(r.url())) asked.push(r.url()) })
+  await loft.goto(`${SITE}/#/cozmling`); await loft.waitForFunction(ready); await loft.locator('.sl-today a').waitFor()
+  await loft.waitForTimeout(800)
+  assert.deepEqual(asked, [])
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('today’s sky offline: today’s saved reading still shows, marked; an earlier day’s shows only with its day; back online, today’s is read', async () => {
+  const p = await profile({ viewport: PHONE }), page = await hatched(p)
+  const key = `daily:${(await mine(page)).companionId}`
+  await page.locator('.sl-today a').waitFor({ timeout: 15000 })
+  const saved = await meta(page, key)
+  await p.ctx.route(ENGINE_FILES, r => r.abort())
+  const off = await p.open('#/cozmling/sky/today')
+  await off.locator('.sk-wheel').waitFor()
+  await off.waitForFunction(() => document.querySelector('.sk-live')?.dataset.state === 'offline')
+  assert.match(await off.locator('.sk-tablebox h2').innerText(), /midday/i)
+  assert.match(await off.locator('.sk-about').innerText(), /can’t be worked out at the moment/)
+  assert.equal(await off.locator('.sk-note').count(), 0, 'today’s reading is still today’s')
+  assert.match(await off.locator('.sk-headline').innerText(), /^TODAY /i)
+  if (saved.transits.length) assert.equal(await off.locator('.sk-transits li').count(), Math.min(saved.transits.length, 6))
+  await shot(off, 'today-offline-390')
+  // a reading from an earlier day, with the astronomy still missing: shown, labelled with its day, never as today's
+  const before = dayBefore(saved.day)
+  await off.evaluate(([k, v]) => window.__cozmling.writeMeta(k, v), [key, { ...saved, day: before }])
+  const old = await p.open('#/cozmling/sky/today')
+  await old.locator('.sk-note').waitFor()
+  assert.match(await old.locator('.sk-note').innerText(), new RegExp(`couldn’t be worked out just now[\\s\\S]*Below is Orbi’s sky from ${dayName(before)}, the last one saved\\.`))
+  assert.equal(await old.locator('.sk-headline').count(), 0, 'no headline is claimed for today')
+  assert.match(await old.locator('.sk-tablebox h2').innerText(), new RegExp(`At midday on ${dayName(before)}`, 'i'))
+  assert.match(await old.locator('.sl-id').innerText(), /^OFFLINE$/i, 'no Moon phase is claimed for today either')
+  assert.match(await old.locator('.sk-o4').innerText(), /At midday the Moon was in /)
+  if (saved.transits.length) assert.match(await old.locator('.sk-reading p').first().innerText(), new RegExp(`^On ${dayName(before)}, `))
+  await shot(old, 'today-earlier-390', true)
+  // the Star Loft doesn't pass it off as today's either
+  await old.evaluate(() => { location.hash = '#/cozmling' }); await old.locator('.sl-today').waitFor()
+  await old.waitForFunction(() => /can’t be read just now/.test(document.querySelector('.sl-today')?.textContent ?? ''))
+  // back online: today's is read again and saved
+  await p.ctx.unroute(ENGINE_FILES)
+  const back = await p.open('#/cozmling/sky/today')
+  await back.waitForFunction(() => document.querySelector('.sk-live')?.dataset.state === 'live', null, { timeout: 15000 })
+  assert.equal((await meta(back, key)).day, saved.day)
+  assert.equal(await back.locator('.sk-note').count(), 0)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('a new day begins at the player’s own midnight: an open page reads the new day’s sky by itself', async () => {
+  const p = await profile({ viewport: DESK, timezoneId: 'America/New_York' })
+  await p.ctx.clock.install({ time: new Date('2026-11-13T04:55:00Z') })           // 11:55 pm on Thursday in New York
+  const page = await hatched(p, '2026-11-05')
+  const key = `daily:${(await mine(page)).companionId}`
+  await page.evaluate(() => { location.hash = '#/cozmling/sky/today' })
+  await page.waitForFunction(() => document.querySelector('.sk-live')?.dataset.state === 'live' && !!document.querySelector('.sk-headline'), null, { timeout: 15000 })
+  assert.match(await page.locator('.sk-when').innerText(), /^Thursday, November 12, where you are/)
+  const thursday = await meta(page, key)
+  assert.equal(thursday.day, '2026-11-12')
+  await page.clock.fastForward('06:00')                                               // past midnight
+  await page.waitForFunction(() => /^Friday, November 13/.test(document.querySelector('.sk-when')?.textContent ?? ''), null, { timeout: 10000 })
+  const friday = await meta(page, key)
+  assert.equal(friday.day, '2026-11-13'); assert.ok(friday.calculatedAt > thursday.calculatedAt)
+  assert.equal(new Date(friday.at).toISOString(), '2026-11-13T17:00:00.000Z', 'midday in New York')
+  assert.match(await page.locator('.sk-live').innerText(), /^LIVE · 12:0\d AM$/i)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('today’s sky on a 360 px phone: in reading order, and nothing sticks out', async () => {
+  const p = await profile({ viewport: SMALL }), page = await hatched(p, '2026-11-05')
+  await page.evaluate(() => { location.hash = '#/cozmling/sky/today' })
+  await page.waitForFunction(() => document.querySelector('.sk-live')?.dataset.state === 'live' && !!document.querySelector('.sk-notes'), null, { timeout: 15000 })
+  const ys = await page.evaluate(() => ['.sk-o1', '.sk-o2', '.sk-o3', '.sk-o4', '.sk-o5'].map(s => document.querySelector(s)?.getBoundingClientRect().top ?? null))
+  assert.ok(ys.every(y => y != null) && ys.every((y, i) => i === 0 || y > ys[i - 1]), `wheel, reading, transits, the sky’s news, positions: ${ys}`)
+  const tabs = await page.locator('.sk-tabs').boundingBox()
+  assert.ok(tabs.x >= 0 && tabs.x + tabs.width <= 360)
+  assert.deepEqual(await sticksOut(page), [])
+  await shot(page, 'today-360', true)
+  // picking something further down brings its reading into view
+  await page.locator('.sk-tablebox').getByRole('button', { name: /Saturn$/ }).click()
+  await page.waitForTimeout(700)
+  const r = await page.locator('.sk-reading').boundingBox()
+  assert.ok(r.y > -r.height && r.y < 740, `the reading is in view: ${r.y}`)
+  assert.match(await page.locator('.sk-reading h2').innerText(), /^SATURN IN \w+ TODAY$/i)
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
 })

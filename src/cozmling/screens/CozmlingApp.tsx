@@ -20,7 +20,10 @@ const kindText = (c: Companion) => (c.kind === 'adventurer' ? `${signInfo(c.star
 // a Cozmling's sky in full, loaded only when it is opened
 const Observatory = lazy(() => import('../celestial/ui/ObservatoryScreen').then(m => ({ default: m.ObservatoryScreen })))
 
-export function CozmlingApp({ sub = null }: { /** the part of the page after #/cozmling/ ('sky' = the observatory) */ sub?: string | null }) {
+export function CozmlingApp({ sub = null, extra = null }: {
+  /** the part of the page after #/cozmling/ ('sky' = the observatory) */ sub?: string | null
+  /** and after that ('today' = the observatory's view of today's sky) */ extra?: string | null
+}) {
   const st = useCozmling()
   const [adopting, setAdopting] = useState(false)
   const [retrying, setRetrying] = useState(false)
@@ -66,7 +69,7 @@ export function CozmlingApp({ sub = null }: { /** the part of the page after #/c
 
   if (sub === 'sky') return (
     <Suspense fallback={<p className="state state--load" role="status">Opening the observatory…</p>}>
-      <Observatory key={selected.companionId} companion={selected} />
+      <Observatory key={selected.companionId} companion={selected} mode={extra === 'today' ? 'today' : 'birth'} />
     </Suspense>
   )
 

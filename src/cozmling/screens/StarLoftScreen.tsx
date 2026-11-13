@@ -26,7 +26,8 @@ import { loadSkyEngine } from '../celestial/load'
 import { playerTimeZone } from '../celestial/observatory'
 import { legacySkyOption, starprintDisagrees } from '../celestial/options'
 import { skyColors, useLateSky } from '../celestial/useSky'
-import { bigThree } from '../celestial/interpret'
+import { bigThree, todayHeadline } from '../celestial/interpret'
+import { useLiveSky } from '../celestial/useLiveSky'
 import { POINTS } from '../celestial/zodiac'
 
 type AdvStage = NonNullable<AdventurerCompanion['progress']['visualStage']>
@@ -264,12 +265,27 @@ function StarprintPanel({ c }: { c: AdventurerCompanion }) {
           <div><dt>Birthday</dt><dd>{birthdayText(c.starprint.chosenBirthday)}</dd></div>
         </dl>
       </div>
+      {sky && <TodayLine c={c} />}
       {sky
         ? <p className="sl-fine">Born on its birthday at the minute it hatched, under the sky over the Origin Observatory on Mauna Kea. <a className="sl-inlink" href="#/cozmling/sky">Open its birth sky</a>.{starprintDisagrees(c) && <> Its Starprint was chosen before skies were read: on its birth minute the Sun was in {signOf(sky.bodies.sun.sign)}.</>}</p>
         : c.hatch.status === 'egg'
         ? <p className="sl-fine">Its birth sky is read the minute it hatches: its birthday, at that time of day, over the Origin Observatory on Mauna Kea.</p>
         : <p className="sl-fine">Reading the sky it was born under…</p>}
     </div>
+  )
+}
+
+/** Today's sky in a line, and the way in. Read once a day, when it isn't saved yet: after that it costs nothing. */
+function TodayLine({ c }: { c: Companion }) {
+  const today = useLiveSky(c, { live: false })
+  if (today.status === 'none') return null
+  return (
+    <p className="sl-today" aria-live="polite">
+      <span className="sl-today__k">Today</span>
+      {today.report ? <a className="sl-inlink" href="#/cozmling/sky/today">{todayHeadline(today.report, nameOf(c))}</a>
+        : today.status === 'offline' ? <span>Today’s sky can’t be read just now.</span>
+        : <span>Reading today’s sky…</span>}
+    </p>
   )
 }
 
@@ -294,6 +310,7 @@ function FirstVersionPanel({ c, pet, hatched, onSay }: { c: LegacyCompanion; pet
         <div><dt>Age</dt><dd>{!hatched ? 'Not hatched yet' : c.hatch.provenance === 'legacy-unknown' ? 'Not recorded' : ageText(pet)}</dd></div>
         {c.celestial && <div><dt>{c.celestial.kind === 'birth' ? 'Birth sky' : 'Awakening sky'}</dt><dd>{bigThree(c.celestial)}</dd></div>}
       </dl>
+      {c.celestial && <TodayLine c={c} />}
       <p className="sl-fine">{pet.name} keeps the look, home, stage and counts it has always had. Nothing about it was changed by the move here.</p>
       {option === 'birth' && (
         <div className="sl-skyask">

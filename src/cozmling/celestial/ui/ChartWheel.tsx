@@ -6,11 +6,22 @@ import { useMemo, type Ref } from 'react'
 import { signInfo } from '../../domain/starprint'
 import type { Element } from '../../types'
 import { ASPECT_WORDS } from '../interpret'
-import type { Aspect, BodyId, CelestialBirthRecord, PointId } from '../types'
+import type { Aspect, AspectKind, BodyId, PointId } from '../types'
+import type { ZodiacSign } from '../../types'
 import { BODIES, norm360, POINTS, rad, ZODIAC } from '../zodiac'
 
+/** What the wheel draws: planets, and (when known) the Rising sign, Midheaven and houses they sit in. A birth chart is one. */
+export interface WheelData {
+  bodies: Record<BodyId, { lon: number; degree: number; retrograde: boolean }>
+  angles: { ascendant: { lon: number }; midheaven: { lon: number } } | null
+  houses: ZodiacSign[] | null
+  aspects: Aspect[]
+}
+/** One point of the birth sky, drawn faintly inside the wheel with a line from today's planet: a transit, shown one at a time. */
+export interface WheelGhost { id: PointId; lon: number; from: BodyId; kind: AspectKind }
+
 const SIZE = 440, C = SIZE / 2
-const R = { outer: 214, sign: 182, house: 162, planet: 136, degree: 114, aspect: 98 }
+const R = { outer: 214, sign: 182, house: 162, planet: 136, degree: 114, aspect: 98, ghost: 70 }
 const T = '︎'
 
 /** Planets bunched together are nudged apart so every glyph can be read; a short line points to where each really is. */
@@ -28,15 +39,21 @@ function spread(points: { id: BodyId; lon: number }[], asc: number, gap: number)
   return items.map((it, k) => ({ id: it.id, lon: it.lon, shown: norm360(pos[k] + asc) }))
 }
 
+export const ASPECT_GLYPH: Record<AspectKind, string> = { conjunction: '☌', sextile: '⚹', square: '□', trine: '△', opposition: '☍' }
+/** Follows a symbol to ask for its plain text form, not an emoji. */
+export const AS_TEXT = T
+
 /** The wheel's outer circle as a share of its half-width (for lining things up behind it). */
 export const WHEEL_RIM = R.outer / C
 
-export function ChartWheel({ sky, title, focus, focusAspect, onPick, svgRef }: { sky: CelestialBirthRecord; title: string; focus: PointId | null; focusAspect: Aspect | null; onPick: (p: PointId) => void; svgRef?: Ref<SVGSVGElement> }) {
+export function ChartWheel({ sky, title, desc, focus, focusAspect, ghost = null, onPick, svgRef }: {
+  sky: WheelData; title: string; desc?: string; focus: PointId | null; focusAspect: Aspect | null; ghost?: WheelGhost | null; onPick: (p: PointId) => void; svgRef?: Ref<SVGSVGElement>
+}) {
   const asc = sky.angles?.ascendant.lon ?? 0
   const xy = (lon: number, r: number) => { const t = rad(180 + lon - asc); return [C + r * Math.cos(t), C - r * Math.sin(t)] as const }
   const placed = useMemo(() => spread(BODIES.map(b => ({ id: b, lon: sky.bodies[b].lon })), asc, 10.5), [sky, asc])
   const lonOf = (p: PointId) => (p === 'ascendant' || p === 'midheaven' ? sky.angles?.[p].lon : sky.bodies[p].lon) ?? 0
-  const lit = (a: Aspect) => (focusAspect ? focusAspect === a : focus ? a.a === focus || a.b === focus : true)
+  const lit = (a: Aspect) => (ghost ? false : focusAspect ? focusAspect === a : focus ? a.a === focus || a.b === focus : true)
   const wedge = (a0: number, a1: number, r0: number, r1: number) => {
     const [x0, y0] = xy(a0, r1), [x1, y1] = xy(a1, r1), [x2, y2] = xy(a1, r0), [x3, y3] = xy(a0, r0)
     return `M${x0} ${y0}A${r1} ${r1} 0 0 0 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 0 1 ${x3} ${y3}Z`
@@ -46,7 +63,7 @@ export function ChartWheel({ sky, title, focus, focusAspect, onPick, svgRef }: {
   return (
     <svg ref={svgRef} className="sk-wheel" viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-labelledby="sk-wheel-t sk-wheel-d">
       <title id="sk-wheel-t">{title}</title>
-      <desc id="sk-wheel-d">A zodiac wheel showing where the Sun, Moon and planets were. The same details are listed in the table of placements.</desc>
+      <desc id="sk-wheel-d">{desc ?? 'A zodiac wheel showing where the Sun, Moon and planets were. The same details are listed in the table of placements.'}</desc>
       <circle className="sk-w-bg" cx={C} cy={C} r={R.outer} />
 
       {/* the twelve signs */}
@@ -88,6 +105,17 @@ export function ChartWheel({ sky, title, focus, focusAspect, onPick, svgRef }: {
         const [x0, y0] = xy(lonOf(a.a), R.aspect - 2), [x1, y1] = xy(lonOf(a.b), R.aspect - 2)
         return <line key={`${a.a}-${a.b}`} className={`sk-w-asp sk-w-asp--${ASPECT_WORDS[a.kind].mood}${lit(a) ? ' is-lit' : ''}`} x1={f(x0)} y1={f(y0)} x2={f(x1)} y2={f(y1)} style={{ strokeOpacity: lit(a) ? 0.35 + 0.6 * a.score : 0.08 }} />
       })}
+      {ghost && (() => {
+        const [x0, y0] = xy(lonOf(ghost.from), R.aspect - 2), [gx, gy] = xy(ghost.lon, R.ghost), [t0x, t0y] = xy(ghost.lon, R.aspect), [t1x, t1y] = xy(ghost.lon, R.aspect - 7)
+        return (
+          <g className={`sk-w-ghost sk-w-ghost--${ASPECT_WORDS[ghost.kind].mood}`}>
+            <line className="sk-w-ghost__line" x1={f(x0)} y1={f(y0)} x2={f(gx)} y2={f(gy)} />
+            <line className="sk-w-ghost__tick" x1={f(t0x)} y1={f(t0y)} x2={f(t1x)} y2={f(t1y)} />
+            <circle className="sk-w-ghost__ring" cx={f(gx)} cy={f(gy)} r={12} />
+            <text className={`sk-w-ghost__glyph${ghost.id === 'ascendant' || ghost.id === 'midheaven' ? ' is-angle' : ''}`} x={f(gx)} y={f(gy)}>{POINTS[ghost.id].glyph}</text>
+          </g>
+        )
+      })()}
       <path className="sk-w-star" d={`M${C} ${C - 9}L${C + 2.2} ${C - 2.2}L${C + 9} ${C}L${C + 2.2} ${C + 2.2}L${C} ${C + 9}L${C - 2.2} ${C + 2.2}L${C - 9} ${C}L${C - 2.2} ${C - 2.2}Z`} />
 
       {/* the planets */}

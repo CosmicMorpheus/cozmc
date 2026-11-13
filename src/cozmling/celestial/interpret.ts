@@ -7,8 +7,10 @@
    ============================================================ */
 import { signInfo, ELEMENTS } from '../domain/starprint'
 import type { ZodiacSign } from '../types'
-import type { Aspect, AspectKind, CelestialBirthRecord, MoonPhaseName, Pattern, PointId } from './types'
-import { dms, ORDINAL, POINTS } from './zodiac'
+import type { Aspect, AspectKind, BodyId, CelestialBirthRecord, MoonPhaseName, Pattern, PointId } from './types'
+import type { DailyCelestialReport, TransitAspect } from './daily'
+import { clockText } from './observatory'
+import { BODIES, dms, ORDINAL, POINTS } from './zodiac'
 
 const THEME: Record<PointId, string> = {
   sun: 'its core spark: what it is drawn toward, and what makes it shine',
@@ -109,3 +111,71 @@ export function bigThree(sky: CelestialBirthRecord): string {
 }
 
 export const DISCLAIMER = 'Astrology here is a way of telling stories, not a prediction. Its sky offers symbols to play with; who it becomes is decided by the life you share.'
+
+/* ---------------- today's sky ---------------- */
+
+const THE: Partial<Record<BodyId, string>> = { sun: 'the Sun', moon: 'the Moon' }
+const theBody = (b: BodyId) => THE[b] ?? POINTS[b].name
+const Cap = (s: string) => s[0].toUpperCase() + s.slice(1)
+/** What each of today's planets brings to the day. */
+const TODAY: Record<BodyId, string> = {
+  moon: 'today’s mood', sun: 'today’s light', mercury: 'today’s ideas and conversations', venus: 'today’s warmth and fondness', mars: 'today’s energy and courage',
+  jupiter: 'this season’s growth', saturn: 'this season’s lessons', uranus: 'these years’ surprises', neptune: 'these years’ dreams', pluto: 'these years’ deep changes',
+}
+const TOWARD: Record<AspectKind, string> = { conjunction: 'meets', sextile: 'opens a door to', square: 'presses on', trine: 'flows with', opposition: 'stands opposite' }
+const TOWARD_PAST: Record<AspectKind, string> = { conjunction: 'met', sextile: 'opened a door to', square: 'pressed on', trine: 'flowed with', opposition: 'stood opposite' }
+const thatDay = (s: string) => s.replace('today’s', 'that day’s')
+const natalName = (name: string, p: PointId) => `${name}’s ${p === 'ascendant' ? 'Rising sign' : p === 'midheaven' ? 'Midheaven' : POINTS[p].name}`
+
+export const transitTitle = (t: TransitAspect, name: string) => `${Cap(theBody(t.a))} ${ASPECT_WORDS[t.kind].word} ${natalName(name, t.b)}`
+
+/** What one of today's transits might mean for this Cozmling. `on`: the day, when it is an earlier day's (told in the past). */
+export function transitReading(t: TransitAspect, name: string, timeZone: string, on?: string): Reading {
+  const was = on ? 'was' : 'is'
+  const when = t.exactAt != null
+    ? `It ${was} exact at ${clockText(t.exactAt, timeZone)}, your time.`
+    : `At midday it ${was} ${dms(t.orb)} from exact, ${t.applying ? 'and still drawing closer' : 'and already easing off'}.`
+  return {
+    title: transitTitle(t, name),
+    lines: [
+      on ? `On ${on}, ${theBody(t.a)} ${TOWARD_PAST[t.kind]} ${natalName(name, t.b)}: ${ASPECT_WORDS[t.kind].phrase}, between ${thatDay(TODAY[t.a])} and ${SHORT[t.b]}.`
+        : `Today ${theBody(t.a)} ${TOWARD[t.kind]} ${natalName(name, t.b)}: ${ASPECT_WORDS[t.kind].phrase}, between ${TODAY[t.a]} and ${SHORT[t.b]}.`,
+      when,
+      'A theme to play with, if it feels right. It doesn’t decide anything.',
+    ],
+  }
+}
+
+/** The day in a line: its strongest transit, or a quiet sky. */
+export function todayHeadline(r: DailyCelestialReport, name: string): string {
+  const t = r.transits[0]
+  return t ? `${Cap(theBody(t.a))} ${TOWARD[t.kind]} ${natalName(name, t.b)}` : `A quiet sky for ${name}: nothing close to its own sky today`
+}
+
+/**
+ * The sky's own news for the day: the Moon, planets turning or changing sign, and who is retrograde.
+ * moonNow: where the Moon is right now (it moves about 13° a day), told in the present; without it, the
+ * Moon is told as it was at midday. past: an earlier day's report, told in the past.
+ */
+export function skyNotes(r: DailyCelestialReport, name: string, o: { moonNow?: { sign: ZodiacSign; house: number | null; phase: DailyCelestialReport['moonPhase'] } | null; past?: boolean } = {}): string[] {
+  const out: string[] = [], v = (now: string, then: string) => (o.past ? then : now)
+  const live = !o.past && o.moonNow ? o.moonNow : null
+  const moon = live ?? { sign: r.sky.moon.sign, house: r.sky.moon.house, phase: r.moonPhase }, pct = Math.round(moon.phase.illumination * 100)
+  out.push(`${live ? 'The Moon is' : `At midday the Moon ${v('is', 'was')}`} in ${signName(moon.sign)}, ${moon.phase.name.toLowerCase()} and ${pct}% lit${moon.house ? `, passing through ${name}’s ${ORDINAL[moon.house - 1]} house (${HOUSE[moon.house - 1]})` : ''}.`)
+  for (const i of r.ingresses) if (i.body !== 'moon') out.push(`${Cap(theBody(i.body))} ${v('moves', 'moved')} from ${signName(i.from)} into ${signName(i.to)} at ${clockText(i.at, r.timeZone)}.`)
+  const moonIn = r.ingresses.find(i => i.body === 'moon')
+  if (moonIn) out.push(`The Moon ${v('moves', 'moved')} from ${signName(moonIn.from)} into ${signName(moonIn.to)} at ${clockText(moonIn.at, r.timeZone)}.`)
+  for (const s of r.stations) out.push(`${Cap(theBody(s.body))} ${v('turns', 'turned')} ${s.turns} at ${clockText(s.at, r.timeZone)}.`)
+  const back = BODIES.filter(b => r.sky[b].retrograde && !r.stations.some(s => s.body === b)).map(b => POINTS[b].name)
+  if (back.length) out.push(`${back.length === 1 ? `${back[0]} ${v('is', 'was')}` : `${back.slice(0, -1).join(', ')} and ${back[back.length - 1]} ${v('are', 'were')}`} retrograde.`)
+  return out
+}
+
+/** Where one of today's planets is, and which part of this Cozmling's own sky it is passing through. `on`: an earlier day's (at its midday, told in the past). */
+export function todayPlacementReading(b: BodyId, p: { sign: ZodiacSign; degree: number; retrograde: boolean }, house: number | null, name: string, on?: string): Reading {
+  const lines = on
+    ? [`At midday on ${on}, ${theBody(b)} was in ${signName(p.sign)}, at ${dms(p.degree)}${p.retrograde ? ', seeming to move backwards (retrograde)' : ''}. It coloured ${thatDay(TODAY[b])}, which may have felt ${TONE[p.sign]}.`]
+    : [`Today ${theBody(b)} is in ${signName(p.sign)}, at ${dms(p.degree)}${p.retrograde ? ', seeming to move backwards (retrograde)' : ''}. It colours ${TODAY[b]}, which may feel ${TONE[p.sign]}.`]
+  if (house) lines.push(`It ${on ? 'was' : 'is'} passing through ${name}’s ${ORDINAL[house - 1]} house, the part of its sky linked with ${HOUSE[house - 1]}.`)
+  return { title: `${Cap(theBody(b))} in ${signName(p.sign)} ${on ? `on ${on}` : 'today'}`, lines }
+}

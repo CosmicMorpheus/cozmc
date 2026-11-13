@@ -1,8 +1,10 @@
-/* The observatory: a Cozmling's birth sky, in full (#/cozmling/sky).
-   The wheel, a table of every placement, the aspects and patterns, the Moon's phase, and a plain
-   account of how the chart was worked out and what (if anything) couldn't be. Choosing anything
-   shows what it might mean, in the reading box beside the wheel. */
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+/* The observatory: a Cozmling's sky, in two views.
+   Birth sky (#/cozmling/sky): the wheel, a table of every placement, the aspects and patterns, the
+   Moon's phase, and a plain account of how the chart was worked out and what (if anything) couldn't be.
+   Today's sky (#/cozmling/sky/today): where the planets are now, and how they meet its own sky (TodaySky.tsx).
+   Choosing anything shows what it might mean, in the reading box beside the wheel. Both views share one
+   stage, so the Cosmic Vortex behind it carries on, undisturbed, when the view changes. */
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { signInfo } from '../../domain/starprint'
 import { nameOf } from '../../domain/care'
 import { CosmicVortex } from '../../components/CosmicVortex'
@@ -10,31 +12,38 @@ import type { Companion } from '../../types'
 import { aspectReading, aspectTitle, bigThree, DISCLAIMER, moonPhaseReading, patternReading, placementReading, type Reading } from '../interpret'
 import { clockText } from '../observatory'
 import { starprintDisagrees } from '../options'
-import type { AspectKind, CelestialBirthRecord, PointId } from '../types'
+import type { CelestialBirthRecord, PointId } from '../types'
+import { useLiveSky } from '../useLiveSky'
 import { skyColors, useLateSky } from '../useSky'
 import { BODIES, dms, ORDINAL, POINTS } from '../zodiac'
-import { ChartWheel, WHEEL_RIM } from './ChartWheel'
+import { AS_TEXT as T, ASPECT_GLYPH, ChartWheel, WHEEL_RIM } from './ChartWheel'
+import { AboutToday, TodaySky } from './TodaySky'
 import './celestial.css'
 
+export type SkyMode = 'birth' | 'today'
 type Pick = { kind: 'point'; id: PointId } | { kind: 'aspect'; i: number } | { kind: 'pattern'; i: number } | { kind: 'phase' }
-const ASPECT_GLYPH: Record<AspectKind, string> = { conjunction: '☌', sextile: '⚹', square: '□', trine: '△', opposition: '☍' }
 const FIRST = 8
-const T = '︎'
 
-export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
+/** On a phone the reading sits above the lists, so after something is picked, bring it into view. */
+function bringIntoView(el: HTMLElement | null) {
+  if (!el || typeof matchMedia !== 'function' || !matchMedia('(max-width: 900px)').matches) return
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
+  requestAnimationFrame(() => el.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' }))
+}
+
+function SkyTabs({ mode, kind }: { mode: SkyMode; kind: CelestialBirthRecord['kind'] }) {
+  return (
+    <nav className="sk-tabs" aria-label="Observatory views">
+      <a href="#/cozmling/sky" aria-current={mode === 'birth' ? 'page' : undefined}>{kind === 'birth' ? 'Birth sky' : 'Awakening sky'}</a>
+      <a href="#/cozmling/sky/today" aria-current={mode === 'today' ? 'page' : undefined}>Today’s sky</a>
+    </nav>
+  )
+}
+
+export function ObservatoryScreen({ companion: c, mode = 'birth' }: { companion: Companion; mode?: SkyMode }) {
   const sky = c.celestial, name = nameOf(c), [o1, o2] = skyColors(c)
-  const [pick, setPick] = useState<Pick>({ kind: 'point', id: 'sun' })
-  const readingBox = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null), wheel = useRef<SVGSVGElement>(null)
-  /** Show what something means. On a phone the reading sits above the lists, so bring it into view. */
-  const choose = (next: Pick) => {
-    setPick(next)
-    if (typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches) {
-      const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
-      requestAnimationFrame(() => readingBox.current?.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' }))
-    }
-  }
-  const [all, setAll] = useState(false)
+  const today = useLiveSky(c, { enabled: mode === 'today' })
   useLateSky(c)
   useEffect(() => { scrollTo(0, 0) }, [])
 
@@ -49,6 +58,36 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
     </div>
   )
 
+  const signName = (s: Parameters<typeof signInfo>[0]) => signInfo(s).name
+  const tabs = <SkyTabs mode={mode} kind={sky.kind} />
+
+  return (
+    <div className="sk-page sl-page" style={{ '--o1': o1, '--o2': o2 } as CSSProperties}>
+      <p className="sk-back"><a className="link" href="#/cozmling">← Back to the Star Loft</a></p>
+      {/* a living sky behind the chart: its dark sphere sits exactly behind the wheel */}
+      <CosmicVortex stage={stage} anchor={wheel} anchorRatio={WHEEL_RIM} />
+      <div className="sk-stage" ref={stage}>
+        {mode === 'today'
+          ? <TodaySky natal={sky} name={name} live={today} wheel={wheel} tabs={tabs} onChoose={bringIntoView} />
+          : <BirthSky sky={sky} name={name} wheel={wheel} tabs={tabs} />}
+      </div>
+
+      <section className="sk-more">
+        {mode === 'today'
+          ? <AboutToday natal={sky} name={name} live={today} />
+          : <About sky={sky} name={name} note={c.kind === 'adventurer' && starprintDisagrees(c) ? `${name}’s Starprint was chosen before skies were read. At its birth minute the Sun was in ${signName(sky.bodies.sun.sign)}.` : null} />}
+      </section>
+      <p className="sl-fine sk-disclaimer">{DISCLAIMER}</p>
+    </div>
+  )
+}
+
+/** The birth sky: the chart that never changes. */
+function BirthSky({ sky, name, wheel, tabs }: { sky: CelestialBirthRecord; name: string; wheel: RefObject<SVGSVGElement | null>; tabs: ReactNode }) {
+  const [pick, setPick] = useState<Pick>({ kind: 'point', id: 'sun' })
+  const [all, setAll] = useState(false)
+  const readingBox = useRef<HTMLDivElement>(null)
+  const choose = (next: Pick) => { setPick(next); bringIntoView(readingBox.current) }
   const reading: Reading = pick.kind === 'point' ? placementReading(sky, name, pick.id)
     : pick.kind === 'aspect' ? aspectReading(sky.aspects[pick.i])
     : pick.kind === 'pattern' ? patternReading(sky.patterns[pick.i])
@@ -59,11 +98,7 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
   const signName = (s: Parameters<typeof signInfo>[0]) => signInfo(s).name
 
   return (
-    <div className="sk-page sl-page" style={{ '--o1': o1, '--o2': o2 } as CSSProperties}>
-      <p className="sk-back"><a className="link" href="#/cozmling">← Back to the Star Loft</a></p>
-      {/* a living sky behind the chart: its dark sphere sits exactly behind the wheel */}
-      <CosmicVortex stage={stage} anchor={wheel} anchorRatio={WHEEL_RIM} />
-      <div className="sk-stage" ref={stage}>
+    <>
       <header className="sk-head">
         <div>
           <p className="kicker">Observatory</p>
@@ -75,6 +110,7 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
           <p className="sl-id"><span className="sl-id__sign">{bigThree(sky)}</span><span>{sky.moonPhase.name}</span></p>
         </div>
       </header>
+      {tabs}
 
       <section className="sk-main">
         <div className="sk-col">
@@ -84,7 +120,7 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
           </div>
           <div className="panel sk-o4">
             <header className="panel__head"><h2>Aspects</h2><span className="sl-fine sl-fine--flush">{sky.aspects.length} in all</span></header>
-            <ul className="sk-list">
+            <ul className="sk-list sk-aspects">
               {shown.map((a, i) => (
                 <li key={`${a.a}-${a.b}`}>
                   <button type="button" aria-pressed={pick.kind === 'aspect' && pick.i === i} className={pick.kind === 'aspect' && pick.i === i ? 'is-on' : undefined} onClick={() => choose({ kind: 'aspect', i })}>
@@ -144,13 +180,7 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
           </div>
         </div>
       </section>
-      </div>
-
-      <section className="sk-more">
-        <About sky={sky} name={name} note={c.kind === 'adventurer' && starprintDisagrees(c) ? `${name}’s Starprint was chosen before skies were read. At its birth minute the Sun was in ${signName(sky.bodies.sun.sign)}.` : null} />
-      </section>
-      <p className="sl-fine sk-disclaimer">{DISCLAIMER}</p>
-    </div>
+    </>
   )
 }
 

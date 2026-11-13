@@ -16,6 +16,16 @@ It is part of the rebuilt Cozmling (`src/cozmling/`), so it sits behind the same
 - **Saved for good.** The chart is stored with the companion and the store refuses to change it afterwards.
 - **Shown** as Sun, Moon and Rising in the Star Loft's Starprint panel, and in full in the observatory at `#/cozmling/sky`. The observatory has the zodiac wheel, a table of every placement, the aspects, the patterns, the Moon's phase, what each might mean, and how the chart was worked out.
 
+## What is built (MVP 2: Living Sky)
+
+- **Today's sky**, at `#/cozmling/sky/today` (the observatory's second tab):
+  - where the planets are now, drawn in the Cozmling's own houses, with today's planets' aspects to each other;
+  - a table of today's positions, with the house of its own sky each is passing through, and retrograde marks;
+  - the sky's own news for the day: the Moon (sign, phase, how much is lit, which of its houses), and any planet changing sign or turning retrograde or direct, with the time;
+  - **today for this Cozmling:** the transits, today's planets against its birth sky, ranked, with the moment each is exact if that falls during the day. Picking one draws it on the wheel: the point of its own sky, with a line from today's planet.
+- **Read once a day, without anyone asking.** The Star Loft's Starprint panel has a line for today, with the day's strongest transit, linking to the view. Opening the Cozmling page reads the day's report if it isn't saved yet.
+- **Live, and honest about it.** While the view is open, the planets are worked out again every 10 minutes. The page shows the time they were worked out, and stops saying "Live" if that time gets old.
+
 ## When and where a Cozmling is born
 
 These are the two rules chosen by the site owner.
@@ -36,10 +46,14 @@ These are the two rules chosen by the site owner.
 | `interpret.ts` | The words: what a placement, aspect, pattern or Moon phase might mean. Reads charts, never changes them | no |
 | `validate.ts` | Checks a saved chart before it is believed | no |
 | `options.ts`, `useSky.ts` | Small helpers for the screens | no |
+| `version.ts` | Which engine and library work charts and reports out | no |
+| `transits.ts` | `skyAt()` (where everything is at a moment) and `readDaily()` (a Cozmling's report for one day) | **yes** |
+| `daily.ts` | The report's shape, the day's orbs and ranking, where a day starts and ends, and whether a saved report is still today's | no |
+| `useLiveSky.ts` | Keeps today's sky current on a page: saved report first, then the astronomy; every 10 minutes; at midnight | no |
 | `engine.ts`, `load.ts` | The one doorway to the library, loaded on first use | `engine.ts` only |
-| `ui/` | The observatory page and the wheel | no |
+| `ui/` | The observatory page (`ObservatoryScreen.tsx`, with the birth sky), today's sky (`TodaySky.tsx`) and the wheel | no |
 
-The astronomy library is loaded only when a sky is being read: when a birthday is chosen and when an egg hatches. A saved chart is shown without it. If it can't load (offline, say), the egg still hatches; its sky is read from its record (birthday and hatch time) the next time the Cozmling is opened.
+The astronomy library is loaded only when a sky is being read: when a birthday is chosen, when an egg hatches, when today's report isn't saved yet, and while today's sky is open. A saved chart, or today's saved report, is shown without it. If it can't load (offline, say), the egg still hatches; its sky is read from its record (birthday and hatch time) the next time the Cozmling is opened.
 
 Astronomy and story are separate. `ephemeris.ts` and `chart.ts` produce numbers; `interpret.ts` writes from them. Rewording a story can never change a chart.
 
@@ -74,6 +88,18 @@ How it stays permanent:
 - **On import.** Taking a newer copy from a save file keeps the birth sky already here.
 - **On load.** A chart that fails `validate.ts` makes the record unreadable. It is set aside, never repaired.
 
+## Today's sky: how it works
+
+- **The same astronomy as a birth chart.** `skyAt()` uses the same provider, positions and zodiac, so today's planets and a birth chart can be compared directly (a test checks they agree exactly).
+- **One report per day, on the player's own clock.** A day is a calendar day in the player's time zone, as the browser reports it. The report is read for **midday** that day, so it is one fixed thing from midnight to midnight. A new day begins at the player's midnight. A new time zone (travel) makes a new day's report for that zone.
+- **What a report holds** (`DailyCelestialReport` in `daily.ts`): the day, time zone and midday moment; the birth chart it was compared with; the engine and library versions; every planet at midday, with the Cozmling's house it is passing through; the Moon's phase; planets changing sign during the day (to the second) and turning retrograde or direct (to the minute); and the transits.
+- **Transits.** Each of today's planets against each point of the birth sky (the ten planets, the Rising sign and the Midheaven), with tighter orbs than a birth chart (`TRANSIT_ORBS`): 3° (2° for a sextile), 1° more with the Sun or Moon, and at most 2° to the Rising sign or Midheaven. They are ranked for a day's story (`dailyScore()`): how close, how fast today's planet moves (so the Moon's and Sun's aspects, which change by the day, come before Saturn's or Pluto's, which last months), how personal the point is, and a little extra if still tightening. For the top eight, the moment it is exact is found, if it falls inside the day.
+- **Nothing random.** The same chart, day and time zone always give the same report. Two Cozmlings see the same sky on the same day, but meet it differently.
+- **Saved, and only used while it's true.** A report is saved on the device (IndexedDB meta, under `daily:<companionId>`). It is used again only for the same Cozmling, birth chart, day, time zone, engine and library version (`reportIsCurrent()`); otherwise a new one is read. It is not part of the companion, is never exported, and can always be worked out again.
+- **Offline.** The astronomy runs on the device, so the view works offline once the site's files are cached. If the astronomy can't load at all, today's saved report still shows, marked as offline, at its midday positions. A report from an earlier day is shown only when today's can't be read, labelled with its own day and told in the past ("On Thursday, November 12, Mercury opened a door to…"); it is never passed off as today's.
+- **What it costs.** About 8 ms to read a day's report and well under a millisecond to work out the sky now (measured in Node on the build machine; a phone is slower, but still quick). A saved report is about 4.5 KB. The Star Loft loads the astronomy only when today's report isn't saved yet: once a day at most.
+- **What it never does.** It doesn't change a Cozmling's needs, rewards, scores, tickets or token amounts. Today's words are symbols to play with ("A theme to play with, if it feels right. It doesn't decide anything."), never forecasts.
+
 ## First-version Cozmlings
 
 They keep everything they had, and nothing is read for them unless their player asks. The ask is in the "About" panel in the Star Loft.
@@ -101,6 +127,15 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
   - Damaged records caught.
   - First-version Cozmlings and awakenings.
   - Wording that never states certainties.
+- **`npm test` → `tests/celestial-today.test.ts`.**
+  - Today's sky agrees exactly with a birth chart worked out for the same moment.
+  - A day's report is the same all day; a new day starts at the player's midnight, in their own time zone, through daylight saving (23- and 25-hour days).
+  - Transit orbs and ranking; two Cozmlings meeting the same sky differently.
+  - Exact times really are exact (checked back against the astronomy), and inside the day.
+  - Sign changes caught to the second; every turn of Mercury in 2026 caught on its day.
+  - A saved report is reused only for the same day, time zone, chart and engine; a damaged one is never used.
+  - The words: about this Cozmling, in the player's clock, never a forecast; the Moon told where it is now; an earlier day told in the past.
+  - A report takes well under 60 ms.
 - **`tests/celestial-sky.mjs`**, in a real browser:
   - hatch → sky → reload;
   - the observatory at 360 px and on a desktop, by tap and by keyboard;
@@ -108,7 +143,11 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
   - a cusp birthday;
   - first-version Cozmlings;
   - the astronomy failing to load;
-  - a pre-sky Cozmling opened straight at the observatory.
+  - a pre-sky Cozmling opened straight at the observatory;
+  - today's sky: the Star Loft reads it by itself and links to it; the day's reading is the one saved, not read again; transits and the wheel; the same vortex carries on between the two tabs; the Star Loft loads no astronomy once today's reading is saved;
+  - offline: today's saved reading still shows, marked; an earlier day's only with its day; back online, today's is read;
+  - a new day at the player's own midnight, with an open page (a fake clock, in New York);
+  - today's sky on a 360 px phone, in reading order.
 
   To run it:
 
@@ -148,7 +187,10 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 
 ## Known limitations
 
-- **No Today's Sky or daily story yet.** Those are MVP 2 and 3.
+- **No daily story yet.** That is MVP 3: today's report is the sky half of it.
+- **No "then × now" overlay yet.** Today's wheel shows today's planets in the Cozmling's houses, and one picked transit at a time. Both whole skies on one wheel is MVP 5.
+- **A day follows the device.** Its clock and time zone are trusted. Changing time zone mid-day starts a new day's report for the new zone.
+- **Each device reads its own report.** There is no server, so two devices work the same report out separately. They agree, because nothing is random.
 - **No arcade or journal links yet.** That is MVP 4.
 - **Placidus houses are not offered.** Whole-sign only for now. Another house system would be a new `houseSystem` value, and saved charts would keep theirs.
 - **One birthplace.** Choosing another would need a new observatory entry; saved charts keep the one they were read at.
@@ -160,7 +202,7 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 
 These follow the brief's own order.
 
-1. **MVP 2, Living Sky.** Today's sky from the same provider, transits to each chart (with `aspectBetween()` and a tighter table of orbs), a daily report once per local day (`localDay()` in `observatory.ts`), cached, with a last-updated time.
+1. ~~**MVP 2, Living Sky.**~~ Built: see above.
 2. **MVP 3, Living Story.** A `CozmlingDailyStoryEngine` with original templates, using the strongest transit and the Cozmling's real Food, Fun, Energy, mood and recent care. It is stored once per day under a fixed event id, so a refresh never makes a second one.
 3. **MVP 4, Shared Journey.** Arcade, care and milestones in a Star Journal.
 4. **MVP 5.** "Then × now" overlays, and a slot for a licensed horoscope feed through a `DailyAstrologySource`. Nothing is copied or scraped.

@@ -11,10 +11,10 @@
    ============================================================ */
 import { Body, GeoVector, MakeTime, MoonPhase, RotateVector, Rotation_EQD_ECT, Rotation_EQJ_ECT, SiderealTime, SphereFromVector } from 'astronomy-engine'
 import type { BodyId } from './types'
+import { LIBRARY } from './version'
 import { deg, norm360, wrap180 } from './zodiac'
 
-/** Must match the version installed (a test checks it). Changing it changes the engine's version too. */
-export const LIBRARY = { name: 'astronomy-engine', version: '2.1.19' } as const
+export { LIBRARY }
 
 export interface EclipticPosition { lon: number; lat: number }
 export interface CelestialEphemerisProvider {

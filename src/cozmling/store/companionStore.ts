@@ -210,6 +210,10 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     /** For the pieces built on top of this (adoption, the arcade bridge, import). */
     commit,
     reload: () => inTurn(async () => { show(await repo.load(), null) }),
+    /** Small things kept beside the companions that can always be worked out again (today's sky, say).
+        Never exported, never part of a companion. */
+    readMeta: async (key: string): Promise<unknown> => (await repo.load()).meta[key],
+    writeMeta: (key: string, value: unknown) => inTurn(() => repo.write({ meta: { [key]: value } })),
     source: (key: string) => sources.get(key),
     repo,
   }

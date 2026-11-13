@@ -18,10 +18,10 @@ import { birthdayBounds, birthMoment, ORIGIN_OBSERVATORY, wallClock, wallClockTe
 import type { AnglePoint, BodyId, Birthplace, CelestialBirthRecord, MoonPhaseName, Placement } from './types'
 import { BODIES, deg, degreeIn, norm360, rad, round6, signAt, ZODIAC } from './zodiac'
 import { legacySkyOption } from './options'
+import { ENGINE } from './version'
 
 export { legacySkyOption, starprintDisagrees } from './options'
-
-export const ENGINE = { name: 'cozmc-celestial', version: 1 } as const
+export { ENGINE }
 export const ENGINE_TAG = `${ENGINE.name}-${ENGINE.version}`
 export const OBSERVATORY_TAG = `${ORIGIN_OBSERVATORY.id}-${ORIGIN_OBSERVATORY.version}`
 
