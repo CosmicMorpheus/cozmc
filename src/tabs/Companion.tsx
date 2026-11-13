@@ -430,7 +430,7 @@ function Adopt({ pet, claim, guest, busy, onDone, onCancel, onConnect }: { pet?:
   const from = pet ?? claim
   const [look, setLook] = useState<Look>(from?.look ?? DEFAULT_LOOK.boy)
   const [name, setName] = useState(from?.name ?? pick(NAMES.boy))
-  const [home, setHome] = useState<HomeId>(from?.home ?? 'loft')
+  const [home, setHome] = useState<HomeId>(from?.home ?? 'grove')        // the original home: the Cosmic Grove
   const [typed, setTyped] = useState(!!from)
   const set = (k: keyof Look, v: number | Form) => setLook(l => ({ ...l, [k]: v }))
   const chooseForm = (f: Form) => {

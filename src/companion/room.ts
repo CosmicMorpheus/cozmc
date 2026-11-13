@@ -36,7 +36,14 @@ function stamp(ctx: CanvasRenderingContext2D, a: Art, x: number, y: number, tint
   }
 }
 
+/** The moment a calm room holds still at (eyes open: a blink starts every 3.8 s). */
+const STILL_T = 1
+
 export class Room {
+  /** Reduced motion: a still room. The Cozmling stays put, the scenery and its breathing hold still,
+      and care shows as a pose, without food falling, a ball bouncing, hearts, sparks or a flash.
+      Off unless asked for: the first version's own page draws exactly as it always has. */
+  calm = false
   x = SPEC.loft.w / 2 + 8
   dir: 1 | -1 = -1
   private goal = this.x
@@ -72,25 +79,27 @@ export class Room {
   /* ---- reactions (call these after care.ts says yes) ---- */
   feed(food: string) {
     this.hold()
+    if (this.calm) { this.act = { pose: 'eat', until: this.now() + 1.2 }; sfx.tone(660, 0.05, 'triangle', 0.04, 220); return }
     this.item = { art: food, kind: 'food', x: this.x + this.dir * 1, y: -6, vy: 0, born: this.now(), until: Infinity }
     sfx.tone(660, 0.05, 'triangle', 0.04, 220)
   }
   play() {
     const t = this.now()
     this.hold()
-    this.act = { pose: 'play', until: t + 2.8 }
+    this.act = { pose: 'play', until: t + (this.calm ? 1.2 : 2.8) }
+    if (this.calm) { sfx.level(); return }
     this.item = { art: 'ball', kind: 'ball', x: this.x, y: 0, vy: 0, born: t, until: t + 2.8 }
     sfx.level()
   }
   pat() {
     this.hold()
     this.act = { pose: 'happy', until: this.now() + 1.3 }
-    this.burst(3, this.x, this.sp.floorY - HEAD(this.stage) - 2, 'heart', { speed: 10, up: 22, life: 1.1 })
+    if (!this.calm) this.burst(3, this.x, this.sp.floorY - HEAD(this.stage) - 2, 'heart', { speed: 10, up: 22, life: 1.1 })
     sfx.tone(880, 0.07, 'triangle', 0.05); setTimeout(() => sfx.tone(1175, 0.09, 'triangle', 0.05), 80)
   }
   refuse() {
     this.act = { pose: 'sad', until: this.now() + 0.9 }
-    this.shake = 0.4
+    if (!this.calm) this.shake = 0.4
     sfx.tone(220, 0.14, 'triangle', 0.05, -60)
   }
   sleep() { [523, 440, 349].forEach((f, i) => setTimeout(() => sfx.tone(f, 0.18, 'triangle', 0.05), i * 160)) }
@@ -99,14 +108,13 @@ export class Room {
     ;[349, 440, 523].forEach((f, i) => setTimeout(() => sfx.tone(f, 0.12, 'triangle', 0.05), i * 110))
   }
   crack() {
-    this.shake = 0.35
-    this.burst(4, this.sp.w / 2, this.sp.floorY - 14, 'spark', { speed: 26, life: 0.4 })
+    if (!this.calm) { this.shake = 0.35; this.burst(4, this.sp.w / 2, this.sp.floorY - 14, 'spark', { speed: 26, life: 0.4 }) }
     sfx.noise(0.08, 0.05); sfx.tone(240, 0.06, 'square', 0.04)
   }
   hatch(glow: string) {
-    this.flash = 1
     this.act = { pose: 'happy', until: this.now() + 2 }
-    this.burst(26, this.sp.w / 2, this.sp.floorY - 16, 'spark', { speed: 60, life: 1.2, tints: ['#ffffff', '#ffd13a', glow] })
+    if (!this.calm) this.flash = 1
+    if (!this.calm) this.burst(26, this.sp.w / 2, this.sp.floorY - 16, 'spark', { speed: 60, life: 1.2, tints: ['#ffffff', '#ffd13a', glow] })
     sfx.start(); setTimeout(() => sfx.pickup(), 320)
   }
 
@@ -117,17 +125,19 @@ export class Room {
   }
 
   draw(f: Frame) {
-    const t = this.now(), dt = this.last ? Math.min(0.05, t - this.last) : 0
-    this.last = t
+    const now = this.now(), dt = this.last ? Math.min(0.05, now - this.last) : 0
+    const t = this.calm ? STILL_T : now          // what is drawn (scenery, breathing, bobbing) holds still when calm
+    if (this.act && now > this.act.until) this.act = null
+    this.last = now
     this.stage = f.stage
     const sp = this.sp = SPEC[f.home], S = CW / sp.w, FLOOR_Y = sp.floorY
     const ctx = this.ctx
-    if (this.act && t > this.act.until) this.act = null
     const pose: Pose = this.act?.pose ?? (f.asleep ? 'sleep' : f.low ? 'sad' : 'idle')
 
     // wander about when nothing is going on
     let moving = false
     if (f.stage === 'egg') this.x = sp.w / 2
+    else if (this.calm) this.goal = this.x = Math.round((sp.walk[0] + sp.walk[1]) / 2)
     else if (this.x < sp.walk[0] - 2 || this.x > sp.walk[1] + 2) this.goal = this.x = Math.min(sp.walk[1], Math.max(sp.walk[0], this.x))   // moved house
     else if (!this.act && !f.asleep && !this.item) {
       if (Math.abs(this.goal - this.x) > 0.6) {
@@ -189,14 +199,15 @@ export class Room {
       }
     }
     // chewing crumbs and munch sounds
-    if (this.act?.pose === 'eat' && t - this.chewAt > 0.26) {
+    if (this.act?.pose === 'eat' && !this.calm && t - this.chewAt > 0.26) {
       this.chewAt = t
       this.burst(2, this.x, FLOOR_Y - MOUTH(f.stage) + 1, 'spark', { speed: 14, g: 120, life: 0.5, tints: ['#ffd13a', '#c98a5f'] })
       sfx.tone(260 + Math.random() * 90, 0.04, 'square', 0.035)
     }
 
     if (f.asleep) {
-      if (t - this.zAt > 1.3) { this.zAt = t; this.parts.push({ art: 'z', x: this.x + 6, y: FLOOR_Y - HEAD(f.stage) + 6, vx: 5, vy: -9, g: 0, age: 0, life: 2.6 }) }
+      if (this.calm) stamp(ctx, ART.z, this.x + 9, FLOOR_Y - HEAD(f.stage) + 3)
+      else if (t - this.zAt > 1.3) { this.zAt = t; this.parts.push({ art: 'z', x: this.x + 6, y: FLOOR_Y - HEAD(f.stage) + 6, vx: 5, vy: -9, g: 0, age: 0, life: 2.6 }) }
     }
 
     // a thought bubble when something is badly needed

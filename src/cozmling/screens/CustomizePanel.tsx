@@ -1,9 +1,11 @@
-/* The wardrobe. For an adventurer: its look, skin colour and name. For a first-version Cozmling:
-   which home it lives in (its look is changed on the wallet step, as before). */
+/* The wardrobe. For an adventurer: its look, skin colour and name, and (in the original scene) which
+   home it lives in. For a first-version Cozmling: which home it lives in (its look is changed on the
+   wallet step, as before). Homes are the original ones, the Cosmic Grove first. */
 import { useState } from 'react'
 import { cleanName, HOMES, type HomeId } from '../../companion/care'
 import { cozmlingStore } from '../index'
 import { customize } from '../domain/adventurer'
+import { drawnOriginal, HOME_ORDER, originalHome } from '../integrations/originalScene'
 import type { Companion } from '../types'
 import { LookPicker } from './LookPicker'
 
@@ -21,7 +23,7 @@ export function CustomizePanel({ companion: c, onSaved }: { companion: Companion
       <div className="sl-wardrobe">
         <fieldset className="sl-homes">
           <legend>Home</legend>
-          {(Object.keys(HOMES) as HomeId[]).map(id => <button key={id} type="button" className={`chip${home === id ? ' on' : ''}`} aria-pressed={home === id} onClick={() => move(id)}>{HOMES[id].name}</button>)}
+          {HOME_ORDER.map(id => <button key={id} type="button" className={`chip${home === id ? ' on' : ''}`} aria-pressed={home === id} onClick={() => move(id)}>{HOMES[id].name}</button>)}
         </fieldset>
         <p className="sl-fine">{c.legacy.pet.name} is a first-version Cozmling and keeps its own look.</p>
       </div>
@@ -36,8 +38,20 @@ export function CustomizePanel({ companion: c, onSaved }: { companion: Companion
     setBusy(false)
     if (res?.ok) onSaved(`${name.trim() || adv.name} has a new look.`)
   }
+  const home = adv ? originalHome(adv) : null
+  const move = async (id: HomeId) => {
+    if (!adv || id === home) return
+    const res = await cozmlingStore()?.update(adv.companionId, cur => (cur.kind === 'adventurer' ? customize(cur, { home: id }) : null), { event: { eventId: `moved:${adv.companionId}:${Date.now()}`, type: 'customized', data: { home: id } } })
+    if (res?.ok) onSaved(`${adv.name} moved to the ${HOMES[id].name}.`)
+  }
   return (
     <div className="sl-wardrobe">
+      {adv && drawnOriginal(adv) && (
+        <fieldset className="sl-homes">
+          <legend>Home</legend>
+          {HOME_ORDER.map(id => <button key={id} type="button" className={`chip${home === id ? ' on' : ''}`} aria-pressed={home === id} title={HOMES[id].blurb} onClick={() => void move(id)}>{HOMES[id].name}</button>)}
+        </fieldset>
+      )}
       <LookPicker sign={adv!.starprint.coreSign} look={look} skin={skin} onLook={setLook} onSkin={setSkin} idBase="sl-wardrobe" />
       <div className="sl-field">
         <label htmlFor="sl-rename">Name</label>

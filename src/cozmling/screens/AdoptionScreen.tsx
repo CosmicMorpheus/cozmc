@@ -12,6 +12,7 @@ import { newId } from '../store/util'
 import { Glyph, Orb } from '../components/Glyph'
 import { StarSky } from '../components/StarSky'
 import { LookPicker } from './LookPicker'
+import { ADVENTURER_SCENE } from '../integrations/originalScene'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
@@ -98,7 +99,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
               : cusp ? <>{birthdayText(birthday)} is a cusp day: the Sun moves from {signInfo(cusp.before).name} into {signInfo(cusp.after).name} at {clockText(cusp.at, ORIGIN_OBSERVATORY.timeZone)} Mauna Kea time. If it hatched now it would be <b>{sign.name}</b>; the minute it hatches decides.</>
               : <>{birthdayText(birthday)} falls under <b>{sign.name}</b>.</>}</p>
             <p className="sl-fine">Its birth sky will be read over the Origin Observatory on Mauna Kea: on this day, at the minute its egg hatches. That sets its Moon, its Rising sign and the rest of its chart.</p>
-            {COZMLING_DEV && <p className="sl-devnote">Preview note: only {signsWithArt().map(s => s[0].toUpperCase() + s.slice(1)).join(' and ')} have art so far (placeholders). Try <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-11-05`)}>Nov 5</button> or <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-05-05`)}>May 5</button>. Other signs work too and show a stand-in.</p>}
+            {COZMLING_DEV && ADVENTURER_SCENE === 'concept-art' && <p className="sl-devnote">Preview note: only {signsWithArt().map(s => s[0].toUpperCase() + s.slice(1)).join(' and ')} have art so far (placeholders). Try <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-11-05`)}>Nov 5</button> or <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-05-05`)}>May 5</button>. Other signs work too and show a stand-in.</p>}
             <div className="sl-nav">
               {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Cancel</button>}
               <button type="button" className="btn btn--phos" disabled={!sign} onClick={() => setStep(2)}>Next</button>

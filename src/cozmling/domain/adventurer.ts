@@ -1,5 +1,6 @@
 /* A new Starprint adventurer: what the player chooses at adoption, and the record it becomes. */
-import { cleanName } from '../../companion/care'
+import { cleanName, type HomeId } from '../../companion/care'
+import { isHome, ORIGINAL_HOME, ORIGINAL_RENDERER } from '../integrations/originalScene'
 import type { AdventurerCompanion, Starprint } from '../types'
 import { CARE_RULES, STAGE_RULES } from './care'
 import { starprintFor } from './starprint'
@@ -9,7 +10,8 @@ export const SKINS: { id: string; name: string; color: string }[] = [
   { id: 'teal', name: 'Sea teal', color: '#5fd4c4' }, { id: 'lilac', name: 'Lilac', color: '#b9a3e8' }, { id: 'moss', name: 'Moss', color: '#a9c77a' },
   { id: 'rose', name: 'Rose', color: '#f2a7c3' }, { id: 'sky', name: 'Sky', color: '#8fc7ff' }, { id: 'pearl', name: 'Pearl', color: '#e8e3d6' },
 ]
-export const RENDERER = 'layers-1'
+/** New adventurers are drawn as the original Cozmling (integrations/originalScene.ts). Older records say 'layers-1'. */
+export const RENDERER = ORIGINAL_RENDERER
 export const NAMES = ['Orbi', 'Nova', 'Zib', 'Luna', 'Comet', 'Vega', 'Lyra', 'Kip', 'Mira', 'Rigel', 'Zuzu', 'Sol']
 
 export interface AdoptChoices { name: string; birthday: string; look: 'a' | 'b'; skin: string }
@@ -33,17 +35,21 @@ export function newAdventurer(c: AdoptChoices, o: { companionId: string; now: nu
     walletLinks: [],
     name: cleanName(c.name).trim(),
     starprint: o.starprint && o.starprint.chosenBirthday === c.birthday ? o.starprint : starprintFor(c.birthday)!,
-    appearance: { rendererVersion: RENDERER, appearanceOption: c.look, skin: c.skin, outfit: 'starter', home: 'loft', decor: [] },
+    appearance: { rendererVersion: RENDERER, appearanceOption: c.look, skin: c.skin, outfit: 'starter', home: ORIGINAL_HOME, decor: [] },
     care: { food: 80, fun: 80, energy: 90, asleepAt: null, settledAt: o.now, ruleVersion: CARE_RULES },
     progress: { experience: 0, visualStageVersion: STAGE_RULES, visualStage: null, counters: {} },
   }
 }
 
-/** Wardrobe changes. Identity (the Starprint) is never touched by a change of look, skin or name. */
-export function customize(c: AdventurerCompanion, change: Partial<Pick<AdoptChoices, 'name' | 'look' | 'skin'>>): AdventurerCompanion | null {
+/** Wardrobe changes. Identity (the Starprint) is never touched by a change of look, skin, name or home. */
+export function customize(c: AdventurerCompanion, change: Partial<Pick<AdoptChoices, 'name' | 'look' | 'skin'>> & { home?: HomeId }): AdventurerCompanion | null {
   const name = change.name === undefined ? c.name : cleanName(change.name).trim()
   const look = change.look ?? c.appearance.appearanceOption, skin = change.skin ?? c.appearance.skin
   if (!name || (look !== 'a' && look !== 'b') || !SKINS.some(s => s.id === skin)) return null
-  if (name === c.name && look === c.appearance.appearanceOption && skin === c.appearance.skin) return null
-  return { ...c, name, appearance: { ...c.appearance, appearanceOption: look, skin } }
+  if (change.home !== undefined && !isHome(change.home)) return null
+  // a home is chosen in the original scene: the record says so, so an older record's 'loft' is never mistaken for a choice
+  const home = change.home ?? (c.appearance.rendererVersion === ORIGINAL_RENDERER && isHome(c.appearance.home) ? c.appearance.home : null)
+  const moved = home !== null && (home !== c.appearance.home || c.appearance.rendererVersion !== ORIGINAL_RENDERER)
+  if (name === c.name && look === c.appearance.appearanceOption && skin === c.appearance.skin && !moved) return null
+  return { ...c, name, appearance: { ...c.appearance, appearanceOption: look, skin, ...(home ? { home, rendererVersion: ORIGINAL_RENDERER } : {}) } }
 }

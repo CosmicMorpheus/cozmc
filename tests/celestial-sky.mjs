@@ -286,9 +286,9 @@ await scenario('the cosmic vortex: behind everything, its sphere behind the char
     return n / (d.length / 4)
   }, v.sphere)
   assert.ok(warm > 0.03, `gold in the disk beside the sphere: ${(warm * 100).toFixed(1)}% of pixels`)
+  // still animating (its frame count is published every 30 frames, so a slow test machine gets a few seconds)
   const before = (await vortex(page)).frames
-  await page.waitForTimeout(1200)
-  assert.ok((await vortex(page)).frames > before, 'still animating')
+  await page.waitForFunction(n => +(document.querySelector('.cv')?.dataset.frames ?? 0) > n, before, { timeout: 5000 }).catch(() => assert.fail('still animating'))
   // it follows the chart as the page scrolls, and goes away (and stops) once the chart has gone by
   await page.evaluate(() => scrollBy(0, 400)); await page.waitForTimeout(300)
   const moved = await vortex(page)

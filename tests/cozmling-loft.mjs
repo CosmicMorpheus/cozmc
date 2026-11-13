@@ -1,5 +1,5 @@
 /* The rebuilt Cozmling page in a real browser: adopt, hatch, look after, reload, with no wallet.
-   Also: the keyboard alone, reduced motion, art that fails to load, a first-version Cozmling
+   Also: the keyboard alone, reduced motion, the original scene (recovered), a first-version Cozmling
    inside the new page, a browser that stores nothing, two tabs, and a 360 px phone.
    Nothing here touches Algorand or any wallet: every outside request is refused.
 
@@ -130,7 +130,7 @@ await scenario('a guest adopts, hatches and looks after a Cozmling, and it is al
   for (let i = 0; i < 4; i++) await button(page, 'Warm the egg').click()
   await button(page, 'Play').waitFor()
   await says(page, 'Welcome to the world, Orbi!')
-  assert.match(await page.locator('.sl-hero').innerText(), /HATCHLING/)
+  assert.match(await page.locator('.sl-hero').innerText(), /SPROUT/)                                // the original creature's first stage
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'sl-feed-btn')                   // the egg's buttons are gone: the keyboard moves to Feed
   c = await mine(page)
   assert.equal(c.hatch.status, 'hatched'); assert.equal(c.hatch.provenance, 'known'); assert.equal(c.progress.visualStage, 'hatchling'); assert.equal(c.revision, 1)
@@ -246,29 +246,94 @@ await scenario('reduced motion: nothing in the page moves, and hatching still wo
   await p.ctx.close()
 })
 
-await scenario('art that fails to load, or is not made yet, becomes a stand-in with the sign, and care carries on', async () => {
-  const p = await profile({ blockArt: true }), page = await p.open()
-  await adopt(page, { birthday: '2026-05-05', name: 'Moss' })                                        // Taurus has art, but none of it will load here
-  await button(page, 'Hatch now').click()
-  await button(page, 'Play').waitFor()
-  await page.locator('.sl-scene .sl-standin').waitFor()
-  assert.match(await page.locator('.sl-scene__note').innerText(), /ART DIDN’T LOAD · TAURUS KEEPER/)
-  assert.match(await page.locator('.sl-scene').getAttribute('aria-label'), /Moss, Taurus Keeper, in the Star Loft/)
-  await button(page, 'Play').click()
-  await page.waitForFunction(() => { const s = window.__cozmling.getState(); return s.companions.find(c => c.companionId === s.selectedId)?.progress.counters.played === 1 })
-  await shot(page, 'loft-art-failed-390')
+/* ---- the original Cozmling scene, recovered: the first version's own pixel creature and Cosmic Grove ---- */
+
+/** Pixels of the Cozmling's scene, by the room's own 144×96 grid (each grid pixel is 8×8 on the canvas). */
+const scenePixels = (page, points) => page.evaluate(points => {
+  const g = document.querySelector('.sl__screen canvas').getContext('2d')
+  return points.map(([x, y]) => [...g.getImageData(x * 8 + 4, y * 8 + 4, 1, 1).data].slice(0, 3).join(','))
+}, points)
+/** Wait until at least `min` pixels of the scene are this colour (within a few steps: glows are drawn see-through). */
+const sceneShows = (page, rgb, min = 1) => page.waitForFunction(([rgb, min]) => {
+  const [r, g, b] = rgb.split(',').map(Number), c = document.querySelector('.sl__screen canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+  let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r) <= 3 && Math.abs(d[i + 1] - g) <= 3 && Math.abs(d[i + 2] - b) <= 3 && ++n >= min) return true
+  return false
+}, [rgb, min], { timeout: 6000, polling: 250 })
+const sceneFingerprint = page => page.evaluate(() => { const c = document.querySelector('.sl__screen canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let h = 0; for (let i = 0; i < d.length; i += 4 * 97) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) >>> 0; return h })
+const sceneIs = async (page, key, value) => {
+  try { await page.waitForFunction(([k, v]) => document.querySelector('.sl__screen canvas')?.dataset[k] === v, [key, value], { timeout: 8000 }) }
+  catch { throw new Error(`the scene's ${key} should be ${value}, but is ${await page.evaluate(k => document.querySelector('.sl__screen canvas')?.dataset[k], key)}`) }
+}
+/** Where things are in the Cosmic Grove (scene.ts): the moon's lit side, and a glowing mushroom cap each side of the clearing. */
+const GROVE = { moon: [110, 22], cyanL: [36, 76], pinkL: [42, 79], cyanR: [127, 79], purpleR: [133, 77] }
+const RGB = { moon: '246,240,216', cyan: '89,230,255', pink: '255,138,216', purple: '176,107,255', skyBody: '124,200,255', roseBody: '255,156,207', fireGlow: '255,106,74' }
+
+await scenario('the original Cozmling, recovered: a new adventurer is the pixel creature in the Cosmic Grove, drawn in code with no image files at all', async () => {
+  // with reduced motion the room holds still and the Cozmling stands in the middle, so the pixels checked are the scene's own
+  const p = await profile({ blockArt: true, reducedMotion: 'reduce' })
+  await p.ctx.route(/\.(png|webp|jpe?g|gif)(\?.*)?$/, r => r.abort())                                 // no image file loads at all
+  const page = await p.open()
+  await adopt(page, { birthday: '2026-03-30', skin: 'Sky', name: 'Moss' })                            // an Aries: fire
+  await sceneIs(page, 'scene', 'original'); await sceneIs(page, 'home', 'grove'); await sceneIs(page, 'stage', 'egg')
+  await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
+  await sceneIs(page, 'stage', 'sprout')
+  assert.equal(await page.locator('.sl__screen canvas').getAttribute('aria-label'), 'Moss, Sprout, in the Cosmic Grove')
+  // the Cosmic Grove, as the first version painted it: the big moon, and the glowing mushrooms either side
+  await page.waitForTimeout(300)
+  assert.deepEqual(await scenePixels(page, [GROVE.moon, GROVE.cyanL, GROVE.pinkL, GROVE.cyanR, GROVE.purpleR]), [RGB.moon, RGB.cyan, RGB.pink, RGB.cyan, RGB.purple])
+  // the original creature in the colours chosen: a sky-blue body, and a red-orange antenna for a fire sign
+  await sceneShows(page, RGB.skyBody, 500)                                                            // its sky-blue body
+  await sceneShows(page, RGB.fireGlow, 20)                                                            // its fire-coloured antenna
+  // the original ladder, and its stage under its name
+  assert.match(await page.locator('.sl-grow').innerText(), /STAR EGG[\s\S]*SPROUT[\s\S]*CADET[\s\S]*EXPLORER[\s\S]*GUARDIAN/)
+  assert.match(await page.locator('.sl-grow__row').innerText(), /0 \/ 40 to Cadet/)
+  assert.match(await page.locator('.sl-hero').innerText(), /ARIES[\s\S]*FIRE[\s\S]*SPROUT/)
+  // reduced motion: nothing moves, and care still shows and counts
+  const still = await sceneFingerprint(page); await page.waitForTimeout(1200)
+  assert.equal(await sceneFingerprint(page), still, 'the scene holds still')
+  await button(page, 'Play').click(); await says(page, 'Again, again!')
+  await shot(page, 'loft-original-grove-390')
+  // lights out: the clearing darkens, and the mushrooms still glow
+  await button(page, 'Rest').click(); await button(page, 'Wake up').waitFor()
+  await page.waitForFunction(() => /, asleep$/.test(document.querySelector('.sl__screen canvas')?.getAttribute('aria-label') ?? ''))
+  await page.waitForTimeout(200)
+  const [moonAtNight, mushroomAtNight] = await scenePixels(page, [GROVE.moon, GROVE.cyanR])
+  assert.notEqual(moonAtNight, RGB.moon, 'the sky dims'); assert.equal(mushroomAtNight, RGB.cyan, 'the mushrooms still glow')
+  await shot(page, 'loft-original-asleep-390')
+  await button(page, 'Wake up').click(); await button(page, 'Rest').waitFor()
+  // the original homes: moved to the Moon Base, kept after a reload, and back to the Grove
+  await button(page, 'Customize').click()
+  await page.getByRole('button', { name: 'Moon Base', exact: true }).click()
+  await sceneIs(page, 'home', 'moonbase')
+  const moved = await mine(page)
+  assert.deepEqual([moved.appearance.home, moved.appearance.rendererVersion], ['moonbase', 'original-1'])
+  await page.reload(); await ready(page); await sceneIs(page, 'home', 'moonbase')
+  await button(page, 'Customize').click()
+  await page.getByRole('button', { name: 'Cosmic Grove', exact: true }).click()
+  await sceneIs(page, 'home', 'grove')
+  // the preview tools show it at each original stage, and save nothing
+  const rev = (await mine(page)).revision
+  await page.getByRole('button', { name: 'Guardian', exact: true }).click(); await sceneIs(page, 'stage', 'guardian')
+  await page.getByRole('button', { name: 'Sprout', exact: true }).click(); await sceneIs(page, 'stage', 'sprout')     // its real stage again
+  assert.equal((await mine(page)).revision, rev)
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
+})
 
-  const q = await profile(), page2 = await q.open()
-  await adopt(page2, { birthday: '2026-08-01', name: 'Sol' })                                        // Leo: no art yet
-  assert.match(await page2.locator('.sl-hero').innerText(), /LEO[\s\S]*FIRE[\s\S]*THE RADIANT HEART/)
-  await button(page2, 'Hatch now').click()
-  await page2.locator('.sl-scene .sl-standin').waitFor()
-  assert.match(await page2.locator('.sl-scene__note').innerText(), /ART ON ITS WAY · LEO RADIANT HEART/)
-  await shot(page2, 'loft-no-art-yet-390')
-  assert.deepEqual(q.errors, [])
-  await q.ctx.close()
+await scenario('the original scene moves as it always did: fireflies drift, the Cozmling wanders, food drops in and is eaten', async () => {
+  const p = await profile({ viewport: DESK }), page = await p.open()
+  await adopt(page, { birthday: '2026-05-05', look: 'b', skin: 'Rose', name: 'Pip' })                 // Look B is the original's other form
+  await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
+  await sceneIs(page, 'stage', 'sprout')
+  const a = await sceneFingerprint(page); await page.waitForTimeout(700)
+  assert.notEqual(await sceneFingerprint(page), a, 'the scene is alive')
+  await sceneShows(page, RGB.roseBody, 500)                                                           // its rose body, once the hatching flash has faded
+  await button(page, 'Feed').click(); await page.getByRole('menuitem', { name: /Comet cookie/ }).click()
+  await page.waitForFunction(() => { const s = window.__cozmling.getState(); return s.companions.find(c => c.companionId === s.selectedId)?.progress.counters.fed === 1 })
+  await page.waitForTimeout(500)
+  await shot(page, 'loft-original-eating-1280')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
 })
 
 await scenario('a first-version Cozmling shows in the new page as itself, and what you do is kept for the old page too', async () => {
@@ -396,8 +461,8 @@ await scenario('on a 360 px phone nothing is cut off: the four care buttons, the
   await page.keyboard.press('Escape')
   // the Cozmling itself is not covered by anything: a tap on it reaches it
   await page.locator('.sl__screen').scrollIntoViewIfNeeded()
-  const who = await page.locator('.sl-who').boundingBox()
-  assert.ok(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.sl-who'), [who.x + who.width / 2, who.y + who.height / 2]))
+  const scene = await page.locator('.sl__screen canvas').boundingBox()                                 // where it stands in the clearing
+  assert.ok(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.tagName === 'CANVAS', [scene.x + scene.width / 2, scene.y + scene.height * 0.8]))
   // the identity can be read at this size: the glyph is a real drawing at least 18 px across
   const glyph = await page.locator('.sl-hero .sl-id__sign .sl-glyph').boundingBox()
   assert.ok(glyph.width >= 18 && glyph.height >= 18, JSON.stringify(glyph))

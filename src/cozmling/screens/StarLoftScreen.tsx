@@ -6,7 +6,7 @@
    Starprint, wardrobe, growth and memories; where it is saved; and the way to the arcade.
    Every action is a real button. Nothing here needs a wallet. */
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { ageText, FOODS, GROWTH, HOMES, utcDay, type Pet } from '../../companion/care'
+import { ageText, FOODS, HOMES, utcDay, type Pet } from '../../companion/care'
 import { STAGE_NAME, STAGES } from '../../companion/look'
 import { ART } from '../../companion/room'
 import { Icon, PixelArt } from '../../components/Pixel'
@@ -17,7 +17,7 @@ import { SaveChip, SaveStatus } from '../components/SaveStatus'
 import { StarSky } from '../components/StarSky'
 import { careFor, hatch, look, nameOf, type CareAction, type CareResult } from '../domain/care'
 import { birthdayText, ELEMENTS, signInfo } from '../domain/starprint'
-import { legacyGrowth, legacyStage } from '../integrations/legacyAdapter'
+import { legacyStage } from '../integrations/legacyAdapter'
 import { CompanionRenderer, type RendererHandle } from '../render/CompanionRenderer'
 import type { AdventurerCompanion, Companion, LegacyCompanion } from '../types'
 import { CustomizePanel } from './CustomizePanel'
@@ -29,6 +29,8 @@ import { skyColors, useLateSky } from '../celestial/useSky'
 import { bigThree, todayHeadline } from '../celestial/interpret'
 import { useLiveSky } from '../celestial/useLiveSky'
 import { POINTS } from '../celestial/zodiac'
+import { drawnOriginal, originalProgress, originalStage } from '../integrations/originalScene'
+import type { Stage } from '../../companion/look'
 
 type AdvStage = NonNullable<AdventurerCompanion['progress']['visualStage']>
 const ADV_STAGE: Record<AdvStage, string> = { hatchling: 'Hatchling', adolescent: 'Adolescent', ascended: 'Ascended' }
@@ -45,7 +47,7 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
   const [menu, setMenu] = useState(false)
   const [busy, setBusy] = useState(false)
   const [wardrobe, setWardrobe] = useState(false)
-  const [preview, setPreview] = useState<AdvStage | null>(null)
+  const [preview, setPreview] = useState<AdvStage | Stage | null>(null)
   const [, setTick] = useState(0)
 
   // needs run down in real time: look again every so often (looking saves nothing)
@@ -201,10 +203,21 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
           {COZMLING_DEV && c.kind === 'adventurer' && hatched && (
             <div className="panel sl-devpanel">
               <header className="panel__head"><h2>Preview tools</h2></header>
-              <p className="sl-fine sl-fine--flush">Stage preview. Nothing here is saved, and players never see this box. The placeholder art has one drawing per look, so a stage only changes its size for now.</p>
-              <div className="chips">
-                {ADV_STAGES.map(s => <button key={s} className={`chip${(preview ?? c.progress.visualStage) === s ? ' on' : ''}`} aria-pressed={(preview ?? c.progress.visualStage) === s} onClick={() => setPreview(s === c.progress.visualStage ? null : s)}>{ADV_STAGE[s]}</button>)}
-              </div>
+              {drawnOriginal(c) ? (
+                <>
+                  <p className="sl-fine sl-fine--flush">Stage preview: the original Cozmling at each stage. Nothing here is saved, and players never see this box.</p>
+                  <div className="chips">
+                    {STAGES.filter(s => s !== 'egg').map(s => { const on = (preview ?? originalStage(c)) === s; return <button key={s} className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setPreview(s === originalStage(c) ? null : s)}>{STAGE_NAME[s]}</button> })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="sl-fine sl-fine--flush">Stage preview. Nothing here is saved, and players never see this box. The placeholder art has one drawing per look, so a stage only changes its size for now.</p>
+                  <div className="chips">
+                    {ADV_STAGES.map(s => <button key={s} className={`chip${(preview ?? c.progress.visualStage) === s ? ' on' : ''}`} aria-pressed={(preview ?? c.progress.visualStage) === s} onClick={() => setPreview(s === c.progress.visualStage ? null : s)}>{ADV_STAGE[s]}</button>)}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -242,7 +255,7 @@ function Identity({ c, pet, hatched }: { c: Companion; pet: Pet; hatched: boolea
       <span className="sl-id__sign"><Glyph sign={sign.sign} size={20} /> {sign.name}</span>
       <span><Orb element={c.starprint.element} size={14} /> {el.name}</span>
       <span>The {c.starprint.archetype}</span>
-      <span className="sl-id__born">{hatched ? ADV_STAGE[c.progress.visualStage ?? 'hatchling'] : 'Star Egg'}</span>
+      <span className="sl-id__born">{!hatched ? 'Star Egg' : drawnOriginal(c) ? STAGE_NAME[originalStage(c)] : ADV_STAGE[c.progress.visualStage ?? 'hatchling']}</span>
     </p>
   )
 }
@@ -347,8 +360,9 @@ function Journey({ steps, at }: { steps: string[]; at: number }) {
   )
 }
 
-/** Growing up. A first-version Cozmling keeps its own stages and thresholds exactly. An adventurer's
-    later stages have no approved thresholds yet, so no bar is shown for one: only what has been counted. */
+/** Growing up. Anything drawn in the original scene grows on the original ladder (Star Egg → Sprout →
+    Cadet → Explorer → Guardian), with the original thresholds; a first-version Cozmling keeps its own
+    progress exactly. The concept-art stages (not shown by default) have no approved thresholds yet. */
 function GrowingUp({ c, pet, name, hatched }: { c: Companion; pet: Pet; name: string; hatched: boolean }) {
   const counts = hatched && (
     <dl className="sl-stats">
@@ -358,8 +372,8 @@ function GrowingUp({ c, pet, name, hatched }: { c: Companion; pet: Pet; name: st
       <div><dt>Pats</dt><dd>{pet.pets}</dd></div>
     </dl>
   )
-  if (c.kind === 'legacy') {
-    const g = legacyProgress(c)
+  if (drawnOriginal(c)) {
+    const g = originalProgress(c)
     return (
       <div className="panel sl-grow">
         <header className="panel__head"><h2>Growing up</h2></header>
@@ -378,7 +392,7 @@ function GrowingUp({ c, pet, name, hatched }: { c: Companion; pet: Pet; name: st
   return (
     <div className="panel sl-grow">
       <header className="panel__head"><h2>Growing up</h2></header>
-      <Journey steps={['Star Egg', ...ADV_STAGES.map(s => ADV_STAGE[s])]} at={hatched ? ADV_STAGES.indexOf(c.progress.visualStage ?? 'hatchling') + 1 : 0} />
+      <Journey steps={['Star Egg', ...ADV_STAGES.map(s => ADV_STAGE[s])]} at={hatched ? ADV_STAGES.indexOf((c.kind === 'adventurer' ? c.progress.visualStage : null) ?? 'hatchling') + 1 : 0} />
       {counts}
       <p className="sl-fine">{hatched
         ? <>How a Hatchling grows up is still being decided, so there’s no bar to fill yet. Everything you do together is counted, and nothing {name} has done will be lost.</>
@@ -387,10 +401,3 @@ function GrowingUp({ c, pet, name, hatched }: { c: Companion; pet: Pet; name: st
   )
 }
 
-/** Where a first-version Cozmling is on its own ladder. Its stage is never shown lower than the one it arrived with. */
-function legacyProgress(c: LegacyCompanion) {
-  const stage = legacyStage(c), points = legacyGrowth(c)
-  const i = GROWTH.findIndex(s => s.stage === stage), from = GROWTH[i]?.at ?? 0, next = i < 0 ? null : GROWTH[i + 1] ?? null
-  const pct = next ? Math.max(0, Math.min(100, Math.round(((points - from) / (next.at - from)) * 100))) : 100
-  return { stage, points, next, pct }
-}

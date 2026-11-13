@@ -238,6 +238,8 @@
 .sl-look:focus-within, .sl-skin:focus-within { outline: 2px solid var(--phos); outline-offset: 3px }
 .sl-look__art { display: grid; place-items: center; width: min(100%, 132px); aspect-ratio: 1; overflow: hidden; border-radius: 50%; border: 4px solid var(--skin, var(--line-3)); background: radial-gradient(circle at 50% 38%, #16224a, #05070f 74%); color: var(--o1) }
 .sl-look__art img { width: 100%; height: 100%; object-fit: cover }
+.sl-look__art--pixel { align-items: end; background: radial-gradient(circle at 50% 30%, #2d1758, #0d0724 72%) }
+.sl-portrait { display: block; width: 72%; height: auto; margin-bottom: 4%; image-rendering: pixelated }
 .sl-look__note { color: var(--dim); font: 400 12px var(--sans); text-transform: none }
 .sl-skins__row { display: flex; flex-wrap: wrap; gap: 10px }
 .sl-skin { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border: 2px solid var(--line-2); background: var(--bg-2); cursor: pointer; transition: border-color .15s }
