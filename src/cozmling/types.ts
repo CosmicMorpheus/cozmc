@@ -11,6 +11,7 @@
    - adventurer: a new zodiac "Starprint" adventurer.
    ============================================================ */
 import type { Pet } from '../companion/care'
+import type { CelestialBirthRecord } from './celestial/types'
 import type { Stage as LegacyStage } from '../companion/look'
 
 export const SCHEMA_VERSION = 2
@@ -36,6 +37,9 @@ interface Base {
   walletLinks: WalletLink[]
   /** Set aside, never deleted (for example when the old site replaced it with a new Cozmling). */
   archived?: { at: number; reason: string }
+  /** Its birth sky (celestial/types.ts). Read once, at hatch (or when its player asks, for a first-version
+      Cozmling), and never changed after that: the store keeps the first one it saved. */
+  celestial?: CelestialBirthRecord
 }
 
 export interface LegacyCompanion extends Base {
@@ -101,7 +105,7 @@ export interface SourceRecord {
 export interface JourneyEvent {
   eventId: string
   companionId: string
-  type: 'migrated' | 'adopted' | 'hatched' | 'care' | 'arcade-run' | 'customized' | 'wallet-linked' | 'imported'
+  type: 'migrated' | 'adopted' | 'hatched' | 'care' | 'arcade-run' | 'customized' | 'wallet-linked' | 'imported' | 'sky-read'
   at: number
   data?: Record<string, unknown>
 }

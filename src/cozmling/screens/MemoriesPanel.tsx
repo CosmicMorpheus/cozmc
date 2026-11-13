@@ -8,6 +8,7 @@ import type { JourneyEvent } from '../types'
 const WHAT: Record<JourneyEvent['type'], (name: string) => string> = {
   migrated: n => `${n} moved into the new Star Loft`, adopted: n => `You adopted ${n}`, hatched: n => `${n} hatched`, care: n => `You looked after ${n}`,
   'arcade-run': n => `You played the arcade with ${n}`, customized: n => `${n} got a new look`, 'wallet-linked': n => `${n} was linked to a wallet`, imported: n => `${n} arrived from a save file`,
+  'sky-read': n => `You read the sky over ${n}`,
 }
 const FIRST = 5
 const day = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })

@@ -1,6 +1,6 @@
 /* A new Starprint adventurer: what the player chooses at adoption, and the record it becomes. */
 import { cleanName } from '../../companion/care'
-import type { AdventurerCompanion } from '../types'
+import type { AdventurerCompanion, Starprint } from '../types'
 import { CARE_RULES, STAGE_RULES } from './care'
 import { starprintFor } from './starprint'
 
@@ -24,7 +24,7 @@ export function adoptProblem(c: AdoptChoices): string | null {
 }
 
 /** A newly adopted adventurer: a Star Egg, with the same starting needs a first-version Cozmling gets. */
-export function newAdventurer(c: AdoptChoices, o: { companionId: string; now: number }): AdventurerCompanion {
+export function newAdventurer(c: AdoptChoices, o: { companionId: string; now: number; /** from the real sky (celestial/chart.ts); otherwise the calendar's sign */ starprint?: Starprint }): AdventurerCompanion {
   const why = adoptProblem(c)
   if (why) throw new Error(why)
   return {
@@ -32,7 +32,7 @@ export function newAdventurer(c: AdoptChoices, o: { companionId: string; now: nu
     hatch: { status: 'egg', hatchedAt: null, provenance: 'known' },
     walletLinks: [],
     name: cleanName(c.name).trim(),
-    starprint: starprintFor(c.birthday)!,
+    starprint: o.starprint && o.starprint.chosenBirthday === c.birthday ? o.starprint : starprintFor(c.birthday)!,
     appearance: { rendererVersion: RENDERER, appearanceOption: c.look, skin: c.skin, outfit: 'starter', home: 'loft', decor: [] },
     care: { food: 80, fun: 80, energy: 90, asleepAt: null, settledAt: o.now, ruleVersion: CARE_RULES },
     progress: { experience: 0, visualStageVersion: STAGE_RULES, visualStage: null, counters: {} },

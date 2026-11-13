@@ -17,6 +17,7 @@
     "@txnlab/use-wallet-pera": "^5.0.1",
     "@txnlab/use-wallet-react": "^5.0.1",
     "algosdk": "^3.9.0",
+    "astronomy-engine": "2.1.19",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

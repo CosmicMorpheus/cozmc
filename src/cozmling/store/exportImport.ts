@@ -58,7 +58,7 @@ export async function applyImport(repo: Repository, plan: ImportPlan, takeNewer:
   const chosen = plan.newer.filter(n => takeNewer.has(n.incoming.companionId))
   const ids = new Set([...plan.add, ...chosen.map(n => n.incoming)].map(c => c.companionId))
   return repo.write({
-    companions: [...plan.add.map(record => ({ record, expect: null })), ...chosen.map(n => ({ record: n.incoming, expect: n.existing.revision }))],
+    companions: [...plan.add.map(record => ({ record, expect: null })), ...chosen.map(n => ({ record: n.existing.celestial ? { ...n.incoming, celestial: n.existing.celestial } : n.incoming, expect: n.existing.revision }))],
     events: plan.events.filter(e => ids.has(e.companionId)),
   })
 }

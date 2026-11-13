@@ -4,6 +4,7 @@
 import { fromNote, HOMES, type Pet, type Saved } from '../../companion/care'
 import { BODIES, DEFAULT_LOOK, EYES, GLOWS, STAGES } from '../../companion/look'
 import type { Companion } from '../types'
+import { celestialProblem } from '../celestial/validate'
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const count = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
@@ -69,6 +70,7 @@ export function companionProblem(c: any): string | null {
   if (!h || (h.status !== 'egg' && h.status !== 'hatched') || (h.hatchedAt !== null && !num(h.hatchedAt)) || (h.provenance !== 'known' && h.provenance !== 'legacy-unknown')) return 'invalid hatch record'
   if (!Array.isArray(c.walletLinks) || c.walletLinks.some((l: any) => typeof l?.address !== 'string' || !num(l.linkedAt) || (l.status !== 'linked' && l.status !== 'recovery-candidate'))) return 'invalid wallet links'
   if (c.archived !== undefined && (!num(c.archived?.at) || typeof c.archived?.reason !== 'string')) return 'invalid archive note'
+  if (c.celestial !== undefined) { const why = celestialProblem(c.celestial, c.companionId); if (why) return `invalid birth sky: ${why}` }
   if (c.kind === 'legacy') {
     const l = c.legacy
     if (!l || typeof l.sourceKey !== 'string' || typeof l.sourceHash !== 'string' || !num(l.migratedAt) || !STAGES.includes(l.stageFloor) || !count(l.growthFloor)) return 'invalid legacy record'

@@ -121,6 +121,8 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     if (!changed) return { ok: true, companion: c }
     const was = c
     let record: Companion = { ...changed, companionId: was.companionId, revision: was.revision + 1, updatedAt: now }
+    // a birth sky is permanent: whatever a change says, the one already saved is kept
+    if (was.celestial) record = { ...record, celestial: was.celestial }
     let text: string | null = null, src: SourceRecord | undefined
     if (record.kind === 'legacy') {
       record = { ...record, hatch: hatchOf(record.legacy.pet, was.hatch) }
