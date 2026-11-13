@@ -154,7 +154,7 @@ await scenario('a guest adopts, hatches and looks after a Cozmling, and it is al
   assert.match(await page.locator('.sl-mood').innerText(), /fast asleep/)
   await shot(page, 'loft-asleep-390')
   // what was recorded: adopted, hatched, and one care memory for the day (not one per tap)
-  assert.deepEqual((await events(page, id)).map(e => e.type).sort(), ['adopted', 'care', 'hatched'])
+  assert.deepEqual((await events(page, id)).map(e => e.type).sort(), ['adopted', 'care', 'hatched', 'story'])   // the day's story is kept too, once
   assert.match(await page.locator('.sl-mempanel').innerText(), /You adopted Orbi[\s\S]*|Orbi hatched/)
 
   // reload: the same Cozmling, the same progress, and never a flash of "adopt one"

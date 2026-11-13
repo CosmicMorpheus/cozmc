@@ -491,6 +491,101 @@ await scenario('today’s sky on a 360 px phone: in reading order, and nothing s
   await p.ctx.close()
 })
 
+/* ---------------- today's story (MVP 3) ---------------- */
+
+const storiesKept = (page, id) => page.evaluate(id => window.__cozmling.events(id).then(es => es.filter(e => e.type === 'story').map(e => ({ eventId: e.eventId, day: e.data.day }))), id)
+/** Do what today's story invites, through the page's own buttons and links. */
+async function takeUp(page, action) {
+  if (action === 'feed') { await button(page, 'Feed').click(); await page.getByRole('menuitem', { name: /Comet cookie/ }).click() }
+  else if (action === 'play') await button(page, 'Play').click()
+  else if (action === 'pat') await button(page, 'Pat').click()
+  else if (action === 'rest') await button(page, 'Rest').click()
+  else if (action === 'observatory') {
+    await page.locator('.sl-story__invite a').click()
+    await page.waitForFunction(() => document.querySelector('.sk-live')?.dataset.state === 'live', null, { timeout: 15000 })
+    await page.evaluate(() => { location.hash = '#/cozmling' })
+    await page.locator('.sl-story h2').waitFor()
+  } else throw new Error(`unexpected invitation: ${action}`)
+}
+
+await scenario('today’s story: written on the Cozmling’s page from its sky and its day, the same after a reload, kept once, and its invitation seen to be taken up', async () => {
+  const p = await profile({ viewport: SMALL, timezoneId: 'America/New_York' }), page = await hatched(p)
+  const id = (await mine(page)).companionId
+  await page.locator('.sl-story h2').waitFor({ timeout: 15000 })
+  const text = await page.locator('.sl-story').innerText(), day = await page.locator('.sl-story').getAttribute('data-day')
+  assert.match(text, new RegExp(`^TODAY’S SKY · ${dayName(day)}`, 'i'))
+  assert.match(text, /CELESTIAL INFLUENCE[\s\S]*Orbi’s/i)
+  assert.match(text, /Orbi the Sprout/)
+  assert.match(text, /Its happiness is at \d+%, and its sustenance is at \d+%\./)
+  assert.match(text, /TODAY’S COSMIC INVITATION\s+“[^”]*Orbi[^”]*”/i)
+  assert.match(text, /COZMC REFLECTION\s+“[^”]+”/i)
+  assert.match(text, /A story to play with, not a prediction\. An invitation never changes rewards, scores or tokens\./)
+  assert.deepEqual(await storiesKept(page, id), [{ eventId: `story:${id}:${day}`, day }])
+  assert.deepEqual(await sticksOut(page), [])
+  await shot(page, 'story-360', true)
+  // opened again: the same story, and nothing new is written
+  await page.reload(); await page.waitForFunction(ready); await page.locator('.sl-story h2').waitFor()
+  assert.equal(await page.locator('.sl-story').innerText(), text)
+  assert.equal((await storiesKept(page, id)).length, 1)
+  // taking up the invitation: seen from what happened, with nothing rewarded
+  const before = await mine(page)
+  await takeUp(page, await page.locator('.sl-story__invite').getAttribute('data-action'))
+  await page.waitForFunction(() => document.querySelector('.sl-story__invite')?.dataset.done === 'true', null, { timeout: 8000 })
+  assert.match(await page.locator('.sl-story__status').innerText(), /Done\. Orbi noticed\./)
+  assert.deepEqual(Object.keys(await mine(page)).sort(), Object.keys(before).sort(), 'no reward or new field appears on the Cozmling')
+  assert.equal((await storiesKept(page, id)).length, 1, 'the story itself is never rewritten')
+  // and it is one of its memories
+  assert.match(await page.locator('.sl-memories__list').innerText(), /Orbi’s story: /)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('a new story at the player’s midnight, with the page open; yesterday’s is kept', async () => {
+  const p = await profile({ viewport: DESK, timezoneId: 'America/New_York' })
+  await p.ctx.clock.install({ time: new Date('2026-11-13T04:55:00Z') })                               // 11:55 pm on Thursday in New York
+  const page = await hatched(p, '2026-11-05')
+  const id = (await mine(page)).companionId
+  await page.locator('.sl-story[data-day="2026-11-12"] h2').waitFor({ timeout: 15000 })
+  await page.clock.fastForward('06:00')
+  await page.locator('.sl-story[data-day="2026-11-13"] h2').waitFor({ timeout: 10000 })
+  assert.match(await page.locator('.sl-story').innerText(), /^TODAY’S SKY · FRIDAY, NOVEMBER 13/i)
+  assert.deepEqual((await storiesKept(page, id)).map(s => s.day), ['2026-11-12', '2026-11-13'])
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('offline: if today’s sky can’t be read, the last story is shown with its own day, never as today’s; back online, today’s is written', async () => {
+  const p = await profile({ viewport: PHONE }), page = await hatched(p)
+  const id = (await mine(page)).companionId
+  await page.locator('.sl-story h2').waitFor({ timeout: 15000 })
+  const today = await page.locator('.sl-story').getAttribute('data-day'), before = dayBefore(today)
+  // as if today's sky and story had never been read, and the last story kept were yesterday's
+  await page.evaluate(async ([id, today, before]) => {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open('cozmc-cozmling-v2'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })
+    const tx = db.transaction(['events', 'meta'], 'readwrite'), events = tx.objectStore('events')
+    const story = await new Promise(res => { const q = events.get(`story:${id}:${today}`); q.onsuccess = () => res(q.result) })
+    events.delete(story.eventId)
+    events.put({ ...story, eventId: `story:${id}:${before}`, at: story.at - 86_400_000, data: { ...story.data, day: before } })
+    tx.objectStore('meta').delete(`daily:${id}`)
+    await new Promise(res => { tx.oncomplete = res })
+    db.close()
+  }, [id, today, before])
+  await p.ctx.route(ENGINE_FILES, r => r.abort())
+  const off = await p.open('#/cozmling')
+  await off.locator('.sl-story__note').waitFor({ timeout: 15000 })
+  assert.match(await off.locator('.sl-story').innerText(), new RegExp(`^ORBI’S LAST STORY · ${dayName(before)}`, 'i'))
+  assert.match(await off.locator('.sl-story__note').innerText(), new RegExp(`can’t be written just now[\\s\\S]*last one, from ${dayName(before)}`))
+  assert.match(await off.locator('.sl-today').innerText(), /can’t be read just now/)
+  await shot(off, 'story-offline-390')
+  await p.ctx.unroute(ENGINE_FILES)
+  const back = await p.open('#/cozmling')
+  await back.locator(`.sl-story[data-day="${today}"] h2`).waitFor({ timeout: 15000 })
+  assert.equal(await back.locator('.sl-story__note').count(), 0)
+  assert.deepEqual((await storiesKept(back, id)).map(s => s.day).sort(), [before, today])
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
 await browser.close()
 console.log(`\n${results.filter(Boolean).length} of ${results.length} browser scenarios passed`)
 process.exit(results.every(Boolean) ? 0 : 1)

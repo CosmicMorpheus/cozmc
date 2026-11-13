@@ -207,6 +207,12 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     adopt,
     /** What has happened to a companion, oldest first. */
     events: (companionId: string) => repo.events(companionId),
+    /** Keep an event once (a day's story, say). The same eventId is never kept twice: if this tab or another
+        has kept it already, nothing is written and `kept` is false. */
+    keepEvent: (e: JourneyEvent) => inTurn(async (): Promise<{ ok: true; kept: boolean } | { ok: false; detail: string }> => {
+      const res = await repo.write({ events: [e] })
+      return res.ok ? { ok: true, kept: true } : res.reason === 'duplicate' ? { ok: true, kept: false } : { ok: false, detail: res.detail }
+    }),
     /** For the pieces built on top of this (adoption, the arcade bridge, import). */
     commit,
     reload: () => inTurn(async () => { show(await repo.load(), null) }),

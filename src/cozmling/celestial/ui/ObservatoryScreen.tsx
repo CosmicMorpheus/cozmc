@@ -13,6 +13,8 @@ import { aspectReading, aspectTitle, bigThree, DISCLAIMER, moonPhaseReading, pat
 import { clockText } from '../observatory'
 import { starprintDisagrees } from '../options'
 import type { CelestialBirthRecord, PointId } from '../types'
+import { cozmlingStore } from '../../index'
+import { skyVisitKey } from '../../story/useDailyStory'
 import { useLiveSky } from '../useLiveSky'
 import { skyColors, useLateSky } from '../useSky'
 import { BODIES, dms, ORDINAL, POINTS } from '../zodiac'
@@ -45,6 +47,9 @@ export function ObservatoryScreen({ companion: c, mode = 'birth' }: { companion:
   const stage = useRef<HTMLDivElement>(null), wheel = useRef<SVGSVGElement>(null)
   const today = useLiveSky(c, { enabled: mode === 'today' })
   useLateSky(c)
+  // looking at today's sky together is one of the things a day's story can invite
+  const seenDay = mode === 'today' ? today.report?.day : undefined
+  useEffect(() => { if (seenDay) void cozmlingStore()?.writeMeta(skyVisitKey(c.companionId), seenDay).catch(() => {}) }, [seenDay, c.companionId])
   useEffect(() => { scrollTo(0, 0) }, [])
 
   if (!sky) return (

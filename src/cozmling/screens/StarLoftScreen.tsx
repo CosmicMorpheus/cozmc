@@ -27,7 +27,8 @@ import { playerTimeZone } from '../celestial/observatory'
 import { legacySkyOption, starprintDisagrees } from '../celestial/options'
 import { skyColors, useLateSky } from '../celestial/useSky'
 import { bigThree, todayHeadline } from '../celestial/interpret'
-import { useLiveSky } from '../celestial/useLiveSky'
+import { StoryPanel } from '../story/StoryPanel'
+import { useDailyStory, type DailyStoryState } from '../story/useDailyStory'
 import { POINTS } from '../celestial/zodiac'
 import { drawnOriginal, originalProgress, originalStage } from '../integrations/originalScene'
 import type { Stage } from '../../companion/look'
@@ -108,6 +109,8 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
   }
   // a Cozmling that hatched before its sky could be read gets it now, from its own record
   useLateSky(c)
+  // today's sky and today's story: read and written once a day, for the whole page
+  const today = useDailyStory(c)
   // the egg's buttons are gone once it hatches: hand the keyboard to the first care button
   useEffect(() => { if (hatched && hatchedHere.current) { hatchedHere.current = false; document.getElementById('sl-feed-btn')?.focus({ preventScroll: true }) } }, [hatched])
   const warm = () => {
@@ -171,10 +174,11 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
             </div>
           )}
           <p className="sl-fine">Needs run down over about a day, even while you’re away. {name} never dies; a neglected Cozmling just gets hungry, bored or sleepy.</p>
+          <StoryPanel c={c} today={today} />
         </div>
 
         <aside className="sl__side" aria-label={`About ${name}`}>
-          {c.kind === 'adventurer' ? <StarprintPanel c={c} /> : <FirstVersionPanel c={c} pet={pet} hatched={hatched} onSay={setSay} />}
+          {c.kind === 'adventurer' ? <StarprintPanel c={c} today={today} /> : <FirstVersionPanel c={c} pet={pet} hatched={hatched} onSay={setSay} today={today} />}
 
           <div className="panel sl-wardrobepanel">
             <header className="panel__head">
@@ -261,7 +265,7 @@ function Identity({ c, pet, hatched }: { c: Companion; pet: Pet; hatched: boolea
 }
 
 /** The Starprint: where this Cozmling's character begins. Only what is really known is shown. */
-function StarprintPanel({ c }: { c: AdventurerCompanion }) {
+function StarprintPanel({ c, today }: { c: AdventurerCompanion; today: DailyStoryState }) {
   const sign = signInfo(c.starprint.coreSign), el = ELEMENTS[c.starprint.element], sky = c.celestial
   const signOf = (s: Parameters<typeof signInfo>[0]) => signInfo(s).name
   return (
@@ -278,7 +282,7 @@ function StarprintPanel({ c }: { c: AdventurerCompanion }) {
           <div><dt>Birthday</dt><dd>{birthdayText(c.starprint.chosenBirthday)}</dd></div>
         </dl>
       </div>
-      {sky && <TodayLine c={c} />}
+      {sky && <TodayLine c={c} today={today} />}
       {sky
         ? <p className="sl-fine">Born on its birthday at the minute it hatched, under the sky over the Origin Observatory on Mauna Kea. <a className="sl-inlink" href="#/cozmling/sky">Open its birth sky</a>.{starprintDisagrees(c) && <> Its Starprint was chosen before skies were read: on its birth minute the Sun was in {signOf(sky.bodies.sun.sign)}.</>}</p>
         : c.hatch.status === 'egg'
@@ -288,9 +292,8 @@ function StarprintPanel({ c }: { c: AdventurerCompanion }) {
   )
 }
 
-/** Today's sky in a line, and the way in. Read once a day, when it isn't saved yet: after that it costs nothing. */
-function TodayLine({ c }: { c: Companion }) {
-  const today = useLiveSky(c, { live: false })
+/** Today's sky in a line, and the way in. (The day's reading is read once a day for the whole page: useDailyStory.) */
+function TodayLine({ c, today }: { c: Companion; today: DailyStoryState }) {
   if (today.status === 'none') return null
   return (
     <p className="sl-today" aria-live="polite">
@@ -303,7 +306,7 @@ function TodayLine({ c }: { c: Companion }) {
 }
 
 /** A first-version Cozmling says what it is, and that it stays that way. Its sky is read only if its player asks. */
-function FirstVersionPanel({ c, pet, hatched, onSay }: { c: LegacyCompanion; pet: Pet; hatched: boolean; onSay: (text: string) => void }) {
+function FirstVersionPanel({ c, pet, hatched, onSay, today }: { c: LegacyCompanion; pet: Pet; hatched: boolean; onSay: (text: string) => void; today: DailyStoryState }) {
   const [busy, setBusy] = useState(false)
   const option = legacySkyOption(c)
   const read = async (choice: 'birth' | 'awakening') => {
@@ -323,7 +326,7 @@ function FirstVersionPanel({ c, pet, hatched, onSay }: { c: LegacyCompanion; pet
         <div><dt>Age</dt><dd>{!hatched ? 'Not hatched yet' : c.hatch.provenance === 'legacy-unknown' ? 'Not recorded' : ageText(pet)}</dd></div>
         {c.celestial && <div><dt>{c.celestial.kind === 'birth' ? 'Birth sky' : 'Awakening sky'}</dt><dd>{bigThree(c.celestial)}</dd></div>}
       </dl>
-      {c.celestial && <TodayLine c={c} />}
+      {c.celestial && <TodayLine c={c} today={today} />}
       <p className="sl-fine">{pet.name} keeps the look, home, stage and counts it has always had. Nothing about it was changed by the move here.</p>
       {option === 'birth' && (
         <div className="sl-skyask">

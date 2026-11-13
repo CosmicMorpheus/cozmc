@@ -26,6 +26,18 @@ It is part of the rebuilt Cozmling (`src/cozmling/`), so it sits behind the same
 - **Read once a day, without anyone asking.** The Star Loft's Starprint panel has a line for today, with the day's strongest transit, linking to the view. Opening the Cozmling page reads the day's report if it isn't saved yet.
 - **Live, and honest about it.** While the view is open, the planets are worked out again every 10 minutes. The page shows the time they were worked out, and stops saying "Live" if that time gets old.
 
+## What is built (MVP 3: Living Story)
+
+- **A daily story for every Cozmling**, on its own page in the Star Loft, under the care buttons:
+  - a title and the day's theme in three words;
+  - the celestial influence: today's strongest transit to its birth chart, and what it might mean;
+  - a short original story;
+  - today's cosmic invitation;
+  - a COZMC reflection.
+- **Written from the real day.** It draws on today's sky against its birth chart, its home, its life stage and its character. It also uses its happiness (Fun), sustenance (Food) and energy, whether it is asleep, how long since you last looked after it, what you have done together since its last story, its birthday and how close it is to its next stage.
+- **Written once a day, without anyone asking**, when its page is first opened that day (or at the player's midnight with the page open). It is kept, so a refresh or a second tab never changes it, and it joins its Memories.
+- **No paid feed and no AI service.** The words are original COZMC templates. A slot is ready for a licensed feed later.
+
 ## When and where a Cozmling is born
 
 These are the two rules chosen by the site owner.
@@ -50,6 +62,7 @@ These are the two rules chosen by the site owner.
 | `transits.ts` | `skyAt()` (where everything is at a moment) and `readDaily()` (a Cozmling's report for one day) | **yes** |
 | `daily.ts` | The report's shape, the day's orbs and ranking, where a day starts and ends, and whether a saved report is still today's | no |
 | `useLiveSky.ts` | Keeps today's sky current on a page: saved report first, then the astronomy; every 10 minutes; at midnight | no |
+| `../story/` | The daily story: `source.ts` (`DailyAstrologySource`), `context.ts` (what a story draws on), `themes.ts` (the words), `engine.ts` (`CozmlingDailyStoryEngine`), `useDailyStory.ts` (written once a day, kept), `StoryPanel.tsx` | no |
 | `engine.ts`, `load.ts` | The one doorway to the library, loaded on first use | `engine.ts` only |
 | `ui/` | The observatory page (`ObservatoryScreen.tsx`, with the birth sky), today's sky (`TodaySky.tsx`) and the wheel | no |
 
@@ -100,6 +113,21 @@ How it stays permanent:
 - **What it costs.** About 8 ms to read a day's report and well under a millisecond to work out the sky now (measured in Node on the build machine; a phone is slower, but still quick). A saved report is about 4.5 KB. The Star Loft loads the astronomy only when today's report isn't saved yet: once a day at most.
 - **What it never does.** It doesn't change a Cozmling's needs, rewards, scores, tickets or token amounts. Today's words are symbols to play with ("A theme to play with, if it feels right. It doesn't decide anything."), never forecasts.
 
+## The daily story: how it works
+
+- **Where the theme comes from** (`story/source.ts`, `DailyAstrologySource`). Sources are asked in turn: a COZMC editorial theme for a date (a table, empty for now), then a slot reserved for a licensed feed (off; nothing is fetched, copied or scraped from anyone without a licence), then the first-party reading, which always answers. A source that fails is skipped, so a story is always written.
+- **The first-party reading.** The day's strongest transit gives the day its kind, from the point of the Cozmling's own sky it touches: its Venus or Rising sign means connection, its Sun play, its Moon comfort, its Mercury curiosity, its Mars courage, Jupiter or its Midheaven growth, Saturn reflection, Uranus creativity, Neptune dreams and Pluto change. The aspect's feel (flowing, tense, blended) colours the words. On a day with no close transit, the day is open.
+- **The story** (`story/engine.ts`, `CozmlingDailyStoryEngine`) is built from templates (`story/themes.ts`, original COZMC writing). It has four short paragraphs:
+  1. Where it is and what it seems drawn to, in its own home: "Orbi the Sprout wakes beneath a waxing crescent Moon in the Cosmic Grove…" A sleeping Cozmling dreams it instead.
+  2. The day's feel and something of its character, from its Starprint archetype or its Sun or Moon.
+  3. Its happiness and sustenance, as numbers, and what it needs, by the same rules as its care meters.
+  4. You and it, and a closing line: days away, what you have shared since its last story, its birthday, a stage that is close.
+- **Everything in it is a tendency**, never a rule ("it seems", "as if", "perhaps"). It never says what will happen, and a test checks every story for "will", "always", "never" and "destined".
+- **The invitation** is what it needs most (a meal, a game, rest), or something in keeping with the day: a pat, a game, looking at today's sky together, or an arcade game for a first-version Cozmling. It shows "Done" once it has been taken up, judged from what happened (the care counters, its energy, a visit to today's sky). Nothing is rewarded: an invitation never changes needs, rewards, scores, tickets or tokens.
+- **Kept once a day.** Each story is one event, `story:<companionId>:<day>`. The store keeps an event id only once, in any tab, so the same day never gets two stories. It records the moment it was written (its numbers and counters then), its source, the transit it is built on, and the engine version.
+- **The same input, the same story.** Choices between lines come from the Cozmling's id and the day, so a story can be written again identically, and two Cozmlings under the same sky get their own.
+- **Offline.** If today's sky can't be read, today's story is shown if it was already written. Otherwise the last story is shown, labelled with its own day, never as today's.
+
 ## First-version Cozmlings
 
 They keep everything they had, and nothing is read for them unless their player asks. The ask is in the "About" panel in the Star Loft.
@@ -136,6 +164,15 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
   - A saved report is reused only for the same day, time zone, chart and engine; a damaged one is never used.
   - The words: about this Cozmling, in the player's clock, never a forecast; the Moon told where it is now; an earlier day told in the past.
   - A report takes well under 60 ms.
+- **`npm test` → `tests/cozmling-story.test.ts`.**
+  - Every part of a story, built on the day's strongest transit, with its real numbers and life stage.
+  - The same input gives the same story; two Cozmlings under one sky get their own.
+  - Happiness, sustenance and energy change the story and its invitation; asleep, it dreams.
+  - Days away, what you shared since its last story, hatching day, birthday and a close stage.
+  - A new story at the player's midnight; the store keeps a day's story only once.
+  - Invitations are seen to be taken up from what happens, with no reward.
+  - Sources: an editorial theme for a date, the licensed slot off, a failing source skipped.
+  - 126 stories (21 days, three states, two Cozmlings) checked for forecasting words and template slips.
 - **`tests/celestial-sky.mjs`**, in a real browser:
   - hatch → sky → reload;
   - the observatory at 360 px and on a desktop, by tap and by keyboard;
@@ -147,7 +184,10 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
   - today's sky: the Star Loft reads it by itself and links to it; the day's reading is the one saved, not read again; transits and the wheel; the same vortex carries on between the two tabs; the Star Loft loads no astronomy once today's reading is saved;
   - offline: today's saved reading still shows, marked; an earlier day's only with its day; back online, today's is read;
   - a new day at the player's own midnight, with an open page (a fake clock, in New York);
-  - today's sky on a 360 px phone, in reading order.
+  - today's sky on a 360 px phone, in reading order;
+  - today's story: on its page, the same after a reload, kept once, its invitation taken up, in its Memories;
+  - a new story at the player's midnight (a fake clock);
+  - the story offline: the last one with its own day; back online, today's is written.
 
   To run it:
 
@@ -187,7 +227,9 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 
 ## Known limitations
 
-- **No daily story yet.** That is MVP 3: today's report is the sky half of it.
+- **Arcade invitations are only for first-version Cozmlings for now.** Arcade runs don't count for an adventurer until the arcade is connected to the rebuilt page (step 3 of the rebuild).
+- **A story is written when the page is first opened that day.** Its numbers are from that moment, as a diary's would be, and care later that day is shown by the invitation, not by rewriting the story.
+- **The words are a first draft**, in `story/themes.ts`, and meant to be edited. Changing them doesn't change stories already kept.
 - **No "then × now" overlay yet.** Today's wheel shows today's planets in the Cozmling's houses, and one picked transit at a time. Both whole skies on one wheel is MVP 5.
 - **A day follows the device.** Its clock and time zone are trusted. Changing time zone mid-day starts a new day's report for the new zone.
 - **Each device reads its own report.** There is no server, so two devices work the same report out separately. They agree, because nothing is random.
@@ -203,7 +245,7 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 These follow the brief's own order.
 
 1. ~~**MVP 2, Living Sky.**~~ Built: see above.
-2. **MVP 3, Living Story.** A `CozmlingDailyStoryEngine` with original templates, using the strongest transit and the Cozmling's real Food, Fun, Energy, mood and recent care. It is stored once per day under a fixed event id, so a refresh never makes a second one.
+2. ~~**MVP 3, Living Story.**~~ Built: see above.
 3. **MVP 4, Shared Journey.** Arcade, care and milestones in a Star Journal.
 4. **MVP 5.** "Then × now" overlays, and a slot for a licensed horoscope feed through a `DailyAstrologySource`. Nothing is copied or scraped.
 
