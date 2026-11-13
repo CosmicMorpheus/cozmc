@@ -78,19 +78,27 @@ test('a 25-word phrase reads however it was pasted', async () => {
 })
 
 test('a phrase that cannot be read says why, and never repeats a word of it', async () => {
-  const mn = algosdk.mnemonicFromSeed(randomBytes(32)), w = mn.split(' ')
-  const cases: [string, RegExp][] = [
-    ['', /0 words were found/], [w.slice(0, 12).join(' '), /12 words were found/], [mn + ' abandon', /26 words were found/],
-    [[...w.slice(0, 5), 'zzzzzz', ...w.slice(6)].join(' '), /not in the standard word list/],
-    [[w[1], w[0], ...w.slice(2)].join(' '), /check at the end fails/],
-    [[...w.slice(0, 5), 'zzzzzz', ...w.slice(6, 24)].join(' '), /1 of the 24 words is not in the standard word list/],
-  ]
-  for (const [bad, expect] of cases) {
-    await assert.rejects(readPhrase(bad, 'KVKJDMESHWEVEVG2YWIL3DGP7KRKFR2FML4RFRSHYDJ5CE62PV4KOEFZYY'), (e: Error) => {
-      assert.match(e.message, expect)
-      for (const word of new Set(bad.split(' ').filter(x => x.length > 3))) assert.ok(!e.message.includes(word), `the message must not contain "${word}"`)
-      return true
-    })
+  const PRIZE = 'KVKJDMESHWEVEVG2YWIL3DGP7KRKFR2FML4RFRSHYDJ5CE62PV4KOEFZYY'
+  /** The same six faults, made in a fresh random phrase each time. */
+  const faults = (): [string, RegExp][] => {
+    let w: string[]
+    do { w = algosdk.mnemonicFromSeed(randomBytes(32)).split(' ') } while (w[0] === w[1])
+    return [
+      ['', /0 words were found/], [w.slice(0, 12).join(' '), /12 words were found/], [w.join(' ') + ' abandon', /26 words were found/],
+      [[...w.slice(0, 5), 'zzzzzz', ...w.slice(6)].join(' '), /not in the standard word list/],
+      [[w[1], w[0], ...w.slice(2)].join(' '), /check at the end fails/],
+      [[...w.slice(0, 5), 'zzzzzz', ...w.slice(6, 24)].join(' '), /1 of the 24 words is not in the standard word list/],
+    ]
   }
-  await assert.rejects(readPhrase(words(24), 'KVKJDMESHWEVEVG2YWIL3DGP7KRKFR2FML4RFRSHYDJ5CE62PV4KOEFZYY'), /none of the usual wallet methods/)
+  const said = async (bad: string, expect: RegExp) => {
+    let message = ''
+    await assert.rejects(readPhrase(bad, PRIZE), (e: Error) => { assert.match(e.message, expect); message = e.message; return true })
+    assert.ok(!message.includes('zzzzzz'), 'the message must not repeat a word that was typed')
+    return message
+  }
+  // The same fault in two different phrases gives exactly the same message, so the message cannot be made from the words.
+  // (Checking for each word by itself is not reliable: the word list has "word", "found", "list" and "check" in it.)
+  const one = faults(), two = faults()
+  for (let i = 0; i < one.length; i++) assert.equal(await said(...one[i]), await said(...two[i]))
+  await assert.rejects(readPhrase(words(24), PRIZE), /none of the usual wallet methods/)
 })
