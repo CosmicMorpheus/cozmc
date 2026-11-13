@@ -109,7 +109,8 @@ await scenario('a change is saved once, survives a reload, and the old page read
   const c = (await state(page)).companions[0]
   assert.equal(c.companionId, id); assert.equal(c.revision, 1); assert.equal(c.hatch.status, 'hatched')
   assert.equal(await page.locator('[data-dev="stage"]').textContent(), 'Sprout')
-  // the old Cozmling page, which knows nothing about v2, shows the hatched Sprout
+  // the Cozmling page shows the hatched Sprout. (With v2 on, that page is the new Star Loft. The first version's own
+  // code reading this same save is covered by the unit tests, and by tests/journey.mjs run with v2 switched off.)
   await page.goto(`${SITE}/#/cozmling`)
   await page.getByText('Pip', { exact: false }).first().waitFor({ timeout: 15000 })
   assert.match(await page.locator('main').innerText(), /Sprout/)
