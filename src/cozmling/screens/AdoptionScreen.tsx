@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import { cleanName } from '../../companion/care'
 import { COZMLING_DEV, cozmlingStore } from '../index'
 import { adoptProblem, NAMES, newAdventurer, SKINS } from '../domain/adventurer'
-import { birthdayText, ELEMENTS, signFor } from '../domain/starprint'
+import { birthdayText, ELEMENTS, signFor, signInfo } from '../domain/starprint'
+import { loadSkyEngine } from '../celestial/load'
+import { clockText, ORIGIN_OBSERVATORY } from '../celestial/observatory'
 import { signsWithArt } from '../render/assetManifest'
 import { newId } from '../store/util'
 import { Glyph, Orb } from '../components/Glyph'
@@ -31,7 +33,15 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
-  const sign = useMemo(() => signFor(birthday), [birthday])
+  // The Sun's real sign on that birthday. It is worked out for the hatch minute, so until the egg hatches
+  // it is shown for "if it hatched now"; that only matters on a cusp day, when the Sun changes sign.
+  const [engine, setEngine] = useState<Awaited<ReturnType<typeof loadSkyEngine>> | null>(null)
+  useEffect(() => { loadSkyEngine().then(setEngine, () => { /* the calendar's sign is used instead */ }) }, [])
+  const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60_000))
+  useEffect(() => { const t = setInterval(() => setMinute(Math.floor(Date.now() / 60_000)), 20_000); return () => clearInterval(t) }, [])
+  const skySign = useMemo(() => (engine && birthday ? engine.sunSignOnBirthday(birthday, minute * 60_000) : null), [engine, birthday, minute])
+  const sign = useMemo(() => (skySign ? signInfo(skySign.sign) : signFor(birthday)), [skySign, birthday])
+  const cusp = skySign?.cusp ?? null
   const sky: [string, string] = sign ? ELEMENTS[sign.element].orb : ['#59e6ff', '#0b2a4a']
   const surprise = () => { const y = new Date().getFullYear(), t = Date.UTC(y, 0, 1) + Math.floor(Math.random() * 365) * 86_400_000, d = new Date(t); setBirthday(`${y}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`) }
 
@@ -42,7 +52,8 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
     const store = cozmlingStore()
     if (!store) { setProblem('The Star Loft isn’t ready yet. Give it a moment and try again.'); return }
     setBusy(true); setProblem('')
-    const res = await store.adopt(newAdventurer(choices, { companionId: newId(), now: Date.now() }))
+    const now = Date.now(), starprint = engine?.provisionalStarprint(birthday, now) ?? undefined
+    const res = await store.adopt(newAdventurer(choices, { companionId: newId(), now, starprint }))
     setBusy(false)
     if (!res.ok) setProblem('That didn’t save. Nothing was lost: try again in a moment.')
   }
@@ -83,7 +94,10 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => setBirthday(today())}>Today</button>
               <button type="button" className="btn btn--ghost btn--sm" onClick={surprise}>Surprise me</button>
             </div>
-            <p className="sl-hint" role="status">{sign ? <>{birthdayText(birthday)} falls under <b>{sign.name}</b>.</> : birthday ? 'That isn’t a date we can use.' : 'Pick a date to see its sign.'}</p>
+            <p className="sl-hint" role="status">{!sign ? (birthday ? 'That isn’t a date we can use.' : 'Pick a date to see its sign.')
+              : cusp ? <>{birthdayText(birthday)} is a cusp day: the Sun moves from {signInfo(cusp.before).name} into {signInfo(cusp.after).name} at {clockText(cusp.at, ORIGIN_OBSERVATORY.timeZone)} Mauna Kea time. If it hatched now it would be <b>{sign.name}</b>; the minute it hatches decides.</>
+              : <>{birthdayText(birthday)} falls under <b>{sign.name}</b>.</>}</p>
+            <p className="sl-fine">Its birth sky will be read over the Origin Observatory on Mauna Kea: on this day, at the minute its egg hatches. That sets its Moon, its Rising sign and the rest of its chart.</p>
             {COZMLING_DEV && <p className="sl-devnote">Preview note: only {signsWithArt().map(s => s[0].toUpperCase() + s.slice(1)).join(' and ')} have art so far (placeholders). Try <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-11-05`)}>Nov 5</button> or <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-05-05`)}>May 5</button>. Other signs work too and show a stand-in.</p>}
             <div className="sl-nav">
               {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Cancel</button>}
@@ -96,6 +110,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
           <section aria-labelledby="sl-s2">
             <h2 id="sl-s2" tabIndex={-1}>Its Starprint</h2>
             <p>Born on {birthdayText(birthday)}, your Cozmling is a <b>{sign.name}</b>: {ELEMENTS[sign.element].name.toLowerCase()} element, the {sign.archetype}. The Starprint is where its character begins. What the two of you do together decides the rest.</p>
+            {cusp && <p className="sl-fine">On a cusp day the look you choose carries over if it hatches the other side of {clockText(cusp.at, ORIGIN_OBSERVATORY.timeZone)}: it keeps Look {look.toUpperCase()}, in the other sign’s style.</p>}
             <LookPicker sign={sign.sign} look={look} skin={skin} onLook={setLook} onSkin={setSkin} idBase="sl-adopt" />
             <p className="sl-fine">Both looks are the same {sign.name}: same sign, same element, same everything else. You can change look and colour later.</p>
             <div className="sl-nav">

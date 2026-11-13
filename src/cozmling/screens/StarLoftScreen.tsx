@@ -7,7 +7,7 @@
    Every action is a real button. Nothing here needs a wallet. */
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ageText, FOODS, GROWTH, HOMES, utcDay, type Pet } from '../../companion/care'
-import { GLOWS, STAGE_NAME, STAGES } from '../../companion/look'
+import { STAGE_NAME, STAGES } from '../../companion/look'
 import { ART } from '../../companion/room'
 import { Icon, PixelArt } from '../../components/Pixel'
 import { COZMLING_DEV, cozmlingStore } from '../index'
@@ -22,21 +22,18 @@ import { CompanionRenderer, type RendererHandle } from '../render/CompanionRende
 import type { AdventurerCompanion, Companion, LegacyCompanion } from '../types'
 import { CustomizePanel } from './CustomizePanel'
 import { MemoriesPanel } from './MemoriesPanel'
+import { loadSkyEngine } from '../celestial/load'
+import { playerTimeZone } from '../celestial/observatory'
+import { legacySkyOption, starprintDisagrees } from '../celestial/options'
+import { skyColors, useLateSky } from '../celestial/useSky'
+import { bigThree } from '../celestial/interpret'
+import { POINTS } from '../celestial/zodiac'
 
 type AdvStage = NonNullable<AdventurerCompanion['progress']['visualStage']>
 const ADV_STAGE: Record<AdvStage, string> = { hatchling: 'Hatchling', adolescent: 'Adolescent', ascended: 'Ascended' }
 const ADV_STAGES = Object.keys(ADV_STAGE) as AdvStage[]
 const ARCADE: [string, string][] = [['moon-bounce', 'Moon Bounce'], ['brick-by-brick', 'Brick by Brick'], ['moonshot', 'Moonshot']]
 const NOT_SAVED = 'That didn’t save. Try again in a moment.'
-/** A darker shade of a colour, for the deep end of a sky. */
-const deepen = (hex: string) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.28).toString(16).padStart(2, '0')).join('')
-/** The two colours a Cozmling's sky is painted in: its element's, or a first-version Cozmling's own glow. */
-function skyOf(c: Companion): [string, string] {
-  if (c.kind === 'adventurer') return ELEMENTS[c.starprint.element].orb
-  const glow = GLOWS[c.legacy.pet.look.glow] ?? GLOWS[0]
-  return [glow, deepen(glow)]
-}
-
 export function StarLoftScreen({ companion: c, arrived }: { companion: Companion; /** just adopted, or just switched to: start at the top of its page, keyboard included */ arrived?: boolean }) {
   const scene = useRef<RendererHandle>(null)
   const title = useRef<HTMLHeadingElement>(null)
@@ -72,7 +69,7 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
 
   const id = c.companionId, name = nameOf(c)
   const { pet, mood, hatched, asleep } = look(c)
-  const [o1, o2] = skyOf(c)
+  const [o1, o2] = skyColors(c)
 
   /** One care action. It is made in its turn (after any change still being saved), then the page says and shows what really happened. */
   const care = async (a: CareAction, food?: string) => {
@@ -91,14 +88,23 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
     const store = cozmlingStore()
     if (!store || busy) return
     setBusy(true)
+    // its sky is read in the same moment it hatches. If the astronomy can't load, it still hatches, and its
+    // sky is read from its record (birthday and hatch time) as soon as it can be
+    const sky = await loadSkyEngine().catch(() => null), tz = playerTimeZone()
+    const before = c.kind === 'adventurer' ? c.starprint.coreSign : null
     hatchedHere.current = true                 // set before the save: the page can show the hatchling before the save call returns
-    const res = await store.update(id, hatch, { event: { eventId: `hatched:${id}`, type: 'hatched' } })
+    const res = await store.update(id, (cur, now) => (sky ? sky.hatchWithSky(cur, now, tz) : hatch(cur, now)), { event: { eventId: `hatched:${id}`, type: 'hatched' } })
     setBusy(false)
     setCrack(0)
     if (!res.ok) { hatchedHere.current = false; if (res.reason !== 'duplicate') setSay(NOT_SAVED); return }      // 'duplicate' = it already hatched in another tab
     scene.current?.react('hatch')
-    setSay(`Welcome to the world, ${name}!`)
+    const born = res.companion.celestial, after = res.companion.kind === 'adventurer' ? res.companion.starprint.coreSign : null
+    setSay(!born ? `Welcome to the world, ${name}!`
+      : before && after && before !== after ? `Welcome to the world, ${name}! It hatched just past the cusp: ${bigThree(born)}.`
+      : `Welcome to the world, ${name}! ${bigThree(born)}.`)
   }
+  // a Cozmling that hatched before its sky could be read gets it now, from its own record
+  useLateSky(c)
   // the egg's buttons are gone once it hatches: hand the keyboard to the first care button
   useEffect(() => { if (hatched && hatchedHere.current) { hatchedHere.current = false; document.getElementById('sl-feed-btn')?.focus({ preventScroll: true }) } }, [hatched])
   const warm = () => {
@@ -165,7 +171,7 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
         </div>
 
         <aside className="sl__side" aria-label={`About ${name}`}>
-          {c.kind === 'adventurer' ? <StarprintPanel c={c} /> : <FirstVersionPanel c={c} pet={pet} hatched={hatched} />}
+          {c.kind === 'adventurer' ? <StarprintPanel c={c} /> : <FirstVersionPanel c={c} pet={pet} hatched={hatched} onSay={setSay} />}
 
           <div className="panel sl-wardrobepanel">
             <header className="panel__head">
@@ -242,36 +248,66 @@ function Identity({ c, pet, hatched }: { c: Companion; pet: Pet; hatched: boolea
 
 /** The Starprint: where this Cozmling's character begins. Only what is really known is shown. */
 function StarprintPanel({ c }: { c: AdventurerCompanion }) {
-  const sign = signInfo(c.starprint.coreSign), el = ELEMENTS[c.starprint.element]
+  const sign = signInfo(c.starprint.coreSign), el = ELEMENTS[c.starprint.element], sky = c.celestial
+  const signOf = (s: Parameters<typeof signInfo>[0]) => signInfo(s).name
   return (
     <div className="panel sl-print">
-      <header className="panel__head"><h2>Starprint</h2></header>
+      <header className="panel__head"><h2>Starprint</h2>{sky && <a className="link" href="#/cozmling/sky">Birth sky</a>}</header>
       <div className="sl-print__row">
         <span className="sl-medal" aria-hidden="true"><Glyph sign={sign.sign} size={34} /></span>
         <dl className="sl-facts">
-          <div><dt>Sign</dt><dd>{sign.name}</dd></div>
+          <div><dt>{sky ? 'Sun' : 'Sign'}</dt><dd>{sky && <span className="sl-pglyph" aria-hidden="true">{POINTS.sun.glyph}</span>}{sign.name}</dd></div>
+          {sky && <div><dt>Moon</dt><dd><span className="sl-pglyph" aria-hidden="true">{POINTS.moon.glyph}</span>{signOf(sky.bodies.moon.sign)}</dd></div>}
+          {sky?.angles && <div><dt>Rising</dt><dd><span className="sl-pglyph" aria-hidden="true">AC</span>{signOf(sky.angles.ascendant.sign)}</dd></div>}
           <div><dt>Element</dt><dd><Orb element={c.starprint.element} size={13} /> {el.name}</dd></div>
           <div><dt>Archetype</dt><dd>The {c.starprint.archetype}</dd></div>
           <div><dt>Birthday</dt><dd>{birthdayText(c.starprint.chosenBirthday)}</dd></div>
         </dl>
       </div>
-      <p className="sl-fine">The Starprint is where {c.name}’s character begins. What the two of you do together decides the rest.</p>
+      {sky
+        ? <p className="sl-fine">Born on its birthday at the minute it hatched, under the sky over the Origin Observatory on Mauna Kea. <a className="sl-inlink" href="#/cozmling/sky">Open its birth sky</a>.{starprintDisagrees(c) && <> Its Starprint was chosen before skies were read: on its birth minute the Sun was in {signOf(sky.bodies.sun.sign)}.</>}</p>
+        : c.hatch.status === 'egg'
+        ? <p className="sl-fine">Its birth sky is read the minute it hatches: its birthday, at that time of day, over the Origin Observatory on Mauna Kea.</p>
+        : <p className="sl-fine">Reading the sky it was born under…</p>}
     </div>
   )
 }
 
-/** A first-version Cozmling says what it is, and that it stays that way. */
-function FirstVersionPanel({ c, pet, hatched }: { c: LegacyCompanion; pet: Pet; hatched: boolean }) {
+/** A first-version Cozmling says what it is, and that it stays that way. Its sky is read only if its player asks. */
+function FirstVersionPanel({ c, pet, hatched, onSay }: { c: LegacyCompanion; pet: Pet; hatched: boolean; onSay: (text: string) => void }) {
+  const [busy, setBusy] = useState(false)
+  const option = legacySkyOption(c)
+  const read = async (choice: 'birth' | 'awakening') => {
+    setBusy(true)
+    const sky = await loadSkyEngine().catch(() => null)
+    const res = sky ? await cozmlingStore()?.update(c.companionId, (cur, now) => sky.readLegacySky(cur, now, playerTimeZone(), choice), { event: { eventId: `sky:${c.companionId}`, type: 'sky-read', data: { kind: choice } } }) : null
+    setBusy(false)
+    onSay(res?.ok && res.companion.celestial ? `${pet.name}’s sky: ${bigThree(res.companion.celestial)}.` : 'The sky couldn’t be read just now. Try again in a moment.')
+  }
   return (
     <div className="panel sl-print">
-      <header className="panel__head"><h2>About {pet.name}</h2></header>
+      <header className="panel__head"><h2>About {pet.name}</h2>{c.celestial && <a className="link" href="#/cozmling/sky">{c.celestial.kind === 'birth' ? 'Birth sky' : 'Its sky'}</a>}</header>
       <dl className="sl-facts sl-facts--wide">
         <div><dt>Kind</dt><dd>First-version Cozmling</dd></div>
         <div><dt>Stage</dt><dd>{STAGE_NAME[legacyStage(c)]}</dd></div>
         <div><dt>Home</dt><dd>{HOMES[pet.home].name}</dd></div>
         <div><dt>Age</dt><dd>{!hatched ? 'Not hatched yet' : c.hatch.provenance === 'legacy-unknown' ? 'Not recorded' : ageText(pet)}</dd></div>
+        {c.celestial && <div><dt>{c.celestial.kind === 'birth' ? 'Birth sky' : 'Awakening sky'}</dt><dd>{bigThree(c.celestial)}</dd></div>}
       </dl>
       <p className="sl-fine">{pet.name} keeps the look, home, stage and counts it has always had. Nothing about it was changed by the move here.</p>
+      {option === 'birth' && (
+        <div className="sl-skyask">
+          <p>{pet.name} hatched on {new Date(c.hatch.hatchedAt!).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}. You can read the sky it hatched under, over the Origin Observatory on Mauna Kea. It doesn’t change anything else about {pet.name}.</p>
+          <button className="btn btn--ghost btn--sm" disabled={busy} onClick={() => void read('birth')}>{busy ? 'Reading…' : `Read ${pet.name}’s sky`}</button>
+        </div>
+      )}
+      {option === 'awakening' && (
+        <div className="sl-skyask">
+          <p>The moment {pet.name} hatched was never recorded (it was brought back from a wallet note), so its birth sky can’t be known. You can give it an awakening sky instead: the sky at the moment you press the button, always labelled as an awakening, never as its birth.</p>
+          <button className="btn btn--ghost btn--sm" disabled={busy} onClick={() => void read('awakening')}>{busy ? 'Reading…' : `Give ${pet.name} an awakening sky`}</button>
+        </div>
+      )}
+      {option === 'egg' && <p className="sl-fine">Once {pet.name} hatches, you can read the sky it hatched under.</p>}
     </div>
   )
 }

@@ -4,7 +4,7 @@
      no Cozmling yet    → adoption
      otherwise          → the Star Loft, for the Cozmling that is selected
    A first-version Cozmling shows here as itself. Nothing on this page needs a wallet. */
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import '../cozmling.css'
 import { COZMLING_DEV, cozmlingStore, startCozmling, useCozmling } from '../index'
 import { nameOf } from '../domain/care'
@@ -17,7 +17,10 @@ import { StarLoftScreen } from './StarLoftScreen'
 
 const kindText = (c: Companion) => (c.kind === 'adventurer' ? `${signInfo(c.starprint.coreSign).name} ${c.hatch.status === 'egg' ? 'egg' : c.starprint.archetype}` : STAGE_NAME[legacyStage(c)])
 
-export function CozmlingApp() {
+// a Cozmling's sky in full, loaded only when it is opened
+const Observatory = lazy(() => import('../celestial/ui/ObservatoryScreen').then(m => ({ default: m.ObservatoryScreen })))
+
+export function CozmlingApp({ sub = null }: { /** the part of the page after #/cozmling/ ('sky' = the observatory) */ sub?: string | null }) {
   const st = useCozmling()
   const [adopting, setAdopting] = useState(false)
   const [retrying, setRetrying] = useState(false)
@@ -59,6 +62,12 @@ export function CozmlingApp() {
       <AdoptionScreen onCancel={selected ? () => setAdopting(false) : undefined} />
       {st.quarantined.length > 0 && !selected && <p className="sl-fine sl-quarantine">A Cozmling save from before was found on this device, but it couldn’t be read. It hasn’t been changed or deleted.</p>}
     </>
+  )
+
+  if (sub === 'sky') return (
+    <Suspense fallback={<p className="state state--load" role="status">Opening the observatory…</p>}>
+      <Observatory key={selected.companionId} companion={selected} />
+    </Suspense>
   )
 
   return (

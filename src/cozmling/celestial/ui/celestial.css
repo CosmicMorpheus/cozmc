@@ -1,0 +1,100 @@
+/* ============================================================
+   THE OBSERVATORY — a Cozmling's birth sky in full.
+   Loaded only with the observatory page; every rule is under .sk.
+   ============================================================ */
+.sk-back { margin-bottom: 14px }
+.sk-hero { min-height: clamp(170px, 16vw, 200px) }
+.sk-when { margin-top: 12px; color: var(--mist); max-width: 52rem; text-wrap: pretty; text-shadow: 0 1px 0 #000 }
+.sk-page .sl-id { margin-top: 14px }
+
+.sk-main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(300px, 1fr); gap: 22px; align-items: start; margin-bottom: 22px }
+.sk-col { display: grid; gap: 18px; min-width: 0; align-content: start }
+.sk-col > .panel { min-width: 0 }
+.sk-wheelbox { min-width: 0; padding: clamp(8px, 2vw, 18px); border: 1px solid var(--line-2); background: radial-gradient(circle at 50% 50%, #0b1124, #020308 72%); box-shadow: 0 0 50px -20px var(--o1) }
+.sk-wheel { display: block; width: 100%; height: auto; max-width: 600px; margin: 0 auto; user-select: none; -webkit-tap-highlight-color: transparent }
+.sk-legend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin-top: 10px }
+.sk-key { display: inline-block; width: 18px; height: 2px; vertical-align: middle }
+.sk-key--flow { background: var(--cyan) }
+.sk-key--tension { background: var(--sl-coral) }
+
+/* the wheel */
+.sk-w-bg { fill: #04060d; stroke: var(--line-3); stroke-width: 1.5 }
+.sk-w-sign { stroke: #262b40; stroke-width: 1 }
+.sk-w-sign--fire { fill: rgba(255, 111, 97, .12) }
+.sk-w-sign--earth { fill: rgba(63, 224, 138, .09) }
+.sk-w-sign--air { fill: rgba(244, 241, 223, .06) }
+.sk-w-sign--water { fill: rgba(70, 140, 255, .14) }
+.sk-w-zod, .sk-w-glyph { font-family: var(--sl-sym); text-anchor: middle; dominant-baseline: central }
+.sk-w-zod { font-size: 17px }
+.sk-w-zod--fire { fill: #ff9a8c }
+.sk-w-zod--earth { fill: #67e6a2 }
+.sk-w-zod--air { fill: #f4f1df }
+.sk-w-zod--water { fill: #7cb8ff }
+.sk-w-tick { stroke: #4d5370; stroke-width: 1 }
+.sk-w-ring { fill: none; stroke: #2a2f44; stroke-width: 1 }
+.sk-w-spoke { stroke: #1c2133; stroke-width: 1 }
+.sk-w-house { fill: var(--dim); font: 700 10px var(--pixel); text-anchor: middle; dominant-baseline: central }
+.sk-w-axis line { stroke: #4f5574; stroke-width: 1.2; stroke-dasharray: 3 3 }
+.sk-w-axis text { fill: #8fa0c8; font: 700 9px var(--pixel); text-anchor: middle; dominant-baseline: central }
+.sk-w-axis.is-main { cursor: pointer }
+.sk-w-axis.is-main line { stroke: var(--cyan); stroke-dasharray: none; stroke-width: 1.6 }
+.sk-w-axis.is-main text { fill: var(--cyan) }
+.sk-w-axis.is-focus line { stroke-width: 3 }
+.sk-w-asp { stroke-width: 1.2; stroke-linecap: round }
+.sk-w-asp--flow { stroke: var(--cyan) }
+.sk-w-asp--tension { stroke: var(--sl-coral) }
+.sk-w-star { fill: #fff3c4; opacity: .85 }
+.sk-w-pl { cursor: pointer }
+.sk-w-pltick { stroke: var(--text); stroke-width: 1.6 }
+.sk-w-lead { stroke: #6b7090; stroke-width: .8 }
+.sk-w-plbg { fill: #04060d; stroke: transparent; stroke-width: 1.5 }
+.sk-w-pl:hover .sk-w-plbg { stroke: var(--line-3) }
+.sk-w-pl.is-focus .sk-w-plbg { fill: #072029; stroke: var(--cyan) }
+.sk-w-glyph { fill: var(--text); font-size: 18px }
+.sk-w-pl.is-focus .sk-w-glyph { fill: #d9f8ff }
+.sk-w-deg { fill: var(--mist); font: 500 9.5px var(--mono); text-anchor: middle; dominant-baseline: central }
+
+/* beside the wheel */
+.sk-side { display: grid; gap: 18px; min-width: 0 }
+.sk-reading { min-height: 170px; border-color: var(--sl-id-line); background: linear-gradient(160deg, var(--sl-id-bg), var(--bg-1) 60%) }
+.sk-reading.panel::before { border-color: var(--cyan) }
+.sk-reading h2 { color: var(--cyan) }
+.sk-reading p { margin-top: 10px; color: var(--mist); font-size: 15px; line-height: 1.55; text-wrap: pretty }
+.sk-table { width: 100%; border-collapse: collapse; font-size: 14.5px }
+.sk-table th, .sk-table td { padding: 4px 6px; text-align: left; border-bottom: 1px dashed var(--line-2); font-weight: 400 }
+.sk-table thead th { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim); padding-bottom: 8px }
+.sk-table tbody th button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; color: var(--text); font-weight: 600; text-align: left }
+.sk-table tbody th button:hover { color: var(--cyan) }
+.sk-table tr.is-on { background: #072029 }
+.sk-table tr.is-on th button { color: var(--cyan) }
+.sk-table td:last-child { width: 2em; text-align: center; color: var(--sl-coral) }
+.sk-table abbr { text-decoration: none; cursor: help }
+.sk-g { display: inline-block; min-width: 1.5em; font-family: var(--sl-sym); color: var(--cyan); text-align: center }
+.sk-dms { color: var(--dim); font: 500 12px var(--mono); white-space: nowrap }
+
+/* aspects, shapes, the Moon, and how it was worked out */
+.sk-more { display: grid; gap: 18px }
+.sk-list { list-style: none; display: grid; gap: 2px }
+.sk-list button { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 42px; padding: 6px 8px; border: 1px solid transparent; color: var(--text); text-align: left }
+.sk-list button:hover { background: var(--bg-3) }
+.sk-list button.is-on { border-color: var(--sl-id-line); background: #072029 }
+.sk-list button > span:only-child, .sk-list button > span:first-child:nth-last-child(2) { grid-column: span 2 }
+.sk-list + p .link { display: inline-block; margin-top: 10px; font-size: 11px }
+.sk-moon { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: #fff6d6; box-shadow: inset calc(var(--side) * (1 - var(--lit)) * 18px) 0 0 0 #1c2133, 0 0 0 1px #3a4060 }
+.sk-about dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px }
+.sk-about dt { font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--dim) }
+.sk-about dd { margin-top: 4px; color: var(--mist); font-size: 14.5px; line-height: 1.5; text-wrap: pretty }
+.sk-disclaimer { margin-top: 22px; max-width: 760px }
+
+@media (max-width: 900px) {
+  /* one column, in reading order: the wheel, what it means, the table, the aspects, the shapes */
+  .sk-main { display: flex; flex-direction: column; gap: 18px }
+  .sk-col { display: contents }
+  .sk-o1 { order: 1 } .sk-o2 { order: 2 } .sk-o3 { order: 3 } .sk-o4 { order: 4 } .sk-o5 { order: 5 }
+  .sk-about dl { grid-template-columns: minmax(0, 1fr) }
+}
+@media (max-width: 520px) {
+  .sk-table { font-size: 13.5px }
+  .sk-table th, .sk-table td { padding: 3px 4px }
+  .sk-reading { min-height: 0 }
+}

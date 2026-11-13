@@ -11,12 +11,15 @@
    ============================================================ */
 import { hatch } from '../domain/care'
 import { signInfo } from '../domain/starprint'
-import type { AdventurerCompanion, Companion, LegacyCompanion, Starprint, ZodiacSign } from '../types'
+import type { Companion, Starprint, ZodiacSign } from '../types'
 import { findAspects, findPatterns, NATAL_ORBS, type AspectPoint } from './aspects'
 import { astronomyEngine, type CelestialEphemerisProvider } from './ephemeris'
 import { birthdayBounds, birthMoment, ORIGIN_OBSERVATORY, wallClock, wallClockText } from './observatory'
 import type { AnglePoint, BodyId, Birthplace, CelestialBirthRecord, MoonPhaseName, Placement } from './types'
 import { BODIES, deg, degreeIn, norm360, rad, round6, signAt, ZODIAC } from './zodiac'
+import { legacySkyOption } from './options'
+
+export { legacySkyOption, starprintDisagrees } from './options'
 
 export const ENGINE = { name: 'cozmc-celestial', version: 1 } as const
 export const ENGINE_TAG = `${ENGINE.name}-${ENGINE.version}`
@@ -177,13 +180,6 @@ export function readSkyLate(c: Companion, now: number, displayTimeZone: string):
   return { ...c, celestial: sky, starprint: sky.bodies.sun.sign === c.starprint.coreSign ? finalStarprint(c.starprint, sky) : c.starprint }
 }
 
-/** What can be read for a first-version Cozmling. Only ever done when its player asks. */
-export function legacySkyOption(c: LegacyCompanion): 'birth' | 'awakening' | 'egg' | 'read' {
-  if (c.celestial) return 'read'
-  if (c.hatch.status !== 'hatched') return 'egg'
-  return c.hatch.provenance === 'known' && c.hatch.hatchedAt != null ? 'birth' : 'awakening'
-}
-
 /**
  * A first-version Cozmling's sky, at its player's request.
  * 'birth': it hatched at a recorded moment, so that is its birth sky.
@@ -204,6 +200,3 @@ export function readLegacySky(c: Companion, now: number, displayTimeZone: string
   })
   return { ...c, celestial: sky }
 }
-
-/** For a Cozmling made before its Starprint came from the sky: does its chart disagree with it? */
-export const starprintDisagrees = (c: AdventurerCompanion) => !!c.celestial && c.celestial.kind === 'birth' && c.celestial.bodies.sun.sign !== c.starprint.coreSign

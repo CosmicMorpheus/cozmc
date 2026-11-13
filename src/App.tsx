@@ -189,7 +189,7 @@ export function App() {
         <SubNav tab={route.tab} active={pageOf(route.tab, route.sub)} />
         <div className="page" key={`${route.tab}/${pageOf(route.tab, route.sub)}`}>
         {route.tab === 'home' && <Home go={go} onBurn={openBurn} />}
-        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev /> : CozmlingV2 ? <CozmlingV2 /> : <Companion />)}
+        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev /> : CozmlingV2 ? <CozmlingV2 sub={route.sub} /> : <Companion />)}
         {route.tab === 'arcade' && (
           route.sub === 'boards' ? <Leaderboard go={go} onBurn={openBurn} />
           : route.sub === 'giveaway' ? <Giveaway go={go} />

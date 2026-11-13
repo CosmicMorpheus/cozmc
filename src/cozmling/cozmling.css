@@ -8,7 +8,9 @@
    are the Cozmling's own two colours (its element's): they tint
    its sky and the glow around its scene.
    ============================================================ */
-:root { --sl-coral: #ff6f61; --sl-coral-deep: #6e2620; --sl-id-line: #1d5361; --sl-id-bg: #06171c }
+:root { --sl-coral: #ff6f61; --sl-coral-deep: #6e2620; --sl-id-line: #1d5361; --sl-id-bg: #06171c;
+  /* planet and zodiac symbols: fonts that have them on Windows, Mac and iPhone, Android, and Linux */
+  --sl-sym: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif }
 
 /* ---------- small pieces ---------- */
 .sl-glyph { display: inline-block; flex: none; vertical-align: -0.2em }
@@ -158,6 +160,11 @@
 .sl-facts { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px }
 .sl-facts dt { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim) }
 .sl-facts dd { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere }
+.sl-pglyph { display: inline-block; min-width: 1.4em; font: 400 15px/1 var(--sl-sym); color: var(--cyan); text-align: center }
+.sl-print .panel__head .link { font-size: 11px }
+.sl-inlink { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px }
+.sl-skyask { display: grid; gap: 10px; justify-items: start; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-2) }
+.sl-skyask p { color: var(--mist); font-size: 14px; line-height: 1.5; text-wrap: pretty }
 
 .sl-journey { list-style: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: 4px }
 .sl-journey li { position: relative; display: grid; justify-items: center; align-content: start; gap: 8px; text-align: center; font: 700 9px/1.25 var(--pixel); text-transform: uppercase; color: var(--dim) }
