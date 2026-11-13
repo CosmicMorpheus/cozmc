@@ -1,6 +1,6 @@
 /* Adopting a new Cozmling, with no wallet: choose its birthday, meet its Starprint, choose a look,
    name it, and a Star Egg is made. Three short steps, every control a real form control. */
-import { useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { cleanName } from '../../companion/care'
 import { COZMLING_DEV, cozmlingStore } from '../index'
 import { adoptProblem, NAMES, newAdventurer, SKINS } from '../domain/adventurer'
@@ -8,6 +8,7 @@ import { birthdayText, ELEMENTS, signFor } from '../domain/starprint'
 import { signsWithArt } from '../render/assetManifest'
 import { newId } from '../store/util'
 import { Glyph, Orb } from '../components/Glyph'
+import { StarSky } from '../components/StarSky'
 import { LookPicker } from './LookPicker'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -16,6 +17,14 @@ const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
 
 export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
   const [step, setStep] = useState(1)
+  const form = useRef<HTMLFormElement>(null)
+  const first = useRef(true)
+  // a new step: bring the top of the form into view and put the keyboard on the step's heading
+  useEffect(() => {
+    if (first.current) { first.current = false; return }
+    form.current?.scrollIntoView({ block: 'start' })
+    form.current?.querySelector<HTMLElement>('section > h2')?.focus({ preventScroll: true })
+  }, [step])
   const [birthday, setBirthday] = useState('')
   const [look, setLook] = useState<'a' | 'b'>('a')
   const [skin, setSkin] = useState(SKINS[0].id)
@@ -23,6 +32,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
   const sign = useMemo(() => signFor(birthday), [birthday])
+  const sky: [string, string] = sign ? ELEMENTS[sign.element].orb : ['#59e6ff', '#0b2a4a']
   const surprise = () => { const y = new Date().getFullYear(), t = Date.UTC(y, 0, 1) + Math.floor(Math.random() * 365) * 86_400_000, d = new Date(t); setBirthday(`${y}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`) }
 
   const create = async (e: FormEvent) => {
@@ -44,14 +54,28 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
         <p>A little adventurer who lives on COZMC and comes along to the arcade. It’s free, and you don’t need a wallet.</p>
       </header>
 
-      <form className="sl-adopt panel" onSubmit={create} noValidate>
+      <form className="sl-adopt panel" ref={form} onSubmit={create} noValidate>
+        {/* the sky this Cozmling is born under: its own for every birthday, in its element's colours */}
+        <div className="sl-banner" style={{ '--o1': sky[0], '--o2': sky[1] } as CSSProperties}>
+          <StarSky seed={sign ? birthday : 'not chosen yet'} a={sky[0]} b={sky[1]} />
+          <div className="sl-banner__text">
+            {sign ? (
+              <>
+                <p className="sl-banner__k">Born {birthdayText(birthday)}</p>
+                <p className="sl-banner__sign"><Glyph sign={sign.sign} size={34} /> {sign.name}</p>
+                <p className="sl-banner__more"><span><Orb element={sign.element} size={14} /> {ELEMENTS[sign.element].name}</span><span>The {sign.archetype}</span></p>
+              </>
+            ) : <p className="sl-banner__k">Every Cozmling is born under its own sky</p>}
+          </div>
+        </div>
+
         <ol className="sl-steps" aria-label="Steps">
           {['Birthday', 'Starprint', 'Name'].map((t, i) => <li key={t} className={step === i + 1 ? 'is-on' : step > i + 1 ? 'is-done' : ''} aria-current={step === i + 1 ? 'step' : undefined}><span>{i + 1}</span> {t}</li>)}
         </ol>
 
         {step === 1 && (
           <section aria-labelledby="sl-s1">
-            <h2 id="sl-s1">Choose your Cozmling’s birthday</h2>
+            <h2 id="sl-s1" tabIndex={-1}>Choose your Cozmling’s birthday</h2>
             <p>Any day you like: today, a lucky date, a day that matters to you. This is the Cozmling’s birthday, not yours. We don’t ask for yours.</p>
             <div className="sl-field">
               <label htmlFor="sl-bday">Birthday</label>
@@ -70,15 +94,8 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
 
         {step === 2 && sign && (
           <section aria-labelledby="sl-s2">
-            <h2 id="sl-s2">Its Starprint</h2>
-            <div className="sl-print" style={{ '--o1': ELEMENTS[sign.element].orb[0], '--o2': ELEMENTS[sign.element].orb[1] } as CSSProperties}>
-              <Glyph sign={sign.sign} size={56} className="sl-print__glyph" />
-              <div>
-                <p className="sl-print__sign">{sign.name}</p>
-                <p className="sl-print__more"><Orb element={sign.element} size={18} /> {ELEMENTS[sign.element].name} · The {sign.archetype}</p>
-              </div>
-            </div>
-            <p>The Starprint is where your Cozmling’s character begins. What the two of you do together decides the rest.</p>
+            <h2 id="sl-s2" tabIndex={-1}>Its Starprint</h2>
+            <p>Born on {birthdayText(birthday)}, your Cozmling is a <b>{sign.name}</b>: {ELEMENTS[sign.element].name.toLowerCase()} element, the {sign.archetype}. The Starprint is where its character begins. What the two of you do together decides the rest.</p>
             <LookPicker sign={sign.sign} look={look} skin={skin} onLook={setLook} onSkin={setSkin} idBase="sl-adopt" />
             <p className="sl-fine">Both looks are the same {sign.name}: same sign, same element, same everything else. You can change look and colour later.</p>
             <div className="sl-nav">
@@ -90,7 +107,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
 
         {step === 3 && sign && (
           <section aria-labelledby="sl-s3">
-            <h2 id="sl-s3">Name your Cozmling</h2>
+            <h2 id="sl-s3" tabIndex={-1}>Name your Cozmling</h2>
             <div className="sl-field">
               <label htmlFor="sl-name">Name</label>
               <input id="sl-name" type="text" value={name} maxLength={14} autoComplete="off" spellCheck={false} onChange={e => setName(cleanName(e.target.value))} placeholder="Up to 14 letters" />

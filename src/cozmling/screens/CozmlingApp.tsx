@@ -21,6 +21,7 @@ export function CozmlingApp() {
   const st = useCozmling()
   const [adopting, setAdopting] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [arrived, setArrived] = useState<string | null>(null)        // the Cozmling adopted a moment ago, if any
 
   // The first version's own code still writes its saves directly (the arcade Buddy does, for one).
   // Whenever this page is opened or comes back into view, take in anything it has saved.
@@ -50,7 +51,7 @@ export function CozmlingApp() {
   const selected = active.find(c => c.companionId === st.selectedId) ?? active[0] ?? null
   if (!selected || adopting) return (
     <>
-      <AdoptedWatcher count={active.length} onAdopted={() => setAdopting(false)} />
+      <AdoptedWatcher ids={active.map(c => c.companionId)} onAdopted={id => { setArrived(id); setAdopting(false) }} />
       <AdoptionScreen onCancel={selected ? () => setAdopting(false) : undefined} />
       {st.quarantined.length > 0 && !selected && <p className="sl-fine sl-quarantine">A Cozmling save from before was found on this device, but it couldn’t be read. It hasn’t been changed or deleted.</p>}
     </>
@@ -58,7 +59,7 @@ export function CozmlingApp() {
 
   return (
     <>
-      <StarLoftScreen key={selected.companionId} companion={selected} />
+      <StarLoftScreen key={selected.companionId} companion={selected} arrived={arrived === selected.companionId} />
       {(active.length > 1 || COZMLING_DEV) && (
         <section className="sl-switch" aria-label="Your Cozmlings">
           {active.length > 1 && (
@@ -80,9 +81,10 @@ export function CozmlingApp() {
   )
 }
 
-/** Leaves the adoption steps as soon as the new Cozmling is in the store. */
-function AdoptedWatcher({ count, onAdopted }: { count: number; onAdopted: () => void }) {
-  const [start] = useState(count)
-  useEffect(() => { if (count > start) onAdopted() }, [count, start, onAdopted])
+/** Leaves the adoption steps as soon as the new Cozmling is in the store, and says which one it is. */
+function AdoptedWatcher({ ids, onAdopted }: { ids: string[]; onAdopted: (id: string) => void }) {
+  const [before] = useState(() => new Set(ids))
+  const fresh = ids.find(id => !before.has(id))
+  useEffect(() => { if (fresh) onAdopted(fresh) }, [fresh, onAdopted])
   return null
 }

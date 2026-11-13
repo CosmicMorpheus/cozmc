@@ -4,6 +4,19 @@ import { useRef, useState } from 'react'
 import { cozmlingStore, useCozmling } from '../index'
 import { applyImport, exportAll, planImport, type ImportPlan } from '../store/exportImport'
 
+type Kept = 'saved' | 'problem' | 'visit'
+const keptOf = (st: { durable: boolean | null; saveProblem: string | null }): Kept => (st.durable === false ? 'visit' : st.saveProblem ? 'problem' : 'saved')
+
+/** The same truth at a glance, for the top of the page. */
+export function SaveChip() {
+  const state = keptOf(useCozmling())
+  return (
+    <p className={`sl-chip sl-chip--${state}`} role="status" data-save-chip={state}>
+      {state === 'saved' ? <><span aria-hidden="true">✓</span> Saved on this device</> : state === 'visit' ? <>This visit only</> : <>Not saved</>}
+    </p>
+  )
+}
+
 export function SaveStatus({ name }: { name: string }) {
   const st = useCozmling()
   const [note, setNote] = useState('')
@@ -40,10 +53,10 @@ export function SaveStatus({ name }: { name: string }) {
     setNote(`Brought in ${plan.add.length + (takeNewer ? plan.newer.length : 0)} Cozmling${plan.add.length + (takeNewer ? plan.newer.length : 0) === 1 ? '' : 's'}.`)
   }
 
-  const state = st.durable === false ? 'visit' : st.saveProblem ? 'problem' : 'saved'
+  const state = keptOf(st)
   return (
     <div className={`sl-save sl-save--${state}`}>
-      <p className="sl-save__line" role="status" data-save={state}>
+      <p className="sl-save__line" data-save={state}>
         {state === 'saved' && <><span className="sl-save__tick" aria-hidden="true">✓</span> Saved on this device</>}
         {state === 'problem' && <>Not saved: the last change didn’t go through. Try again in a moment.</>}
         {state === 'visit' && <>This visit only: this browser isn’t storing anything, so {name} won’t be here next time.</>}

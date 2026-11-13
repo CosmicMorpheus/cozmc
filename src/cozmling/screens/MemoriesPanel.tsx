@@ -18,6 +18,9 @@ function spot(id: string): [number, number] {
   return [8 + (h % 84), 12 + ((h >>> 9) % 70)]
 }
 
+/** A four-point sparkle centred on (x, y). */
+const sparkle = (x: number, y: number, r: number) => { const k = r * 0.22; return `M${x} ${y - r}L${x + k} ${y - k}L${x + r} ${y}L${x + k} ${y + k}L${x} ${y + r}L${x - k} ${y + k}L${x - r} ${y}L${x - k} ${y - k}Z` }
+
 export function MemoriesPanel({ companionId, name, revision }: { companionId: string; name: string; revision: number }) {
   const [events, setEvents] = useState<JourneyEvent[] | null>(null)
   const [all, setAll] = useState(false)
@@ -27,7 +30,7 @@ export function MemoriesPanel({ companionId, name, revision }: { companionId: st
     <div className="sl-memories">
       <svg className="sl-starmap" viewBox="0 0 100 100" role="img" aria-label={`${events.length} ${events.length === 1 ? 'memory' : 'memories'} so far, one star each`}>
         <rect x="1.5" y="1.5" width="97" height="97" rx="2" />
-        {events.map(e => { const [x, y] = spot(e.eventId); return <circle key={e.eventId} cx={x} cy={y} r={e.type === 'hatched' || e.type === 'adopted' ? 1.9 : 1.2} /> })}
+        {events.map((e, i) => { const [x, y] = spot(e.eventId); return <path key={e.eventId} d={sparkle(x, y, e.type === 'hatched' || e.type === 'adopted' ? 5.2 : 3.4)} style={{ animationDelay: `${(i % 7) * -0.6}s` }} /> })}
       </svg>
       <div>
         <p className="sl-fine">A star for each memory so far. The finished constellation is still being designed.</p>

@@ -4,9 +4,11 @@
    Loaded only with the rebuilt Cozmling page. Every rule is under
    an .sl name, so nothing else on the site is touched. Colours are
    the site's own, plus three with a job each: coral for care,
-   green for actions, cyan for who the Cozmling is.
+   green for actions, cyan for who the Cozmling is. --o1 and --o2
+   are the Cozmling's own two colours (its element's): they tint
+   its sky and the glow around its scene.
    ============================================================ */
-:root { --sl-coral: #ff6f61; --sl-coral-deep: #7a2a23; --sl-id-line: #1d5361; --sl-id-bg: #06171c }
+:root { --sl-coral: #ff6f61; --sl-coral-deep: #6e2620; --sl-id-line: #1d5361; --sl-id-bg: #06171c }
 
 /* ---------- small pieces ---------- */
 .sl-glyph { display: inline-block; flex: none; vertical-align: -0.2em }
@@ -14,38 +16,48 @@
 .sl-orb { display: inline-block; flex: none; border-radius: 50%; vertical-align: -0.15em;
   background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.95) 0 9%, transparent 10%), radial-gradient(circle at 38% 34%, var(--o1) 0 34%, var(--o2) 100%);
   box-shadow: 0 0 0 1.5px rgba(0,0,0,.65), 0 0 10px 1px var(--o1) }
+.sl-sky { display: block; image-rendering: pixelated }
 .sl-fine { color: var(--dim); font-size: 13px; line-height: 1.5; margin-top: 12px; text-wrap: pretty }
 .sl-fine--flush { margin-top: 0 }
 .sl-devnote { padding: 10px 12px; border: 1px dashed #5a4410; background: #120d03; color: var(--mist); font-size: 13px; line-height: 1.6; text-wrap: pretty }
 .sl-devnote .link { font-size: 11px; text-decoration: underline; text-underline-offset: 3px }
 .sl-quarantine { max-width: 720px }
 
-/* ---------- who it is ---------- */
-.sl-head { margin-bottom: clamp(18px, 3vw, 28px); max-width: none }
-.sl-head .kicker { color: var(--cyan); margin-bottom: 10px }
-.sl-head h1 { overflow-wrap: anywhere }
-.page-head .sl-id { margin-top: 14px; color: var(--mist); font-size: 1.05rem }
-.page-head .sl-id--print { display: flex; flex-wrap: wrap; gap: 8px; font: 700 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
-.sl-id--print span { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg) }
-.sl-id--print .sl-id__sign { color: #d9f8ff; border-color: var(--cyan) }
-.sl-id--print .sl-id__born { color: var(--mist); border-color: var(--line-2); background: none }
+/* ---------- who it is, under its own sky ---------- */
+.sl-page { --o1: #59e6ff; --o2: #0b2a4a }
+.sl-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; align-content: start; justify-items: start; gap: 12px; min-height: clamp(150px, 15vw, 176px); margin-bottom: 20px; padding: clamp(16px, 2vw, 22px); border: 1px solid var(--line-2); background: #020308; box-shadow: 0 0 50px -20px var(--o1) }
+.sl-hero > .sl-sky { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; max-width: none }
+.sl-hero::after { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(1,2,6,.84) 0, rgba(1,2,6,.5) 40%, rgba(1,2,6,0) 68%) }
+.sl-hero__text { min-width: 0; max-width: 100% }
+.sl-hero .kicker { color: var(--cyan); margin-bottom: 10px; text-shadow: 1px 1px 0 #000 }
+.sl-hero h1 { font: 800 clamp(2.4rem, 4.6vw, 3.6rem)/.9 var(--sans); font-stretch: 70%; text-transform: uppercase; letter-spacing: -.01em; overflow-wrap: anywhere; text-shadow: 0 3px 0 #000, 0 0 22px #000 }
+.sl-hero h1:focus { outline: none }
+.sl-hero h1:focus-visible { outline: 2px solid var(--phos); outline-offset: 4px }
+.sl-adopt section > h2:focus { outline: none }
+.sl-id { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; font: 700 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-id span { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .9) }
+.sl-id .sl-id__sign { color: #d9f8ff; border-color: var(--cyan) }
+.sl-id .sl-id__born { color: var(--mist); border-color: var(--line-3); background: rgba(0, 0, 0, .78) }
+.sl-chip { position: absolute; right: clamp(12px, 2vw, 20px); top: clamp(12px, 2vw, 20px); display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px; border: 1px solid var(--phos-deep); background: rgba(0, 0, 0, .8); color: var(--phos); font: 700 10px/1 var(--pixel); text-transform: uppercase; letter-spacing: .05em }
+.sl-chip--visit, .sl-chip--problem { border-color: #6b4f12; color: var(--ember) }
 
-/* ---------- the page: scene and more on the left, care on the right; one column on a phone ---------- */
-.sl { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); grid-template-rows: auto 1fr; gap: 22px; align-items: start }
-.sl__scene { grid-column: 1; grid-row: 1; min-width: 0 }
-.sl__care { grid-column: 2; grid-row: 1 / span 2; display: grid; gap: 18px; min-width: 0 }
+/* ---------- the page: the scene and its controls on the left, panels on the right; one column on a phone ---------- */
+.sl { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); grid-template-rows: auto 1fr; gap: 20px 22px; align-items: start }
+.sl__main { grid-column: 1; grid-row: 1; display: grid; gap: 14px; min-width: 0 }
+.sl__side { grid-column: 2; grid-row: 1 / span 2; display: grid; gap: 18px; min-width: 0 }
 .sl__more { grid-column: 1; grid-row: 2; display: grid; gap: 18px; min-width: 0; align-content: start }
+.sl-arcadebar { grid-column: 1 / -1 }
 .sl .panel { min-width: 0 }
 @media (max-width: 900px) {
   .sl { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 18px }
-  .sl__scene, .sl__care, .sl__more { grid-column: 1; grid-row: auto }
+  .sl__main, .sl__side, .sl__more { grid-column: 1; grid-row: auto }
 }
 
 /* ---------- the scene ---------- */
-.sl__screen { position: relative; border: 2px solid var(--line-3); background: #000; box-shadow: 8px 8px 0 #141414; transition: border-color .4s }
+.sl__screen { position: relative; border: 2px solid var(--line-3); background: #000; box-shadow: 8px 8px 0 #101010, 0 0 54px -18px var(--o1); transition: border-color .4s }
 .sl__screen.is-night { border-color: #232a42 }
 .sl__screen canvas { width: 100%; height: auto; aspect-ratio: 3 / 2; cursor: pointer; touch-action: manipulation }
-.sl__say { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: calc(100% - 24px); padding: 7px 11px; background: rgba(0,0,0,.82); border: 1px solid var(--line-3); font: 700 11px/1.4 var(--pixel); color: var(--text); pointer-events: none }
+.sl__say { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: calc(100% - 24px); padding: 7px 11px; background: rgba(0,0,0,.84); border: 1px solid var(--line-3); font: 700 11px/1.4 var(--pixel); color: var(--text); pointer-events: none }
 .sl__say:empty { display: none }
 
 .sl-scene { position: relative; aspect-ratio: 3 / 2; overflow: hidden; isolation: isolate; background: #070a14; --floor: 11%; --at: 46% }
@@ -64,9 +76,11 @@
 .sl-standin svg { width: 100%; height: 100% }
 .sl-standin__glyph { position: absolute; left: 50%; top: 66%; translate: -50% -50%; color: var(--o1) }
 
+/* the Star Egg: a bright shell with a ring of light around it, like a small eclipse */
 .sl-egg { position: absolute; z-index: 1; left: var(--at); bottom: calc(var(--floor) + 1%); translate: -50% 0; width: 14.5%; aspect-ratio: 5 / 6; border-radius: 50% 50% 48% 48% / 62% 62% 40% 40%; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transform-origin: 50% 100%;
   background: radial-gradient(circle at 33% 24%, rgba(255,255,255,.9) 0 5%, transparent 6%), radial-gradient(circle at 38% 30%, #fff 0, var(--o1) 42%, var(--o2) 100%);
   box-shadow: 0 0 0 3px #0b0b12, 0 0 28px 2px var(--o1), inset -8px -10px 0 rgba(0,0,0,.2); animation: sl-egg-idle 2.8s ease-in-out infinite }
+.sl-egg::before { content: ""; position: absolute; inset: -34%; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, transparent 66%, var(--o1) 74%, transparent 100%); opacity: .5; animation: sl-halo 2.8s ease-in-out infinite }
 .sl-egg::after { content: ""; position: absolute; left: 50%; top: 60%; width: 30%; aspect-ratio: 1; translate: -50% -50%; opacity: .85; background: #fff; clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%) }
 .sl-egg i { position: absolute; width: 16%; height: 0; background: #0b0b12; clip-path: polygon(35% 0, 65% 0, 45% 30%, 80% 52%, 40% 100%, 52% 58%, 15% 36%); transition: height .18s }
 .sl-egg i:nth-child(1) { left: 44%; top: 6% }
@@ -82,55 +96,123 @@
 .sl-pop { position: absolute; z-index: 2; left: var(--at); bottom: calc(var(--floor) + var(--tall, 50%)); translate: -50% 0; font: 700 clamp(18px, 3.4vw, 28px)/1 var(--sans); color: var(--sl-coral); text-shadow: 2px 2px 0 #000; pointer-events: none; animation: sl-pop .9s ease-out both }
 .sl-scene.is-play .sl-pop { color: var(--ember) }
 .sl-scene.is-feed .sl-pop { color: var(--gold) }
-.sl-flash { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: radial-gradient(circle at var(--at) 70%, #fff 0, var(--o1) 22%, transparent 58%); animation: sl-flash 1.2s ease-out both }
+/* hatching: a flash of light and a ring that opens out from where the egg stood */
+.sl-flash { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: radial-gradient(circle at var(--at) 72%, #fff 0, var(--o1) 20%, transparent 56%); animation: sl-flash 1.2s ease-out both }
+.sl-flash::after { content: ""; position: absolute; left: var(--at); bottom: calc(var(--floor) + 10%); width: 12%; aspect-ratio: 1; translate: -50% 50%; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 22px 6px var(--o1), inset 0 0 14px 2px var(--o1); animation: sl-ring 1.25s ease-out both }
 
 @keyframes sl-breathe { 50% { transform: scaleY(1.013) } }
 @keyframes sl-float { 50% { transform: translateY(-14%) } }
 @keyframes sl-egg-idle { 0%, 100% { transform: rotate(-1.2deg) } 50% { transform: rotate(1.2deg) } }
+@keyframes sl-halo { 50% { opacity: .85; transform: scale(1.06) } }
 @keyframes sl-z { 0% { transform: translate(0, 0) scale(.7); opacity: 0 } 25% { opacity: 1 } 100% { transform: translate(120%, -260%) scale(1.15); opacity: 0 } }
 @keyframes sl-pop { 0% { transform: translateY(20%) scale(.6); opacity: 0 } 22% { opacity: 1 } 100% { transform: translateY(-130%) scale(1.1); opacity: 0 } }
 @keyframes sl-flash { 0% { opacity: 0 } 14% { opacity: .95 } 100% { opacity: 0 } }
+@keyframes sl-ring { 0% { transform: scale(.3); opacity: 1 } 100% { transform: scale(7); opacity: 0 } }
 @keyframes sl-low { 50% { opacity: .5 } }
 @keyframes sl-menu { from { opacity: 0; transform: translateY(-6px) } }
+@keyframes sl-twinkle { 0%, 100% { opacity: 1; transform: scale(1) } 50% { opacity: .4; transform: scale(.62) } }
 
-/* ---------- care ---------- */
+/* ---------- how it is doing ---------- */
+.sl-status { padding: 14px 16px 16px; border: 1px solid var(--sl-coral-deep); background: linear-gradient(180deg, #150908, var(--bg-1) 72%); box-shadow: 0 0 30px -16px var(--sl-coral) }
 .sl-mood { font-weight: 600; font-size: 1.14rem; line-height: 1.35; text-wrap: pretty }
 .sl-mood--great { color: var(--phos) }
 .sl-mood--low { color: var(--sl-coral) }
-.sl-meters { display: grid; gap: 8px; margin-top: 16px }
-.sl-meter { display: grid; grid-template-columns: 58px minmax(0, 1fr) 42px; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--line-2); background: var(--bg-2) }
-.sl-meter__label { font: 700 11px var(--pixel); text-transform: uppercase; color: var(--text) }
-.sl-meter__bar { display: block; height: 12px; background: #24242a; overflow: hidden }
+.sl-meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px }
+.sl-meter { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "icon label value" "bar bar bar"; align-items: center; gap: 8px; padding: 9px 10px 10px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, .55) }
+.sl-meter__icon { grid-area: icon; display: grid; place-items: center; width: 18px }
+.sl-meter__label { grid-area: label; font: 700 11px var(--pixel); text-transform: uppercase; color: var(--text) }
+.sl-meter__value { grid-area: value; font: 700 12px var(--mono); color: var(--sl-coral); text-align: right; font-variant-numeric: tabular-nums }
+.sl-meter__bar { grid-area: bar; display: block; height: 10px; background: #26262c; overflow: hidden }
 .sl-meter__bar i { display: block; height: 100%; background: var(--sl-coral); transition: width .5s var(--out) }
-.sl-meter__value { font: 700 12px var(--mono); color: var(--sl-coral); text-align: right; font-variant-numeric: tabular-nums }
 .sl-meter.is-low { border-color: var(--sl-coral-deep) }
 .sl-meter.is-low .sl-meter__bar i { animation: sl-low 1.2s steps(2) infinite }
 .sl-meters.is-dim { opacity: .45 }
 .sl-meters.is-dim .sl-meter__value { color: var(--dim) }
 
-.sl-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px }
-.sl-actions .btn { width: 100%; padding: 0 10px }
-.sl-actions .btn svg { flex: none }
-.sl-actions--egg { grid-template-columns: minmax(0, 1fr) auto; align-items: center }
-.sl-actions--egg .btn--ghost { grid-column: 1 / -1 }
-.sl-pips { display: inline-flex; gap: 6px; padding-inline: 4px }
+/* ---------- what you can do: four big buttons under the scene ---------- */
+.sl-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px }
+.sl-feed { position: relative; display: grid; min-width: 0 }
+.sl-act { --sh: var(--phos-deep); display: grid; justify-items: center; align-content: center; gap: 9px; min-width: 0; min-height: 80px; padding: 10px 4px; border: 2px solid var(--phos); background: linear-gradient(180deg, #0e1c0b, #060b05); color: var(--text); font: 700 12px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; box-shadow: 4px 4px 0 var(--sh), 0 0 24px -10px var(--phos); transition: transform .08s, box-shadow .08s, background-color .2s }
+.sl-act svg { flex: none }
+.sl-act:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--sh), 0 0 28px -8px var(--phos); background: linear-gradient(180deg, #152c11, #081007) }
+.sl-act:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--sh) }
+.sl-act:disabled { opacity: .42; cursor: not-allowed; border-color: var(--line-3); box-shadow: 4px 4px 0 #111 }
+.sl-eggacts { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px }
+.sl-pips { display: inline-flex; gap: 6px; padding-inline: 2px }
 .sl-pips i { width: 12px; height: 12px; border: 2px solid var(--phos-deep) }
 .sl-pips i.on { background: var(--phos); border-color: var(--phos) }
-.sl-feed { position: relative; display: flex; min-width: 0 }
-.sl-menu { position: absolute; z-index: 6; left: 0; top: calc(100% + 10px); width: max(100%, 264px); max-width: calc(100vw - 2 * var(--gutter) - 44px); display: grid; background: var(--bg-1); border: 2px solid var(--line-3); box-shadow: 6px 6px 0 #141414; animation: sl-menu .14s var(--out) }
+.sl-menu { position: absolute; z-index: 6; left: 0; top: calc(100% + 10px); width: max(100%, 264px); max-width: calc(100vw - 2 * var(--gutter)); display: grid; background: var(--bg-1); border: 2px solid var(--line-3); box-shadow: 6px 6px 0 #141414; animation: sl-menu .14s var(--out) }
 .sl-menu button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 46px; padding: 10px 14px; text-align: left; font-weight: 600 }
 .sl-menu button + button { border-top: 1px solid var(--line) }
 .sl-menu button:hover, .sl-menu button:focus-visible { background: var(--bg-3) }
 .sl-menu button:focus-visible { outline-offset: -3px }
 .sl-menu small { color: var(--dim); font: 700 10px var(--pixel); text-transform: uppercase }
 
-/* ---------- where it is saved ---------- */
+/* ---------- the panels ---------- */
+.sl-print { border-color: var(--sl-id-line); background: linear-gradient(160deg, var(--sl-id-bg), var(--bg-1) 58%); box-shadow: 0 0 30px -16px var(--cyan) }
+.sl-print.panel::before { border-color: var(--cyan) }
+.sl-print__row { display: flex; align-items: center; gap: 22px }
+/* the sign, in a dark disc with a ring of light in the element's colours */
+.sl-medal { flex: none; display: grid; place-items: center; width: 82px; aspect-ratio: 1; margin: 8px; border-radius: 50%; background: #000; color: var(--o1); box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 0 4px var(--o1), 0 0 24px 6px var(--o1), 0 0 54px 6px var(--o2) }
+.sl-facts { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px }
+.sl-facts dt { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim) }
+.sl-facts dd { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere }
+
+.sl-journey { list-style: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: 4px }
+.sl-journey li { position: relative; display: grid; justify-items: center; align-content: start; gap: 8px; text-align: center; font: 700 9px/1.25 var(--pixel); text-transform: uppercase; color: var(--dim) }
+.sl-journey li::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line-3) }
+.sl-journey li:first-child::before { display: none }
+.sl-journey li.is-done::before, .sl-journey li.is-now::before { background: var(--phos-deep) }
+.sl-journey__dot { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid var(--line-3); background: var(--bg-1); font: 700 13px/1 var(--sans) }
+.sl-journey li.is-done { color: var(--mist) }
+.sl-journey li.is-done .sl-journey__dot { border-color: var(--phos-deep); background: var(--phos-deep); color: #fff }
+.sl-journey li.is-now { color: var(--text) }
+.sl-journey li.is-now .sl-journey__dot { border-color: var(--phos); color: var(--phos); box-shadow: 0 0 14px -2px var(--phos) }
+.sl-journey__name { padding-inline: 2px; overflow-wrap: anywhere }
+.sl-grow__row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; margin-top: 16px; color: var(--mist); font-size: 14px }
+.sl-grow__row b { color: var(--phos); font: 700 13px var(--pixel); text-transform: uppercase }
+.sl-bar { height: 12px; margin-top: 10px; background: var(--bg-3); border: 1px solid var(--line-2) }
+.sl-bar i { display: block; height: 100%; background: var(--phos) }
+.sl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line) }
+.sl-stats dt { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim) }
+.sl-stats dd { font: 700 1.35rem/1.2 var(--sans); font-variant-numeric: tabular-nums }
+
+.sl-memories { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: start }
+.sl-memories .sl-fine { margin-top: 0 }
+.sl-starmap { width: 100%; height: auto; aspect-ratio: 1; background: radial-gradient(120% 60% at 50% 108%, var(--o2), transparent 70%), #03040a }
+.sl-starmap rect { fill: none; stroke: var(--line-3); stroke-width: 1 }
+.sl-starmap path { fill: #fff6d6; transform-box: fill-box; transform-origin: center; animation: sl-twinkle 4.4s ease-in-out infinite }
+.sl-memories__list { list-style: none; margin-top: 8px }
+.sl-memories__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px dashed var(--line-2); font-size: 14.5px }
+.sl-memories__list time { flex: none; color: var(--dim); font: 500 11.5px var(--mono); white-space: nowrap }
+.sl-memories .link { display: inline-block; margin-top: 10px; font-size: 11px }
+
 .sl-save__line { display: flex; align-items: baseline; gap: 8px; font: 700 12px/1.45 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos) }
 .sl-save--problem .sl-save__line, .sl-save--visit .sl-save__line { color: var(--ember); font: 600 15px/1.45 var(--sans); text-transform: none; letter-spacing: 0; text-wrap: pretty }
 .sl-save__tick { flex: none }
 .sl-save .sl-fine { margin-top: 8px }
 .sl-save__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px }
 .sl-save__plan { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--line-3); color: var(--mist); font-size: 14.5px; text-wrap: pretty }
+.sl-devpanel { border-style: dashed; border-color: #5a4410 }
+.sl-devpanel.panel::before { border-color: var(--ember) }
+
+/* ---------- the way to the arcade ---------- */
+.sl-arcadebar { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.5fr) auto; align-items: center; gap: 16px 24px; padding: clamp(16px, 2.2vw, 22px); border: 1px solid #22331f; background: linear-gradient(180deg, #081207, var(--bg-1)); box-shadow: 0 0 34px -18px var(--phos) }
+.sl-arcadebar__head { display: flex; align-items: center; gap: 14px; min-width: 0 }
+.sl-arcadebar__head svg { flex: none }
+.sl-arcadebar h2 { font: 800 1.55rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase }
+.sl-arcadebar p { margin-top: 5px; color: var(--mist); font-size: 14px; line-height: 1.45; text-wrap: pretty }
+.sl-games { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+.sl-game { --g: var(--sl-coral); display: grid; place-items: center; min-height: 58px; padding: 8px 6px; border: 2px solid var(--g); background: #090909; color: var(--text); text-align: center; text-decoration: none; font: 700 11px/1.3 var(--pixel); text-transform: uppercase; box-shadow: 0 0 20px -9px var(--g); transition: transform .1s, background-color .2s }
+.sl-game--brick-by-brick { --g: var(--gold) }
+.sl-game--moonshot { --g: var(--cyan) }
+.sl-game:hover { transform: translateY(-2px); background: #151515 }
+
+.sl-switch { display: grid; gap: 10px; margin-top: 30px }
+.sl-switch h2 { font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--mist) }
+.sl-switch .chip { height: auto; min-height: 38px; padding: 6px 14px; font: 600 14.5px var(--sans); text-transform: none; color: var(--text) }
+.sl-switch .chip.on { color: #000 }
+.sl-switch__kind { font-weight: 400; opacity: .78 }
 
 /* ---------- wardrobe, and the same choices at adoption ---------- */
 .sl-wardrobe { display: grid; gap: 18px }
@@ -160,9 +242,19 @@
 
 /* ---------- adoption ---------- */
 .sl-adopt { max-width: 720px; display: grid; gap: 22px }
+.sl-banner { position: relative; isolation: isolate; overflow: hidden; aspect-ratio: 5 / 2; border: 1px solid var(--line-2); background: #020308; box-shadow: 0 0 44px -18px var(--o1) }
+.sl-banner > .sl-sky { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; max-width: none }
+.sl-banner::after { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, rgba(1,2,6,.8) 0, rgba(1,2,6,.4) 44%, rgba(1,2,6,0) 66%) }
+.sl-banner__text { display: grid; align-content: start; gap: 8px; padding: clamp(12px, 3vw, 22px); max-width: 100% }
+.sl-banner__k { font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--cyan); text-shadow: 1px 1px 0 #000 }
+.sl-banner__sign { display: flex; align-items: center; gap: 10px; font: 800 clamp(2rem, 7vw, 3.2rem)/.9 var(--sans); font-stretch: 70%; text-transform: uppercase; color: var(--text); text-shadow: 0 3px 0 #000 }
+.sl-banner__sign .sl-glyph { color: var(--o1); filter: drop-shadow(0 0 6px var(--o1)) }
+.sl-banner__more { display: flex; flex-wrap: wrap; gap: 6px; font: 700 10px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-banner__more span { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 8px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .9) }
 .sl-adopt section { display: grid; gap: 16px }
 .sl-adopt section > h2 { font: 800 clamp(1.6rem, 4.4vw, 2.1rem)/1 var(--sans); font-stretch: 70%; letter-spacing: 0; text-transform: uppercase; color: var(--text) }
 .sl-adopt section > p { color: var(--mist); text-wrap: pretty }
+.sl-adopt section > p b { color: var(--text) }
 .sl-adopt section > p.state--err { color: #ff8a7a; margin-top: 0 }
 .sl-adopt section > p.sl-fine { color: var(--dim); margin-top: 0 }
 .sl-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 18px; font: 700 11px var(--pixel); text-transform: uppercase; color: var(--dim) }
@@ -172,41 +264,10 @@
 .sl-steps li.is-on span { border-color: var(--phos); color: var(--phos) }
 .sl-steps li.is-done { color: var(--mist) }
 .sl-steps li.is-done span { border-color: var(--phos-deep); background: var(--phos-deep); color: #fff }
-.sl-adopt section > p.sl-hint { color: var(--mist); min-height: 1.6em }
-.sl-hint b { color: var(--cyan) }
-.sl-print { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border: 1px solid var(--sl-id-line); background: linear-gradient(120deg, var(--sl-id-bg), var(--bg-1) 70%) }
-.sl-print__glyph { color: var(--cyan) }
-.sl-print__sign { font: 800 2rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase; color: var(--text) }
-.sl-print__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font: 700 11px/1.3 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-adopt section > p.sl-hint { min-height: 1.6em }
+.sl-adopt section > p.sl-hint b { color: var(--cyan) }
 .sl-adopt section > p.sl-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg); font: 700 11px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: .03em; color: var(--cyan); overflow-wrap: anywhere }
 .sl-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 4px }
-
-/* ---------- growing up, memories, the way to the arcade ---------- */
-.sl-grow__row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; color: var(--mist); font-size: 14px }
-.sl-grow__row b { color: var(--phos); font: 700 13px var(--pixel); text-transform: uppercase }
-.sl-bar { height: 12px; margin-top: 10px; background: var(--bg-3); border: 1px solid var(--line-2) }
-.sl-bar i { display: block; height: 100%; background: var(--phos) }
-.sl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line) }
-.sl-stats dt { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim) }
-.sl-stats dd { font: 700 1.35rem/1.2 var(--sans); font-variant-numeric: tabular-nums }
-.sl-memories { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 18px; align-items: start }
-.sl-memories .sl-fine { margin-top: 0 }
-.sl-starmap { width: 100%; height: auto; aspect-ratio: 1; background: radial-gradient(circle at 30% 20%, #101a3c, #04060d 72%) }
-.sl-starmap rect { fill: none; stroke: var(--line-3); stroke-width: 1 }
-.sl-starmap circle { fill: #fff3c4 }
-.sl-memories__list { list-style: none; margin-top: 8px }
-.sl-memories__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px dashed var(--line-2); font-size: 14.5px }
-.sl-memories__list time { flex: none; color: var(--dim); font: 500 11.5px var(--mono); white-space: nowrap }
-.sl-memories .link { display: inline-block; margin-top: 10px; font-size: 11px }
-.sl-arcade { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 22px }
-.sl-arcade p { margin-top: 8px; color: var(--mist); font-size: 14.5px; text-wrap: pretty }
-.sl-devpanel { border-style: dashed; border-color: #5a4410 }
-.sl-devpanel::before { border-color: var(--ember) }
-.sl-switch { display: grid; gap: 10px; margin-top: 30px }
-.sl-switch h2 { font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--mist) }
-.sl-switch .chip { height: auto; min-height: 38px; padding: 6px 14px; font: 600 14.5px var(--sans); text-transform: none; color: var(--text) }
-.sl-switch .chip.on { color: #000 }
-.sl-switch__kind { font-weight: 400; opacity: .78 }
 
 /* ---------- the compact views (the Arcade Buddy and the Home Spotlight) ---------- */
 .sl-compact { position: relative; overflow: hidden; isolation: isolate; aspect-ratio: 1; border: 2px solid var(--line-3); background: #070a14 }
@@ -218,23 +279,38 @@
 .sl-compact.is-night .sl-compact__room { filter: brightness(.32) saturate(.7) }
 .sl-compact.is-night .sl-compact__who, .sl-compact.is-night .sl-standin { filter: brightness(.6) }
 
-/* ---------- phones ---------- */
-@media (max-width: 520px) {
-  .sl__screen { box-shadow: 5px 5px 0 #141414 }
+/* ---------- narrower screens ---------- */
+@media (max-width: 900px) {
+  .sl-arcadebar { grid-template-columns: minmax(0, 1fr) }
+  .sl-arcadebar .btn { width: 100% }
+}
+@media (max-width: 600px) {
+  .sl-hero { min-height: 0; gap: 12px }
+  .sl-hero::after { background: linear-gradient(180deg, rgba(1,2,6,.6) 0, rgba(1,2,6,.72) 55%, rgba(1,2,6,.2) 100%) }
+  .sl-chip { position: static }
+  .sl__screen { box-shadow: 5px 5px 0 #101010, 0 0 40px -16px var(--o1) }
+  .sl-status { padding: 12px }
+  .sl-meters { grid-template-columns: minmax(0, 1fr); gap: 7px }
+  .sl-meter { grid-template-columns: 18px 52px minmax(0, 1fr) 40px; grid-template-areas: "icon label bar value"; padding: 8px 10px }
+  .sl-actions { gap: 8px }
+  .sl-act { min-height: 72px; font-size: 11px; letter-spacing: 0; box-shadow: 3px 3px 0 var(--sh), 0 0 20px -10px var(--phos) }
+  .sl-eggacts { grid-template-columns: minmax(0, 1fr) auto }
+  .sl-eggacts .btn--ghost { grid-column: 1 / -1 }
+  .sl-print__row { gap: 16px }
+  .sl-medal { width: 64px }
   .sl-memories { grid-template-columns: 92px minmax(0, 1fr); gap: 14px }
-  .sl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .sl-meter { grid-template-columns: 54px minmax(0, 1fr) 40px; gap: 8px }
-  .sl-arcade .btn { width: 100% }
-  .sl-nav .btn { flex: 1 1 auto }
-  .sl-print__sign { font-size: 1.7rem }
   .sl-memories__list li { flex-wrap: wrap; gap: 2px 14px }
+  .sl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .sl-nav .btn { flex: 1 1 auto }
+  .sl-banner { aspect-ratio: 2 / 1 }
+  .sl-banner::after { background: linear-gradient(90deg, rgba(1,2,6,.84) 0, rgba(1,2,6,.55) 60%, rgba(1,2,6,.15)) }
 }
 
 /* ---------- less motion ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .sl-who, .sl-who__orb, .sl-egg, .sl-meter.is-low .sl-meter__bar i, .sl-menu { animation: none }
+  .sl-who, .sl-who__orb, .sl-egg, .sl-egg::before, .sl-meter.is-low .sl-meter__bar i, .sl-menu, .sl-starmap path { animation: none }
   .sl-zzz b { animation: none; opacity: 1; position: static }
   .sl-pop { animation: none; opacity: 1 }
   .sl-flash { display: none }
-  .sl-scene__room, .sl-compact__room, .sl-who, .sl-meter__bar i, .sl-egg i { transition: none }
+  .sl-scene__room, .sl-compact__room, .sl-who, .sl-meter__bar i, .sl-egg i, .sl-act, .sl-game { transition: none }
 }
