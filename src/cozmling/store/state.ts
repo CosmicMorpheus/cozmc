@@ -8,6 +8,8 @@ export interface CozState {
   status: 'loading' | 'ready' | 'failed'
   /** true = saved on this device; false = this browser won't store anything, so it lasts for the visit only. */
   durable: boolean | null
+  /** Has the browser agreed to keep this site's storage? false = it may clear it when space runs low. null = not known. */
+  persisted: boolean | null
   /** When the last change was written successfully (never set by a write that failed). */
   savedAt: number | null
   /** The last write that did not go through, until one does. */
@@ -22,4 +24,4 @@ export interface CozState {
   lastSync: SyncReport | null
 }
 
-export const INITIAL: CozState = { status: 'loading', durable: null, savedAt: null, saveProblem: null, companions: [], selectedId: null, quarantined: [], unreadable: [], lastSync: null }
+export const INITIAL: CozState = { status: 'loading', durable: null, persisted: null, savedAt: null, saveProblem: null, companions: [], selectedId: null, quarantined: [], unreadable: [], lastSync: null }

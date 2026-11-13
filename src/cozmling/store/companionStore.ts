@@ -3,7 +3,7 @@
    every change goes: work out the new record → one all-or-nothing write → only then update what
    the page shows and say "saved". A refused or failed write never looks like a save. */
 import { settle, type Pet } from '../../companion/care'
-import type { Companion, JourneyEvent, LegacyCompanion, Snapshot, SourceRecord } from '../types'
+import type { AdventurerCompanion, Companion, JourneyEvent, Snapshot, SourceRecord } from '../types'
 import { hatchOf, V1_KEY, v1Text } from '../integrations/legacyAdapter'
 import { applyMirror, planSync, type Env, type SyncReport } from './migrations'
 import type { Repository, WriteResult } from './repository'
@@ -14,11 +14,22 @@ export { INITIAL, type CozState } from './state'
 
 export interface Channel { post(msg: unknown): void; listen(cb: (msg: unknown) => void): void }
 export type Change = { ok: true; companion: Companion } | { ok: false; reason: 'stale' | 'duplicate' | 'failed' | 'missing'; detail: string }
+type EventInput = Omit<JourneyEvent, 'companionId' | 'at'>
+export interface UpdateOptions {
+  /** Recorded with the change. If an event with this id already exists, the whole change is refused ('duplicate'):
+      that is what makes "exactly once" things (a hatch, an arcade run) exactly once. */
+  event?: EventInput
+  /** A memory worth keeping if it isn't there yet (the first care of a day, say). Never blocks the change. */
+  note?: EventInput
+}
+/** Asks the browser to keep this site's storage (it may clear it otherwise when space runs low). */
+export type Persist = { ask(): Promise<boolean>; granted(): Promise<boolean> }
 
-export function createStore(repo: Repository, env: Env, channel?: Channel) {
+export function createStore(repo: Repository, env: Env, channel?: Channel, persist?: Persist) {
   let state: CozState = { ...INITIAL, durable: repo.durable }
   let sources = new Map<string, SourceRecord>()
   const subs = new Set<() => void>()
+  const notes = new Set<string>()          // ids of optional memories known to be recorded already
   const set = (next: Partial<CozState>) => { state = { ...state, ...next }; subs.forEach(f => f()) }
   const byId = (id: string | null) => state.companions.find(c => c.companionId === id)
   const active = (list: Companion[]) => list.filter(c => !c.archived)
@@ -78,23 +89,56 @@ export function createStore(repo: Repository, env: Env, channel?: Channel) {
   }
 
   /**
-   * Change a first-version Cozmling with the v1 rules. `change` gets its state brought up to now
-   * and returns the new state (or null to leave it alone). One call = one write, and the v1 key
+   * Change one companion. `change` gets the current record and returns the new one (or null to
+   * leave it alone). One call = one all-or-nothing write. For a first-version Cozmling its v1 key
    * is then updated to match, so the old page and a roll-back always find the same Cozmling.
    */
-  async function updateLegacy(companionId: string, change: (pet: Pet, now: number) => Pet | null, event?: Omit<JourneyEvent, 'companionId' | 'at'>): Promise<Change> {
+  async function update(companionId: string, change: (c: Companion, now: number) => Companion | null, opts: UpdateOptions = {}): Promise<Change> {
     const c = byId(companionId)
-    if (!c || c.kind !== 'legacy' || c.archived) return { ok: false, reason: 'missing', detail: companionId }
-    const now = env.now(), pet = change(settle(c.legacy.pet, now), now)
-    if (!pet) return { ok: true, companion: c }
-    const record: LegacyCompanion = { ...c, revision: c.revision + 1, updatedAt: now, hatch: hatchOf(pet, c.hatch), legacy: { ...c.legacy, pet } }
-    const text = v1Text(pet), src = sources.get(c.legacy.sourceKey)
-    const res = await commit(record, c.revision, {
-      sources: src && src.companionId === companionId ? [{ ...src, lastSeenHash: await env.hash(text) }] : [],
-      events: event ? [{ ...event, companionId, at: now }] : [],
+    if (!c || c.archived) return { ok: false, reason: 'missing', detail: companionId }
+    const now = env.now(), changed = change(c, now)
+    if (!changed) return { ok: true, companion: c }
+    let record: Companion = { ...changed, companionId: c.companionId, revision: c.revision + 1, updatedAt: now }
+    let text: string | null = null, src: SourceRecord | undefined
+    if (record.kind === 'legacy') {
+      record = { ...record, hatch: hatchOf(record.legacy.pet, c.hatch) }
+      src = sources.get(record.legacy.sourceKey)
+      if (src && src.companionId === companionId) text = v1Text(record.legacy.pet); else src = undefined
+    }
+    const stamp = (e: EventInput): JourneyEvent => ({ ...e, companionId, at: now })
+    const note = opts.note && !notes.has(opts.note.eventId) ? opts.note : undefined
+    const mirrored: SourceRecord[] = src && text != null ? [{ ...src, lastSeenHash: await env.hash(text) }] : []
+    const write = (withNote: boolean) => commit(record, c.revision, {
+      sources: mirrored,
+      events: [...(opts.event ? [stamp(opts.event)] : []), ...(withNote && note ? [stamp(note)] : [])],
     })
+    let res = await write(true)
+    if (!res.ok && res.reason === 'duplicate' && note && res.detail === note.eventId) {       // another tab already kept that memory
+      notes.add(note.eventId)
+      if (byId(companionId)?.revision === c.revision) res = await write(false)
+    }
     if (!res.ok) return res
-    if (src && src.companionId === companionId) applyMirror(env.storage, [{ key: c.legacy.sourceKey, raw: text }])
+    if (note) notes.add(note.eventId)
+    if (src && text != null) applyMirror(env.storage, [{ key: src.sourceKey, raw: text }])
+    return { ok: true, companion: record }
+  }
+
+  /** Change a first-version Cozmling with the v1 rules: `change` gets its state brought up to now. */
+  const updateLegacy = (companionId: string, change: (pet: Pet, now: number) => Pet | null, event?: EventInput): Promise<Change> =>
+    update(companionId, (c, now) => {
+      if (c.kind !== 'legacy') return null
+      const pet = change(settle(c.legacy.pet, now), now)
+      return pet ? { ...c, legacy: { ...c.legacy, pet } } : null
+    }, { event })
+
+  /** A newly adopted adventurer joins the store and becomes the one that shows. */
+  async function adopt(record: AdventurerCompanion): Promise<Change> {
+    const now = env.now()
+    const res = await commit(record, null, { events: [{ eventId: `adopted:${record.companionId}`, companionId: record.companionId, type: 'adopted', at: now, data: { sign: record.starprint.coreSign } }] })
+    if (!res.ok) return res
+    await select(record.companionId)
+    // the first adoption is the moment to ask the browser to keep our storage. Play never waits on the answer
+    if (persist && repo.durable) void persist.ask().then(ok => set({ persisted: ok }), () => {})
     return { ok: true, companion: record }
   }
 
@@ -110,14 +154,24 @@ export function createStore(repo: Repository, env: Env, channel?: Channel) {
   // another tab changed something: show it
   channel?.listen(() => { repo.load().then(snap => show(snap, null), () => {}) })
 
+  /** The first load: read, bring v1 saves in, show. */
+  async function hydrate(): Promise<SyncReport> {
+    const report = await sync()
+    if (persist && repo.durable) void persist.granted().then(ok => set({ persisted: ok }), () => {})
+    return report
+  }
+
   return {
     getState: () => state,
     subscribe: (f: () => void) => { subs.add(f); return () => { subs.delete(f) } },
-    /** The first load: read, bring v1 saves in, show. */
-    hydrate: sync,
+    hydrate,
     sync,
     select,
+    update,
     updateLegacy,
+    adopt,
+    /** What has happened to a companion, oldest first. */
+    events: (companionId: string) => repo.events(companionId),
     /** For the pieces built on top of this (adoption, the arcade bridge, import). */
     commit,
     reload: async () => { show(await repo.load(), null) },

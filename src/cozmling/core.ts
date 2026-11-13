@@ -14,7 +14,11 @@ export async function open(): Promise<CozStore> {
   const channel: Channel | undefined = bc ? { post: m => bc.postMessage(m), listen: cb => { bc.onmessage = e => cb(e.data) } } : undefined
   const env = { storage, now: () => Date.now(), newId, hash: checksum }
 
-  let store = createStore((await indexedDbRepository()) ?? memoryRepository(), env, channel)
+  // ask the browser to keep our storage; it is free to say no, and play never depends on the answer
+  const sm = typeof navigator !== 'undefined' ? navigator.storage : undefined
+  const persist = sm?.persist && sm.persisted ? { ask: () => sm.persist(), granted: () => sm.persisted() } : undefined
+
+  let store = createStore((await indexedDbRepository()) ?? memoryRepository(), env, channel, persist)
   try { await store.hydrate() }
   catch {
     // IndexedDB opened but can't be read (a damaged profile, say): keep going for this visit, and say it isn't saved
