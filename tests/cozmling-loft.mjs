@@ -122,7 +122,9 @@ await scenario('a guest adopts, hatches and looks after a Cozmling, and it is al
   let c = await mine(page)
   const id = c.companionId
   assert.equal(c.kind, 'adventurer'); assert.equal(c.hatch.status, 'egg'); assert.equal(c.appearance.appearanceOption, 'b'); assert.equal(c.appearance.skin, 'rose')
-  assert.deepEqual(c.starprint, { chosenBirthday: '2026-11-05', coreSign: 'scorpio', element: 'water', archetype: 'Seeker', status: 'partial', engineVersion: 'cozmc-celestial-1', observatoryVersion: 'origin-observatory-1' })   // from the real sky; final once it hatches
+  const { birthplace, ...print } = c.starprint
+  assert.deepEqual(print, { chosenBirthday: '2026-11-05', coreSign: 'scorpio', element: 'water', archetype: 'Seeker', status: 'partial', engineVersion: 'cozmc-celestial-2', observatoryVersion: 'origin-observatory-1' })   // from the real sky; final once it hatches
+  assert.deepEqual([birthplace.id, birthplace.place, birthplace.timeZone], ['origin-observatory', 'Mauna Kea, Hawaii', 'Pacific/Honolulu'])   // the COZMC default, chosen already
   assert.deepEqual(c.walletLinks, [])
   await shot(page, 'loft-egg-390')
 

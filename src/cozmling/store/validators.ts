@@ -5,6 +5,7 @@ import { fromNote, HOMES, type Pet, type Saved } from '../../companion/care'
 import { BODIES, DEFAULT_LOOK, EYES, GLOWS, STAGES } from '../../companion/look'
 import type { Companion } from '../types'
 import { celestialProblem } from '../celestial/validate'
+import { placeShapeProblem } from '../celestial/birthplace'
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const count = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0
@@ -81,6 +82,7 @@ export function companionProblem(c: any): string | null {
     if (typeof c.name !== 'string' || !c.name.trim() || c.name.length > 64) return 'no name'
     const s = c.starprint, a = c.appearance, k = c.care, p = c.progress
     if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s.chosenBirthday) || !SIGNS.includes(s.coreSign) || !['fire', 'earth', 'air', 'water'].includes(s.element) || typeof s.archetype !== 'string' || !['fixture', 'partial', 'calculated'].includes(s.status) || typeof s.engineVersion !== 'string') return 'invalid Starprint'
+    if (s.birthplace !== undefined && placeShapeProblem(s.birthplace)) return 'invalid birthplace'
     if (!a || (a.appearanceOption !== 'a' && a.appearanceOption !== 'b') || typeof a.skin !== 'string' || typeof a.outfit !== 'string' || typeof a.home !== 'string' || !Array.isArray(a.decor) || typeof a.rendererVersion !== 'string') return 'invalid appearance'
     if (!k || !need(k.food) || !need(k.fun) || !need(k.energy) || (k.asleepAt !== null && !num(k.asleepAt)) || !num(k.settledAt) || typeof k.ruleVersion !== 'string') return 'invalid care state'
     if (!p || !count(p.experience) || !(p.visualStage === null || ['hatchling', 'adolescent', 'ascended'].includes(p.visualStage)) || typeof p.visualStageVersion !== 'string' || !p.counters || typeof p.counters !== 'object') return 'invalid progress'

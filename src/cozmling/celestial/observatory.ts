@@ -41,22 +41,28 @@ export function wallClock(ms: number, timeZone: string): WallClock {
   return { y: o.year, m: o.month, d: o.day, hh: o.hour === 24 ? 0 : o.hour, mm: o.minute, ss: o.second }
 }
 
-/** How far a time zone's clock is ahead of UTC at a moment, in minutes. */
-export function zoneOffsetMinutes(ms: number, timeZone: string): number {
-  const c = wallClock(ms, timeZone)
-  return Math.round((Date.UTC(c.y, c.m - 1, c.d, c.hh, c.mm, c.ss) - Math.floor(ms / 1000) * 1000) / 60_000)
+/** How far a time zone's clock is ahead of UTC at a moment, in milliseconds. To the second: before standard time,
+    many places kept local mean time, minutes and seconds off the hour (Paris +0:09:21, Kathmandu +5:41:16). */
+export function zoneOffsetMs(ms: number, timeZone: string): number {
+  const t = Math.floor(ms / 1000) * 1000, c = wallClock(t, timeZone)
+  return Date.UTC(c.y, c.m - 1, c.d, c.hh, c.mm, c.ss) - t
 }
+/** The same, in whole minutes (for showing). */
+export const zoneOffsetMinutes = (ms: number, timeZone: string) => Math.round(zoneOffsetMs(ms, timeZone) / 60_000)
 
-/** The moment a wall clock in a time zone shows a given time. Where daylight saving skips that
-    time, the next moment that exists is used; where it happens twice, the first one. */
+const DAY = 86_400_000
+/** The moment a wall clock in a time zone shows a given time, by the IANA rules (the same as Python's zoneinfo, fold 0):
+    - when the clocks go back and a time happens twice, the first time;
+    - when the clocks go forward and a time is skipped, it is read with the offset from before the change, so it
+      lands just after the gap (02:30 on a spring-forward night is 03:30). */
 export function wallClockToUtc(c: WallClock, timeZone: string): number {
   const asUtc = Date.UTC(c.y, c.m - 1, c.d, c.hh, c.mm, c.ss)
-  const first = asUtc - zoneOffsetMinutes(asUtc, timeZone) * 60_000
-  const second = asUtc - zoneOffsetMinutes(first, timeZone) * 60_000
   const shows = (t: number) => { const w = wallClock(t, timeZone); return w.y === c.y && w.m === c.m && w.d === c.d && w.hh === c.hh && w.mm === c.mm && w.ss === c.ss }
-  if (shows(second)) return second
-  if (shows(first)) return first
-  return Math.max(first, second)
+  // the offsets in force around this wall time: before and after any change of offset near it (Samoa once skipped a whole day)
+  const before = zoneOffsetMs(asUtc - 2 * DAY, timeZone)
+  const offsets = new Set([before, zoneOffsetMs(asUtc, timeZone), zoneOffsetMs(asUtc + 2 * DAY, timeZone)])
+  const when = [...offsets].map(o => asUtc - o).filter(shows).sort((a, b) => a - b)
+  return when.length ? when[0] : asUtc - before
 }
 
 const pad = (n: number, w = 2) => String(n).padStart(w, '0')

@@ -18,6 +18,7 @@ import { birthdayBounds, birthMoment, ORIGIN_OBSERVATORY, wallClock, wallClockTe
 import type { AnglePoint, BodyId, Birthplace, CelestialBirthRecord, MoonPhaseName, Placement } from './types'
 import { BODIES, deg, degreeIn, norm360, rad, round6, signAt, ZODIAC } from './zodiac'
 import { legacySkyOption } from './options'
+import { placeShapeProblem, placeTag, zoneSupported } from './birthplace'
 import { ENGINE } from './version'
 
 export { legacySkyOption, starprintDisagrees } from './options'
@@ -28,13 +29,16 @@ export const OBSERVATORY_TAG = `${ORIGIN_OBSERVATORY.id}-${ORIGIN_OBSERVATORY.ve
 /* Below these speeds (degrees a day) a planet counts as stationary: about to turn, or just turned. */
 const STATION: Record<BodyId, number> = { sun: 0, moon: 0, mercury: 0.1, venus: 0.07, mars: 0.04, jupiter: 0.01, saturn: 0.005, uranus: 0.002, neptune: 0.001, pluto: 0.001 }
 
-/** The Rising sign (Ascendant) and Midheaven from the local sidereal angle (RAMC), the obliquity and the latitude. */
+/** The Rising sign (Ascendant) and Midheaven from the local sidereal angle (RAMC), the obliquity and the latitude.
+    The Ascendant is where the ecliptic meets the horizon in the east. Inside the polar circles the usual formula can
+    give the other meeting point, setting in the west, so the one rising in the east is always taken (engine version 2;
+    this matches the Swiss Ephemeris, and changes nothing outside the polar circles). */
 export function anglesFrom(ramcDeg: number, obliquityDeg: number, latitudeDeg: number): { ascendant: number; midheaven: number } {
   const r = rad(ramcDeg), e = rad(obliquityDeg), f = rad(latitudeDeg)
-  return {
-    ascendant: norm360(deg(Math.atan2(Math.cos(r), -(Math.sin(r) * Math.cos(e) + Math.tan(f) * Math.sin(e))))),
-    midheaven: norm360(deg(Math.atan2(Math.sin(r), Math.cos(r) * Math.cos(e)))),
-  }
+  let ascendant = norm360(deg(Math.atan2(Math.cos(r), -(Math.sin(r) * Math.cos(e) + Math.tan(f) * Math.sin(e)))))
+  const l = rad(ascendant), ra = Math.atan2(Math.sin(l) * Math.cos(e), Math.cos(l))
+  if (Math.sin(r - ra) > 0) ascendant = norm360(ascendant + 180)          // west of the meridian: that is the Descendant
+  return { ascendant, midheaven: norm360(deg(Math.atan2(Math.sin(r), Math.cos(r) * Math.cos(e)))) }
 }
 
 const PHASES: MoonPhaseName[] = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent']
@@ -43,11 +47,10 @@ export const moonPhaseName = (angle: number): MoonPhaseName => PHASES[Math.floor
 
 const point = (lon: number): AnglePoint => ({ lon: round6(norm360(lon)), sign: signAt(lon), degree: round6(degreeIn(lon)) })
 
-const MOMENT_ACCURACY: Record<CelestialBirthRecord['rule'], string> = {
-  'chosen-day-hatch-minute': 'To the second: the birthday its player chose, at the time of day its egg hatched, on the observatory’s clock.',
-  'hatch-moment': 'To the second: the moment its egg hatched, as this browser recorded it.',
-  'awakening-moment': 'To the second: the moment its sky was given.',
-}
+const momentAccuracy = (rule: CelestialBirthRecord['rule'], place: Birthplace): string =>
+  rule === 'chosen-day-hatch-minute' ? `To the second: the birthday its player chose, at the time of day its egg hatched, on ${place.fictional ? 'the observatory’s' : `${place.name}’s`} clock.`
+  : rule === 'hatch-moment' ? 'To the second: the moment its egg hatched, as this browser recorded it.'
+  : 'To the second: the moment its sky was given.'
 
 export interface CastInput {
   companionId: string
@@ -110,7 +113,7 @@ export function castChart(i: CastInput): CelestialBirthRecord {
     aspects,
     patterns: findPatterns(bodies, aspects),
     calculatedAt: i.calculatedAt,
-    accuracy: { positions: `Within about 1 arcminute (${p.library.name} ${p.library.version}).`, moment: MOMENT_ACCURACY[i.rule] },
+    accuracy: { positions: `Within about 1 arcminute (${p.library.name} ${p.library.version}).`, moment: momentAccuracy(i.rule, place) },
     omitted,
   }
 }
@@ -136,34 +139,40 @@ export function sunSignOnBirthday(birthday: string, at: number, provider: Celest
   return { sign, cusp: { before: first, after: last, at: hi } }
 }
 
-/** The Starprint shown while it is still an egg: its sign if it hatched now. Fixed for good at hatch. */
-export function provisionalStarprint(birthday: string, now: number): Starprint | null {
-  const s = sunSignOnBirthday(birthday, now)
+/** The Starprint shown while it is still an egg: its sign if it hatched now, on its birthplace's clock. Fixed for good at hatch. */
+export function provisionalStarprint(birthday: string, now: number, place: Birthplace = ORIGIN_OBSERVATORY): Starprint | null {
+  const s = sunSignOnBirthday(birthday, now, astronomyEngine, place)
   if (!s) return null
   const info = signInfo(s.sign)
-  return { chosenBirthday: birthday, coreSign: s.sign, element: info.element, archetype: info.archetype, status: 'partial', engineVersion: ENGINE_TAG, observatoryVersion: OBSERVATORY_TAG }
+  return { chosenBirthday: birthday, coreSign: s.sign, element: info.element, archetype: info.archetype, status: 'partial', engineVersion: ENGINE_TAG, observatoryVersion: placeTag(place), birthplace: place }
 }
+/** Where an adventurer's birth sky is read: the place chosen at adoption, or the COZMC default if none was recorded. */
+export const birthplaceOf = (s: Starprint): Birthplace => (s.birthplace && !placeShapeProblem(s.birthplace) ? s.birthplace : ORIGIN_OBSERVATORY)
 
 /* ---------------- reading a Cozmling's sky ---------------- */
 
 /** Its Starprint made final from the sky it was born under. */
 function finalStarprint(s: Starprint, sky: CelestialBirthRecord): Starprint {
   const info = signInfo(sky.bodies.sun.sign)
-  return { ...s, coreSign: info.sign, element: info.element, archetype: info.archetype, status: 'calculated', engineVersion: ENGINE_TAG, observatoryVersion: OBSERVATORY_TAG, moon: sky.bodies.moon.sign, ...(sky.angles ? { rising: sky.angles.ascendant.sign } : {}) }
+  return { ...s, coreSign: info.sign, element: info.element, archetype: info.archetype, status: 'calculated', engineVersion: ENGINE_TAG, observatoryVersion: placeTag(sky.birthplace), moon: sky.bodies.moon.sign, ...(sky.angles ? { rising: sky.angles.ascendant.sign } : {}) }
 }
 
 /**
  * The egg hatches, and its sky is read in the same moment. For an adventurer, the chart is the
- * chosen birthday at this minute on the observatory's clock, and its Starprint becomes final
- * (on a cusp birthday, the hatch minute decides between the two signs). A first-version
- * Cozmling just hatches, as it always has: its sky is only read if its player asks.
+ * chosen birthday at this minute on its birthplace's clock (the COZMC default unless another place
+ * was chosen at adoption), and its Starprint becomes final (on a cusp birthday, the hatch minute
+ * decides between the two signs). A first-version Cozmling just hatches, as it always has: its sky
+ * is only read if its player asks.
  */
 export function hatchWithSky(c: Companion, now: number, displayTimeZone: string): Companion | null {
   const hatched = hatch(c, now)
   if (!hatched || hatched.kind !== 'adventurer' || hatched.celestial) return hatched
-  const ms = birthMoment(hatched.starprint.chosenBirthday, now)
+  const place = birthplaceOf(hatched.starprint)
+  // a birthplace whose time zone this browser can't read: it hatches, and its sky is read later where it can be (never at another place)
+  if (!zoneSupported(place.timeZone)) return hatched
+  const ms = birthMoment(hatched.starprint.chosenBirthday, now, place)
   if (ms == null) return hatched
-  const sky = castChart({ companionId: hatched.companionId, kind: 'birth', rule: 'chosen-day-hatch-minute', ms, birthday: hatched.starprint.chosenBirthday, hatchedAt: now, displayTimeZone, calculatedAt: now })
+  const sky = castChart({ companionId: hatched.companionId, kind: 'birth', rule: 'chosen-day-hatch-minute', ms, birthday: hatched.starprint.chosenBirthday, hatchedAt: now, displayTimeZone, calculatedAt: now, place })
   return { ...hatched, celestial: sky, starprint: finalStarprint(hatched.starprint, sky) }
 }
 
@@ -174,9 +183,11 @@ export function hatchWithSky(c: Companion, now: number, displayTimeZone: string)
  */
 export function readSkyLate(c: Companion, now: number, displayTimeZone: string): Companion | null {
   if (c.kind !== 'adventurer' || c.celestial || c.hatch.status !== 'hatched' || c.hatch.hatchedAt == null) return null
-  const ms = birthMoment(c.starprint.chosenBirthday, c.hatch.hatchedAt)
+  const place = birthplaceOf(c.starprint)
+  if (!zoneSupported(place.timeZone)) return null
+  const ms = birthMoment(c.starprint.chosenBirthday, c.hatch.hatchedAt, place)
   if (ms == null) return null
-  const sky = castChart({ companionId: c.companionId, kind: 'birth', rule: 'chosen-day-hatch-minute', ms, birthday: c.starprint.chosenBirthday, hatchedAt: c.hatch.hatchedAt, displayTimeZone, calculatedAt: now })
+  const sky = castChart({ companionId: c.companionId, kind: 'birth', rule: 'chosen-day-hatch-minute', ms, birthday: c.starprint.chosenBirthday, hatchedAt: c.hatch.hatchedAt, displayTimeZone, calculatedAt: now, place })
   return { ...c, celestial: sky, starprint: sky.bodies.sun.sign === c.starprint.coreSign ? finalStarprint(c.starprint, sky) : c.starprint }
 }
 

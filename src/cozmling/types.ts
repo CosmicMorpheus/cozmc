@@ -11,7 +11,7 @@
    - adventurer: a new zodiac "Starprint" adventurer.
    ============================================================ */
 import type { Pet } from '../companion/care'
-import type { CelestialBirthRecord } from './celestial/types'
+import type { Birthplace, CelestialBirthRecord } from './celestial/types'
 import type { Stage as LegacyStage } from '../companion/look'
 
 export const SCHEMA_VERSION = 2
@@ -68,6 +68,8 @@ export interface Starprint {
   status: 'fixture' | 'partial' | 'calculated'
   engineVersion: string
   observatoryVersion?: string
+  /** Where its birth sky is read (chosen at adoption). Not recorded = the COZMC default, the Origin Observatory. */
+  birthplace?: Birthplace
   moon?: ZodiacSign
   rising?: ZodiacSign
 }

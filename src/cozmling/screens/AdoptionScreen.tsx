@@ -7,6 +7,9 @@ import { adoptProblem, NAMES, newAdventurer, SKINS } from '../domain/adventurer'
 import { birthdayText, ELEMENTS, signFor, signInfo } from '../domain/starprint'
 import { loadSkyEngine } from '../celestial/load'
 import { clockText, ORIGIN_OBSERVATORY } from '../celestial/observatory'
+import { clockName, isDefaultPlace, placePhrase } from '../celestial/birthplace'
+import type { Birthplace } from '../celestial/types'
+import { BirthplacePicker } from './BirthplacePicker'
 import { signsWithArt } from '../render/assetManifest'
 import { newId } from '../store/util'
 import { Glyph, Orb } from '../components/Glyph'
@@ -32,6 +35,10 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
   const [look, setLook] = useState<'a' | 'b'>('a')
   const [skin, setSkin] = useState(SKINS[0].id)
   const [name, setName] = useState('')
+  // where its sky is read: the COZMC default unless the player picks a place (ready = settled enough to carry on)
+  const [birthplace, setBirthplace] = useState<Birthplace>(ORIGIN_OBSERVATORY)
+  const [placeReady, setPlaceReady] = useState(true)
+  const choosePlace = (p: Birthplace, ready: boolean) => { setBirthplace(p); setPlaceReady(ready) }
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
   // The Sun's real sign on that birthday. It is worked out for the hatch minute, so until the egg hatches
@@ -40,7 +47,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
   useEffect(() => { loadSkyEngine().then(setEngine, () => { /* the calendar's sign is used instead */ }) }, [])
   const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60_000))
   useEffect(() => { const t = setInterval(() => setMinute(Math.floor(Date.now() / 60_000)), 20_000); return () => clearInterval(t) }, [])
-  const skySign = useMemo(() => (engine && birthday ? engine.sunSignOnBirthday(birthday, minute * 60_000) : null), [engine, birthday, minute])
+  const skySign = useMemo(() => (engine && birthday ? engine.sunSignOnBirthday(birthday, minute * 60_000, undefined, birthplace) : null), [engine, birthday, minute, birthplace])
   const sign = useMemo(() => (skySign ? signInfo(skySign.sign) : signFor(birthday)), [skySign, birthday])
   const cusp = skySign?.cusp ?? null
   const sky: [string, string] = sign ? ELEMENTS[sign.element].orb : ['#00bffe', '#03263a']
@@ -48,12 +55,12 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
-    const choices = { name, birthday, look, skin }, why = adoptProblem(choices)
+    const choices = { name, birthday, look, skin, birthplace }, why = adoptProblem(choices)
     if (why) { setProblem(why); return }
     const store = cozmlingStore()
     if (!store) { setProblem('The Star Loft isn’t ready yet. Give it a moment and try again.'); return }
     setBusy(true); setProblem('')
-    const now = Date.now(), starprint = engine?.provisionalStarprint(birthday, now) ?? undefined
+    const now = Date.now(), starprint = engine?.provisionalStarprint(birthday, now, birthplace) ?? undefined
     const res = await store.adopt(newAdventurer(choices, { companionId: newId(), now, starprint }))
     setBusy(false)
     if (!res.ok) setProblem('That didn’t save. Nothing was lost: try again in a moment.')
@@ -73,7 +80,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
           <div className="sl-banner__text">
             {sign ? (
               <>
-                <p className="sl-banner__k">Born {birthdayText(birthday)}</p>
+                <p className="sl-banner__k">Born {birthdayText(birthday)} · {isDefaultPlace(birthplace) ? 'Mauna Kea' : birthplace.name}</p>
                 <p className="sl-banner__sign"><Glyph sign={sign.sign} size={34} /> {sign.name}</p>
                 <p className="sl-banner__more"><span><Orb element={sign.element} size={14} /> {ELEMENTS[sign.element].name}</span><span>The {sign.archetype}</span></p>
               </>
@@ -96,13 +103,14 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
               <button type="button" className="btn btn--ghost btn--sm" onClick={surprise}>Surprise me</button>
             </div>
             <p className="sl-hint" role="status">{!sign ? (birthday ? 'That isn’t a date we can use.' : 'Pick a date to see its sign.')
-              : cusp ? <>{birthdayText(birthday)} is a cusp day: the Sun moves from {signInfo(cusp.before).name} into {signInfo(cusp.after).name} at {clockText(cusp.at, ORIGIN_OBSERVATORY.timeZone)} Mauna Kea time. If it hatched now it would be <b>{sign.name}</b>; the minute it hatches decides.</>
+              : cusp ? <>{birthdayText(birthday)} is a cusp day: the Sun moves from {signInfo(cusp.before).name} into {signInfo(cusp.after).name} at {clockText(cusp.at, birthplace.timeZone)} {clockName(birthplace)} time. If it hatched now it would be <b>{sign.name}</b>; the minute it hatches decides.</>
               : <>{birthdayText(birthday)} falls under <b>{sign.name}</b>.</>}</p>
-            <p className="sl-fine">Its birth sky will be read over the Origin Observatory on Mauna Kea: on this day, at the minute its egg hatches. That sets its Moon, its Rising sign and the rest of its chart.</p>
+            <p className="sl-fine">Its birth sky will be read over {placePhrase(birthplace)}: on this day, at the minute its egg hatches, on {clockName(birthplace)}’s clock. That sets its Moon, its Rising sign and the rest of its chart.</p>
+            <BirthplacePicker value={birthplace} onChange={choosePlace} />
             {COZMLING_DEV && ADVENTURER_SCENE === 'concept-art' && <p className="sl-devnote">Preview note: only {signsWithArt().map(s => s[0].toUpperCase() + s.slice(1)).join(' and ')} have art so far (placeholders). Try <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-11-05`)}>Nov 5</button> or <button type="button" className="link" onClick={() => setBirthday(`${new Date().getFullYear()}-05-05`)}>May 5</button>. Other signs work too and show a stand-in.</p>}
             <div className="sl-nav">
               {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Cancel</button>}
-              <button type="button" className="btn btn--phos" disabled={!sign} onClick={() => setStep(2)}>Next</button>
+              <button type="button" className="btn btn--phos" disabled={!sign || !placeReady} onClick={() => setStep(2)}>Next</button>
             </div>
           </section>
         )}
@@ -111,7 +119,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
           <section aria-labelledby="sl-s2">
             <h2 id="sl-s2" tabIndex={-1}>Its Starprint</h2>
             <p>Born on {birthdayText(birthday)}, your Cozmling is a <b>{sign.name}</b>: {ELEMENTS[sign.element].name.toLowerCase()} element, the {sign.archetype}. The Starprint is where its character begins. What the two of you do together decides the rest.</p>
-            {cusp && <p className="sl-fine">On a cusp day the look you choose carries over if it hatches the other side of {clockText(cusp.at, ORIGIN_OBSERVATORY.timeZone)}: it keeps Look {look.toUpperCase()}, in the other sign’s style.</p>}
+            {cusp && <p className="sl-fine">On a cusp day the look you choose carries over if it hatches the other side of {clockText(cusp.at, birthplace.timeZone)} {clockName(birthplace)} time: it keeps Look {look.toUpperCase()}, in the other sign’s style.</p>}
             <LookPicker sign={sign.sign} look={look} skin={skin} onLook={setLook} onSkin={setSkin} idBase="sl-adopt" />
             <p className="sl-fine">Both looks are the same {sign.name}: same sign, same element, same everything else. You can change look and colour later.</p>
             <div className="sl-nav">
@@ -129,7 +137,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
               <input id="sl-name" type="text" value={name} maxLength={14} autoComplete="off" spellCheck={false} onChange={e => setName(cleanName(e.target.value))} placeholder="Up to 14 letters" />
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => setName(pick(NAMES.filter(n => n !== name)))}>Suggest one</button>
             </div>
-            <p className="sl-summary"><Glyph sign={sign.sign} size={18} /> {name.trim() || 'Your Cozmling'} · {sign.name} · {ELEMENTS[sign.element].name} · born {birthdayText(birthday)} · Look {look.toUpperCase()}</p>
+            <p className="sl-summary"><Glyph sign={sign.sign} size={18} /> {name.trim() || 'Your Cozmling'} · {sign.name} · {ELEMENTS[sign.element].name} · born {birthdayText(birthday)} in {isDefaultPlace(birthplace) ? 'the Origin Observatory, Mauna Kea' : birthplace.place} · Look {look.toUpperCase()}</p>
             <p>It starts as a Star Egg. Keep it warm and it hatches.</p>
             {problem && <p className="state state--err" role="alert">{problem}</p>}
             <div className="sl-nav">

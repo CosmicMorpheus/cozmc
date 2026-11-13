@@ -43,7 +43,12 @@ It is part of the rebuilt Cozmling (`src/cozmling/`), so it sits behind the same
 These are the two rules chosen by the site owner.
 
 - **When.** On the birthday its player chose, at the time of day its egg hatched. Both are read on the observatory's clock, to the second. The player still chooses the sign and look. The hatch minute sets the Moon, the Rising sign and the rest of the chart, so two Cozmlings with the same birthday get different skies.
-- **Where.** The Origin Observatory: a fictional place standing on a real spot, the summit of Mauna Kea in Hawaii (19.8207° N, 155.4681° W, `Pacific/Honolulu`). Hawaii keeps one clock all year, so daylight saving never moves a birth. The place is in `observatory.ts`, and every chart records which version of it was used.
+- **Where.** The player chooses, when adopting (the adoption step "Where was your Cozmling born?"):
+  - **Use COZMC Default** (preselected and recommended): the Origin Observatory, a fictional place standing on a real spot, the summit of Mauna Kea in Hawaii (19.8207° N, 155.4681° W, `Pacific/Honolulu`). Hawaii keeps one clock all year, so daylight saving never moves a birth. No real place is needed. Every Cozmling made before birthplaces existed was born here, and still is.
+  - **Choose a Place**: any of about 7,300 cities and towns, found by typing (searched in the browser, never sent anywhere). The preview shows the place, its coordinates, its time zone and its time now.
+  - **Surprise Me!**: a place picked at random from a curated list (the largest place of 100,000 people or more in each time zone: 271 places around the globe), with "Another place" to try again.
+
+  The place sets the clock the birth moment is read on and the coordinates the Rising sign and houses are read from. The planets' signs are the same everywhere at one moment. The birthplace is kept with the egg (`starprint.birthplace`) and with the chart (`celestial.birthplace`), and is never changed afterwards. Its id and version are recorded in `starprint.observatoryVersion`.
 - **Cusp birthdays.** On a day when the Sun changes sign, the adoption steps say so, and the hatch minute decides which of the two signs it is. The look chosen (A or B) carries over to that sign. The Starprint is provisional until hatch, then made final from the Sun's real sign.
 
 ## How it fits together
@@ -52,6 +57,8 @@ These are the two rules chosen by the site owner.
 |---|---|---|
 | `types.ts` | The `CelestialBirthRecord` and its parts | no |
 | `observatory.ts` | The Origin Observatory, the birth-moment rule, wall clocks and time zones (through the browser's own `Intl`) | no |
+| `birthplace.ts` | A birthplace: how it is named, checked (`birthplaceProblem`) and whether this browser can read its clock | no |
+| `places/` | The atlas: `cities.json` (built by `build-places.mjs`, not part of the site), `places.ts` (search, surprises), loaded only when a player chooses a place | no |
 | `ephemeris.ts` | `CelestialEphemerisProvider`: where each body is, its speed, sidereal time, obliquity, Moon phase | **yes** |
 | `chart.ts` | `castChart()` and the moments a sky is read: `hatchWithSky()`, `readSkyLate()`, `readLegacySky()`, cusp detection | **yes** |
 | `aspects.ts` | Aspects (with a table of orbs) and patterns | no |
@@ -73,13 +80,33 @@ Astronomy and story are separate. `ephemeris.ts` and `chart.ts` produce numbers;
 ## The calculation
 
 - **Library: Astronomy Engine 2.1.19.** MIT licence, no dependencies of its own, accurate to about one arcminute. It is pinned exactly in `package.json`, and a test fails if the installed version and `LIBRARY.version` ever differ.
-- **Swiss Ephemeris was not used.** Its AGPL licence would apply to the whole site unless a commercial licence were bought.
+- **Swiss Ephemeris is not part of the site.** It was used privately, as a reference to check against (below). Its licence (`libswe/LICENSE`) is AGPL or a paid Swiss Ephemeris Professional License, chosen before any public service using it goes live. AGPL would mean putting the whole site under the AGPL. Either way, Astrodienst's name can't be used to promote the site.
 - **Positions.** Geocentric and apparent (light-time and aberration included), on the true ecliptic and equinox of the date. That is the tropical zodiac of Western astrology.
-- **Rising sign and Midheaven.** Worked out from Greenwich apparent sidereal time, the observatory's longitude and latitude, and the true obliquity (`anglesFrom()` in `chart.ts`).
-- **Houses.** Whole-sign: each house is one whole sign, counted from the Rising sign's. Simple, and defined at any latitude.
+- **Rising sign and Midheaven.** Worked out from Greenwich apparent sidereal time, the birthplace's longitude and latitude, and the true obliquity (`anglesFrom()` in `chart.ts`). Inside the polar circles the Ascendant is the point of the ecliptic rising in the east, as the Swiss Ephemeris has it (engine version 2; version 1 could give the western point there, which no saved Cozmling was affected by, since all were born at 19.8° N).
+- **Houses.** Whole-sign: each house is one whole sign, counted from the Rising sign's. Simple, and defined at any latitude. astro.com draws Placidus houses by default, so its house cusps differ from ours: that is a different method, not an error.
+- **Clocks.** A birthplace's wall clock is turned into a moment with the IANA time zone database, through the browser's `Intl`, to the second (local mean time before standard time, historic daylight saving included). A time skipped by the clocks going forward is read with the offset from before the change (it lands just after the gap); a time that happens twice is the first.
 - **Retrograde.** A body whose longitude is falling. Its speed is measured over half a day, centred on the moment. A planet barely moving counts as stationary.
 - **Aspects.** Conjunction, sextile, square, trine and opposition, with orbs from `NATAL_ORBS` (wider for the Sun and Moon, tighter for the angles). They are ranked by closeness and by how personal the two points are.
 - **Nothing random, nothing filled in.** The same moment and place always give the same chart. Anything that can't be known goes in `omitted`, with the reason.
+
+## Checked against the Swiss Ephemeris
+
+The engine was compared with the Swiss Ephemeris 2.10.03 (the engine behind astro.com charts) and its own JPL DE431 ephemeris files, privately. astro.com itself can't be reached from where this was built, so its pages weren't compared directly. Only the resulting numbers are in the repository (`tests/fixtures/swiss-ephemeris-reference.json`), checked on every `npm test` by `tests/celestial-reference.test.ts`.
+
+| What | Checked | Largest difference | Signs disagreeing |
+|---|---|---|---|
+| Sun | 603 moments, 1900–2100 | 6.5″ | 0 |
+| Moon | 603 moments | 66″ (half the cases under 1.6″) | 0 |
+| Mercury to Pluto | 603 moments each | 18.5″ | 0 |
+| Retrograde | every body, every moment | none disagree | – |
+| Ascendant | 7,236 checks at 12 places, equator to 69.6° N | 19.2″ | 0 |
+| Midheaven | the same | 2.2″ | 0 |
+
+An arcminute (60″) is about a 30th of the Moon's width. A sign is 30°. The tests allow a little more than the largest difference found.
+
+Clocks were compared with Python's `zoneinfo` (the same IANA database) at 2,714 wall-clock times in 25 time zones, 1900–2035, around every clock change: all agree. Nine more were left out because the two databases are different releases and a few zones' history was corrected in between.
+
+**What the Swiss Ephemeris would add**, if it were ever licensed: Placidus and other house systems, the lunar nodes, Chiron and asteroids, and accuracy below an arcsecond. None of these are needed for whole-sign charts, so Astronomy Engine (MIT) stays.
 
 ## The saved record
 
@@ -100,6 +127,15 @@ How it stays permanent:
 - **In the store.** `companionStore.update()` keeps the first saved `celestial`, whatever a later change says. A Cozmling can only hatch once, so its sky is only ever read once.
 - **On import.** Taking a newer copy from a save file keeps the birth sky already here.
 - **On load.** A chart that fails `validate.ts` makes the record unreadable. It is set aside, never repaired.
+
+## Birthplaces and privacy
+
+- **No location is ever read.** The site never asks for, or uses, where the player is (no GPS, no geolocation, no IP lookup). A test fails if any of it appears in the code.
+- **Only what is chosen is kept**: the place's name, coordinates, time zone, how it was chosen and the atlas it came from. Not what was typed, and nothing about the player.
+- **Kept in this browser only**, with the Cozmling, and shown only on its own pages. It is never sent anywhere.
+- **Every option works for a guest**, without a wallet. If the atlas can't load (offline), the picker says so and offers to try again, or the default.
+- **Never changed afterwards.** A saved birthplace is checked when loaded. A damaged one is refused, never quietly replaced with Mauna Kea. One whose time zone this browser doesn't know waits, unread, rather than being read somewhere else.
+- **The atlas**: Natural Earth populated places (public domain), as packaged with time zones by city-timezones 1.3.4 (MIT). Places were kept only when their time zone is in the IANA database and agrees with their longitude. It is loaded only when "Choose a Place" or "Surprise Me!" is picked (about 160 KB compressed).
 
 ## Today's sky: how it works
 
@@ -140,6 +176,8 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
 
 ## Tests
 
+- **`npm test` → `tests/celestial-reference.test.ts`.** Planet positions, signs, retrograde motion, the Rising sign and Midheaven at 12 places against the Swiss Ephemeris; wall clocks against Python's `zoneinfo`; daylight saving and local mean time case by case.
+- **`npm test` → `tests/cozmling-birthplace.test.ts`.** The atlas, search and surprises; the default stays Mauna Kea and old eggs aren't given a place; a chosen place sets the clock and the angles; daylight saving at a birthplace; cusp days on the place's clock; damaged birthplaces caught; no location code anywhere.
 - **`npm test` → `tests/celestial.test.ts`.**
   - Published reference data:
     - USNO equinoxes and solstices;
@@ -235,7 +273,8 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 - **Each device reads its own report.** There is no server, so two devices work the same report out separately. They agree, because nothing is random.
 - **No arcade or journal links yet.** That is MVP 4.
 - **Placidus houses are not offered.** Whole-sign only for now. Another house system would be a new `houseSystem` value, and saved charts would keep theirs.
-- **One birthplace.** Choosing another would need a new observatory entry; saved charts keep the one they were read at.
+- **A town not in the atlas** can't be chosen; the nearest bigger town gives nearly the same chart (the Rising sign moves about 1° for every 4 minutes of longitude).
+- **No birth time of the player's own.** The time of day is the hatch minute; the place only changes the clock and the angles.
 - **The device clock is trusted.** A hatch minute read from a wrong device clock gives a chart for that minute.
 - **A few Cozmlings disagree with their chart.** Adventurers made on the preview before skies existed keep their calendar-based Starprint. If their real Sun sign differs, which is rare, the observatory says so.
 - **Wording is a first draft.** `interpret.ts` is original COZMC writing, kept short. It is meant to be edited.

@@ -68,9 +68,14 @@ export interface Birthplace {
   place: string
   latitude: number
   longitude: number
-  elevationM: number
+  /** null when not known (a city): it doesn't change the chart, which is worked out from the centre of the Earth */
+  elevationM: number | null
   timeZone: string
   fictional: boolean
+  /** how it was chosen at adoption: the COZMC default (also when not recorded), a place the player chose, or a surprise */
+  choice?: 'default' | 'chosen' | 'surprise'
+  /** where a real place's coordinates and time zone come from */
+  source?: string
 }
 
 export interface BirthMoment {

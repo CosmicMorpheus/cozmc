@@ -369,3 +369,30 @@
 .sl-story__invite.is-done { border-left-color: var(--phos) }
 .sl-story__invite.is-done .sl-story__status { color: var(--phos) }
 .sl-story--waiting { display: grid; gap: 4px }
+
+/* ---------- where it was born (adoption): three options, a search, a surprise, and the place shown ---------- */
+.sl-bp { margin-top: 18px; padding-top: 16px; border: 0; border-top: 1px dashed var(--line-2); min-width: 0 }
+.sl-bp legend { padding: 0; margin-bottom: 6px; font: 700 13px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--text) }
+.sl-bp__options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px }
+.sl-bp__option { position: relative; display: grid; gap: 4px; align-content: start; padding: 12px; border: 2px solid var(--line-2); background: var(--bg-2); cursor: pointer; transition: border-color .15s }
+.sl-bp__option input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer }
+.sl-bp__option:hover { border-color: var(--line-3) }
+.sl-bp__option.is-on { border-color: var(--nebula); background: rgba(0, 191, 254, .07) }
+.sl-bp__option:focus-within { outline: 2px solid var(--nebula); outline-offset: 3px }
+.sl-bp__name { font: 700 12px/1.3 var(--pixel); text-transform: uppercase; letter-spacing: .03em; color: var(--text) }
+.sl-bp__option.is-on .sl-bp__name { color: var(--nebula-ink) }
+.sl-bp__note { color: var(--dim); font-size: 13px; line-height: 1.35 }
+.sl-bp__search { display: grid; gap: 6px; margin-top: 14px }
+.sl-bp__search label { font: 700 11px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--mist) }
+.sl-bp__search input { width: 100%; max-width: 420px; min-height: 42px; padding: 0 12px; border: 2px solid var(--line-3); background: #05070d; color: var(--text); font: 500 15px var(--sans) }
+.sl-bp__search input:focus { outline: 2px solid var(--nebula); outline-offset: 2px }
+.sl-bp__results { list-style: none; display: grid; gap: 2px; max-width: 520px }
+.sl-bp__results button { width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; min-height: 40px; padding: 7px 10px; border: 1px solid transparent; background: var(--bg-2); color: var(--text); text-align: left; font-size: 14.5px }
+.sl-bp__results button:hover, .sl-bp__results button:focus-visible { border-color: var(--nebula) }
+.sl-bp__results small { color: var(--dim); font: 500 12px var(--mono) }
+.sl-bp__card { display: grid; gap: 6px; justify-items: start; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--sl-id-line); background: rgba(2, 16, 22, .85) }
+.sl-bp__where { color: var(--mist); font-size: 15px }
+.sl-bp__where b { color: var(--nebula-ink); font-weight: 600 }
+.sl-bp__facts { color: var(--dim); font: 500 12.5px/1.5 var(--mono) }
+.sl-bp__problem { margin-top: 12px; padding: 9px 12px; border: 1px dashed var(--sl-coral-deep); background: rgba(21, 9, 8, .9); color: var(--mist); font-size: 14px }
+@media (max-width: 640px) { .sl-bp__options { grid-template-columns: minmax(0, 1fr) } }

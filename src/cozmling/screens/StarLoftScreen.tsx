@@ -30,6 +30,8 @@ import { bigThree, todayHeadline } from '../celestial/interpret'
 import { StoryPanel } from '../story/StoryPanel'
 import { useDailyStory, type DailyStoryState } from '../story/useDailyStory'
 import { POINTS } from '../celestial/zodiac'
+import { isDefaultPlace, placePhrase } from '../celestial/birthplace'
+import { ORIGIN_OBSERVATORY } from '../celestial/observatory'
 import { drawnOriginal, originalProgress, originalStage } from '../integrations/originalScene'
 import type { Stage } from '../../companion/look'
 
@@ -268,6 +270,8 @@ function Identity({ c, pet, hatched }: { c: Companion; pet: Pet; hatched: boolea
 function StarprintPanel({ c, today }: { c: AdventurerCompanion; today: DailyStoryState }) {
   const sign = signInfo(c.starprint.coreSign), el = ELEMENTS[c.starprint.element], sky = c.celestial
   const signOf = (s: Parameters<typeof signInfo>[0]) => signInfo(s).name
+  // where its sky was read (or will be, at hatch)
+  const where = sky?.birthplace ?? c.starprint.birthplace ?? ORIGIN_OBSERVATORY
   return (
     <div className="panel sl-print">
       <header className="panel__head"><h2>Starprint</h2>{sky && <a className="link" href="#/cozmling/sky">Birth sky</a>}</header>
@@ -280,13 +284,14 @@ function StarprintPanel({ c, today }: { c: AdventurerCompanion; today: DailyStor
           <div><dt>Element</dt><dd><Orb element={c.starprint.element} size={13} /> {el.name}</dd></div>
           <div><dt>Archetype</dt><dd>The {c.starprint.archetype}</dd></div>
           <div><dt>Birthday</dt><dd>{birthdayText(c.starprint.chosenBirthday)}</dd></div>
+          <div><dt>Birthplace</dt><dd>{isDefaultPlace(where) ? 'Mauna Kea' : where.name}</dd></div>
         </dl>
       </div>
       {sky && <TodayLine c={c} today={today} />}
       {sky
-        ? <p className="sl-fine">Born on its birthday at the minute it hatched, under the sky over the Origin Observatory on Mauna Kea. <a className="sl-inlink" href="#/cozmling/sky">Open its birth sky</a>.{starprintDisagrees(c) && <> Its Starprint was chosen before skies were read: on its birth minute the Sun was in {signOf(sky.bodies.sun.sign)}.</>}</p>
+        ? <p className="sl-fine">Born on its birthday at the minute it hatched, under the sky over {placePhrase(where)}. <a className="sl-inlink" href="#/cozmling/sky">Open its birth sky</a>.{starprintDisagrees(c) && <> Its Starprint was chosen before skies were read: on its birth minute the Sun was in {signOf(sky.bodies.sun.sign)}.</>}</p>
         : c.hatch.status === 'egg'
-        ? <p className="sl-fine">Its birth sky is read the minute it hatches: its birthday, at that time of day, over the Origin Observatory on Mauna Kea.</p>
+        ? <p className="sl-fine">Its birth sky is read the minute it hatches: its birthday, at that time of day, over {placePhrase(where)}.</p>
         : <p className="sl-fine">Reading the sky it was born under…</p>}
     </div>
   )

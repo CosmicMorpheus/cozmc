@@ -11,6 +11,7 @@ import { CosmicVortex } from '../../components/CosmicVortex'
 import type { Companion } from '../../types'
 import { aspectReading, aspectTitle, bigThree, DISCLAIMER, moonPhaseReading, patternReading, placementReading, type Reading } from '../interpret'
 import { clockText } from '../observatory'
+import { isDefaultPlace } from '../birthplace'
 import { starprintDisagrees } from '../options'
 import type { CelestialBirthRecord, PointId } from '../types'
 import { cozmlingStore } from '../../index'
@@ -109,7 +110,7 @@ function BirthSky({ sky, name, wheel, tabs }: { sky: CelestialBirthRecord; name:
           <p className="kicker">Observatory</p>
           <h1>{name}’s {sky.kind === 'birth' ? 'birth sky' : 'awakening sky'}</h1>
           <p className="sk-when">
-            {sky.kind === 'birth' ? 'Born' : 'Given its sky'} {clockText(sky.moment.ms, tz, true)}, at the Origin Observatory on Mauna Kea (Hawaii time).
+            {sky.kind === 'birth' ? 'Born' : 'Given its sky'} {clockText(sky.moment.ms, tz, true)}, {isDefaultPlace(sky.birthplace) ? 'at the Origin Observatory on Mauna Kea (Hawaii time)' : `in ${sky.birthplace.place} (${sky.birthplace.name} time)`}.
             {theirs && theirs !== tz && <> That was {clockText(sky.moment.ms, theirs, true)} where you were.</>}
           </p>
           <p className="sl-id"><span className="sl-id__sign">{bigThree(sky)}</span><span>{sky.moonPhase.name}</span></p>
@@ -196,7 +197,9 @@ function About({ sky, name, note }: { sky: CelestialBirthRecord; name: string; n
     <div className="panel sk-about">
       <header className="panel__head"><h2>About this chart</h2></header>
       <dl>
-        <div><dt>Where</dt><dd>{b.name} ({b.fictional ? 'a fictional place' : 'a real place'}), standing on {b.place} at {Math.abs(b.latitude).toFixed(4)}° {b.latitude >= 0 ? 'N' : 'S'}, {Math.abs(b.longitude).toFixed(4)}° {b.longitude >= 0 ? 'E' : 'W'}.</dd></div>
+        <div><dt>Where</dt><dd>{b.fictional
+          ? <>{b.name} (a fictional place), standing on {b.place} at {Math.abs(b.latitude).toFixed(4)}° {b.latitude >= 0 ? 'N' : 'S'}, {Math.abs(b.longitude).toFixed(4)}° {b.longitude >= 0 ? 'E' : 'W'}.</>
+          : <>{b.place} (a real place{b.choice === 'surprise' ? ', picked by surprise' : b.choice === 'chosen' ? ', chosen by its player' : ''}), at {Math.abs(b.latitude).toFixed(4)}° {b.latitude >= 0 ? 'N' : 'S'}, {Math.abs(b.longitude).toFixed(4)}° {b.longitude >= 0 ? 'E' : 'W'}, on {b.timeZone.replace(/_/g, ' ')} time.{b.source && <> Coordinates and time zone: {b.source}.</>}</>}</dd></div>
         <div><dt>When</dt><dd>{sky.moment.utc.replace('T', ' ').replace('.000Z', ' UTC')}. {sky.accuracy.moment}</dd></div>
         <div><dt>Zodiac</dt><dd>Tropical: the signs follow the seasons, starting from the spring equinox, as in Western astrology.</dd></div>
         <div><dt>Houses</dt><dd>{sky.houses ? 'Whole-sign houses: each house is one whole sign, counted from the Rising sign’s.' : 'None: they need the time of birth.'}</dd></div>

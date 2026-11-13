@@ -1,6 +1,9 @@
 /* A new Starprint adventurer: what the player chooses at adoption, and the record it becomes. */
 import { cleanName, type HomeId } from '../../companion/care'
 import { isHome, ORIGINAL_HOME, ORIGINAL_RENDERER } from '../integrations/originalScene'
+import { birthplaceProblem } from '../celestial/birthplace'
+import { ORIGIN_OBSERVATORY } from '../celestial/observatory'
+import type { Birthplace } from '../celestial/types'
 import type { AdventurerCompanion, Starprint } from '../types'
 import { CARE_RULES, STAGE_RULES } from './care'
 import { starprintFor } from './starprint'
@@ -14,7 +17,7 @@ export const SKINS: { id: string; name: string; color: string }[] = [
 export const RENDERER = ORIGINAL_RENDERER
 export const NAMES = ['Orbi', 'Nova', 'Zib', 'Luna', 'Comet', 'Vega', 'Lyra', 'Kip', 'Mira', 'Rigel', 'Zuzu', 'Sol']
 
-export interface AdoptChoices { name: string; birthday: string; look: 'a' | 'b'; skin: string }
+export interface AdoptChoices { name: string; birthday: string; look: 'a' | 'b'; skin: string; /** where its sky is read; left out = the COZMC default */ birthplace?: Birthplace }
 
 /** Why these choices can't be adopted yet, or null. */
 export function adoptProblem(c: AdoptChoices): string | null {
@@ -22,6 +25,7 @@ export function adoptProblem(c: AdoptChoices): string | null {
   if (!cleanName(c.name).trim()) return 'Give your Cozmling a name.'
   if (c.look !== 'a' && c.look !== 'b') return 'Pick a look.'
   if (!SKINS.some(s => s.id === c.skin)) return 'Pick a skin colour.'
+  if (c.birthplace !== undefined && birthplaceProblem(c.birthplace)) return 'That birthplace can’t be used. Choose another, or use the COZMC default.'
   return null
 }
 
@@ -34,7 +38,7 @@ export function newAdventurer(c: AdoptChoices, o: { companionId: string; now: nu
     hatch: { status: 'egg', hatchedAt: null, provenance: 'known' },
     walletLinks: [],
     name: cleanName(c.name).trim(),
-    starprint: o.starprint && o.starprint.chosenBirthday === c.birthday ? o.starprint : starprintFor(c.birthday)!,
+    starprint: { ...(o.starprint && o.starprint.chosenBirthday === c.birthday ? o.starprint : starprintFor(c.birthday)!), birthplace: c.birthplace ?? ORIGIN_OBSERVATORY },
     appearance: { rendererVersion: RENDERER, appearanceOption: c.look, skin: c.skin, outfit: 'starter', home: ORIGINAL_HOME, decor: [] },
     care: { food: 80, fun: 80, energy: 90, asleepAt: null, settledAt: o.now, ruleVersion: CARE_RULES },
     progress: { experience: 0, visualStageVersion: STAGE_RULES, visualStage: null, counters: {} },
