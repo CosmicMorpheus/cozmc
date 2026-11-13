@@ -121,6 +121,31 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
 
 Nothing new is needed: there is no server, no key and no network call. The engine runs in the player's browser, and the chart is saved with the companion. It ships with the rebuilt Cozmling, when `VITE_COZMLING_V2=1` is set for a build.
 
+## The Cosmic Vortex (the observatory's living sky)
+
+Behind the observatory, a black sphere sits exactly behind the zodiac wheel, so the chart reads as the face of the sphere. Around it:
+
+- **The disk:** a tilted disk of golden dust, drawn as thin contour lines like agate or a fingerprint. It flows round (inner rings faster), drifts inward and slowly changes shape. It is gold near the sphere and cools through amber and crimson to electric blue at its edge.
+- **The sky:** thousands of small stars, a few brighter ones that twinkle, and midnight clouds whose edges glow crimson.
+- **Movement:** faint streaks of light stream outward from the sphere, gold specks orbit it, its glow breathes, and the clouds drift almost too slowly to notice.
+
+The references (Mark's videos and stills) were used for direction only; it is drawn from scratch in code.
+
+- **Where:** `src/cozmling/render/cosmicVortex.ts` is the renderer: plain canvas, no library. `src/cozmling/components/CosmicVortex.tsx` puts it behind a page. The observatory uses it with the wheel as its anchor.
+- **How it stays light:**
+  - **Drawn once:** the stars and clouds, at each new screen width. The clouds are contour lines traced from a noise field.
+  - **Drawn every frame:** the rest, in a few milliseconds.
+  - **Pixel budget:** at most about 2.6 million pixels (a phone draws at up to 1.5× its CSS size, a large screen at about 1×).
+  - **Frame rate:** 30 frames a second on a computer, 24 on a phone, 12 once the sphere has scrolled off screen.
+  - **Stopping:** it stops completely when the tab is hidden or the chart has scrolled away.
+  - **One still frame:** for anyone who asks for reduced motion, or on a device saving data or very short of memory.
+  - **If no canvas can be drawn:** a still CSS gradient sky shows instead.
+- **It never gets in the way.** It sits under the page, takes no clicks and is hidden from screen readers. Text sits on near-opaque panels, and the header has its own shade.
+- **Ready for later, not built yet:** its `palette` and `seed` could give each Cozmling, sign or element a sky of its own. Constellations from a chart and events for milestones would be added there too. Every observatory uses the same sky for now.
+- **Tests:**
+  - `tests/cosmic-vortex.test.ts`: the loops never jump, the pixel budget holds, the disk's shape, a repeatable sky, and no new library.
+  - `tests/celestial-sky.mjs`: it sits behind the wheel and follows it, the wheel still takes clicks, the disk really is gold, it stops when away and when hidden, it is still under reduced motion, and a 360 px phone stays readable.
+
 ## Known limitations
 
 - **No Today's Sky or daily story yet.** Those are MVP 2 and 3.

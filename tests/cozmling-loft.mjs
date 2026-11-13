@@ -18,6 +18,9 @@ const SHOTS = process.argv[2] || ''
 if (SHOTS) mkdirSync(SHOTS, { recursive: true })
 const fixtures = JSON.parse(readFileSync(new URL('./fixtures/legacy-local-v1.json', import.meta.url), 'utf8')).fixtures
 const fx = id => fixtures.find(f => f.id === id)
+/** A saved first-version Cozmling, as if saved a minute ago. (Its needs run down with real time, so an
+    old save would otherwise be found hungry or asleep, and a test of playing with it would depend on the date.) */
+const fresh = raw => { const pet = JSON.parse(raw); return JSON.stringify({ ...pet, at: Date.now() - 60_000 }) }
 const PHONE = { width: 390, height: 844 }, SMALL = { width: 360, height: 740 }, DESK = { width: 1280, height: 900 }
 
 const browser = await chromium.launch({ ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), ...(process.env.PW_PROXY ? { proxy: { server: process.env.PW_PROXY } } : {}) })
@@ -43,7 +46,7 @@ async function profile({ seed = [], viewport = PHONE, noStorage = false, reduced
     if (localStorage.getItem('__seeded')) return
     for (const [k, v] of entries) localStorage.setItem(k, v)
     localStorage.setItem('__seeded', '1')
-  }, { entries: seed.map(id => [fx(id).storageKey, fx(id).raw]), noStorage })
+  }, { entries: seed.map(id => [fx(id).storageKey, fresh(fx(id).raw)]), noStorage })
   const open = async (hash = '#/cozmling') => {
     const page = await ctx.newPage()
     page.on('pageerror', e => errors.push(e.message))

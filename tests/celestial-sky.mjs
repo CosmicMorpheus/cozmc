@@ -230,6 +230,107 @@ await scenario('an adventurer from before skies existed, opened straight at the 
   await p.ctx.close()
 })
 
+/* ---------------- the Cosmic Vortex behind the birth sky ---------------- */
+
+const vortex = page => page.evaluate(() => {
+  const cv = document.querySelector('.cv'), css = cv && getComputedStyle(cv), w = document.querySelector('.sk-wheel')?.getBoundingClientRect()
+  return cv && { parent: cv.parentElement.tagName, state: cv.dataset.state, on: cv.classList.contains('is-on'), frames: +(cv.dataset.frames ?? 0), ms: +(cv.dataset.ms ?? 0), sphere: (cv.dataset.sphere ?? '').split(',').map(Number),
+    position: css.position, z: css.zIndex, events: css.pointerEvents, hidden: cv.getAttribute('aria-hidden'), fallback: css.backgroundImage !== 'none',
+    wheel: w && [w.left + w.width / 2, w.top + w.height / 2, w.width / 2] }
+})
+/** A few pixels from the canvas, in CSS pixels from the top left of the screen. */
+const pixels = (page, points) => page.evaluate(points => {
+  const c = document.querySelector('.cv canvas'), k = c.width / c.clientWidth, g = c.getContext('2d')
+  return points.map(([x, y]) => [...g.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data].slice(0, 3))
+}, points)
+const canvasPrint = page => page.evaluate(() => { const c = document.querySelector('.cv canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let h = 0; for (let i = 0; i < d.length; i += 4 * 211) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) >>> 0; return h })
+async function toObservatory(p) {
+  const page = await p.open()
+  await adopt(page, { birthday: '2026-11-05' })
+  await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
+  await page.goto(`${SITE}/#/cozmling/sky`); await page.locator('.sk-wheel').waitFor()
+  await page.waitForFunction(() => document.querySelector('.cv')?.dataset.sphere, null, { timeout: 10000 })
+  return page
+}
+
+await scenario('the cosmic vortex: behind everything, its sphere behind the chart, moving, and nothing on the page is blocked', async () => {
+  const p = await profile({ viewport: DESK }), page = await toObservatory(p)
+  await page.waitForTimeout(1500)
+  const v = await vortex(page)
+  assert.equal(v.parent, 'BODY'); assert.equal(v.position, 'fixed'); assert.equal(v.z, '-1'); assert.equal(v.events, 'none'); assert.equal(v.hidden, 'true')
+  assert.equal(v.state, 'running'); assert.equal(v.on, true); assert.ok(v.fallback, 'a still CSS sky stands behind the canvas')
+  // the sphere sits exactly behind the wheel: same centre, its rim just outside the wheel's outer ring
+  assert.ok(Math.abs(v.sphere[0] - v.wheel[0]) <= 1 && Math.abs(v.sphere[1] - v.wheel[1]) <= 1, JSON.stringify(v))
+  assert.ok(Math.abs(v.sphere[2] - (v.wheel[2] * 214 / 220 + 2)) <= 1, JSON.stringify(v))
+  // the wheel is on top and still takes clicks
+  assert.ok(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.sk-wheel'), v.wheel))
+  await page.locator('.sk-w-pl').first().click()
+  assert.match(await page.locator('.sk-reading h2').innerText(), / IN /)
+  // it really is drawn: black behind the chart, gold in the disk beside it, and it moves
+  const [centre] = await pixels(page, [[v.sphere[0], v.sphere[1]]])
+  assert.ok(centre.every(x => x < 12), `the sphere is black: ${centre}`)
+  // the disk beside the sphere: a share of the pixels there are warm gold (its rings are thin lines, so not most of them)
+  const warm = await page.evaluate(([x, y, r]) => {
+    const c = document.querySelector('.cv canvas'), k = c.width / c.clientWidth
+    const x0 = Math.max(0, Math.round((x - r * 2.4) * k)), w = Math.round(r * 1.15 * k), y0 = Math.round((y - r * 0.3) * k), h = Math.round(r * 0.6 * k)
+    const d = c.getContext('2d').getImageData(x0, y0, w, h).data
+    let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 80 && d[i + 1] > 50 && d[i] > d[i + 2] * 1.3) n++
+    return n / (d.length / 4)
+  }, v.sphere)
+  assert.ok(warm > 0.03, `gold in the disk beside the sphere: ${(warm * 100).toFixed(1)}% of pixels`)
+  const before = (await vortex(page)).frames
+  await page.waitForTimeout(1200)
+  assert.ok((await vortex(page)).frames > before, 'still animating')
+  // it follows the chart as the page scrolls, and goes away (and stops) once the chart has gone by
+  await page.evaluate(() => scrollBy(0, 400)); await page.waitForTimeout(300)
+  const moved = await vortex(page)
+  assert.ok(Math.abs(moved.sphere[1] - moved.wheel[1]) <= 1, 'still behind the wheel after scrolling')
+  await page.evaluate(() => scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(1200)
+  const away = await vortex(page)
+  assert.equal(away.state, 'paused'); assert.equal(away.on, false)
+  const stillFrames = away.frames
+  await page.waitForTimeout(800)
+  assert.equal((await vortex(page)).frames, stillFrames, 'no frames are drawn while it is away')
+  await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(600)
+  assert.equal((await vortex(page)).state, 'running')
+  console.log(`     (drawing one frame: ${(await vortex(page)).ms} ms in this test browser, which draws without a graphics card)`)
+  // it belongs to the observatory only: back in the Star Loft it is gone
+  await page.getByRole('link', { name: '← Back to the Star Loft' }).click(); await button(page, 'Play').waitFor()
+  assert.equal(await page.locator('.cv').count(), 0)
+  await shot(page, 'vortex-loft-without-1280')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('the cosmic vortex with reduced motion: one still frame that stays behind the chart, and nothing moves', async () => {
+  const p = await profile({ viewport: PHONE, reducedMotion: 'reduce' }), page = await toObservatory(p)
+  await page.waitForTimeout(400)
+  const v = await vortex(page)
+  assert.equal(v.state, 'static'); assert.equal(v.on, true)
+  const a = await canvasPrint(page); await page.waitForTimeout(1200)
+  assert.equal(await canvasPrint(page), a, 'the picture does not change by itself')
+  await page.evaluate(() => scrollBy(0, 300)); await page.waitForTimeout(300)
+  const after = await vortex(page)
+  assert.ok(Math.abs(after.sphere[1] - after.wheel[1]) <= 1, 'redrawn behind the wheel after scrolling')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('the cosmic vortex on a 360 px phone: the header, legend and panels stay readable and nothing sticks out', async () => {
+  const p = await profile({ viewport: SMALL }), page = await toObservatory(p)
+  await page.waitForTimeout(1200)
+  assert.deepEqual(await sticksOut(page), [])
+  const legend = await page.locator('.sk-legend').boundingBox()
+  assert.ok(legend.x >= 0 && legend.x + legend.width <= 360)
+  // text sits on dark: panels are nearly opaque, and the header has its own shade
+  const shade = await page.evaluate(() => [getComputedStyle(document.querySelector('.sk-stage .panel')).backgroundColor, getComputedStyle(document.querySelector('.sk-head'), '::before').backgroundImage])
+  assert.match(shade[0], /rgba\(4, 5, 11, 0\.8\d\)/); assert.match(shade[1], /radial-gradient/)
+  await shot(page, 'vortex-observatory-360')
+  await page.evaluate(() => scrollBy(0, 500)); await shot(page, 'vortex-observatory-360-scrolled')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
 await browser.close()
 console.log(`\n${results.filter(Boolean).length} of ${results.length} browser scenarios passed`)
 process.exit(results.every(Boolean) ? 0 : 1)

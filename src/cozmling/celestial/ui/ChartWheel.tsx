@@ -2,7 +2,7 @@
    zodiac running anticlockwise, the Midheaven towards the top, the planets around the rim and the
    aspects as lines across the middle. A drawing only: every fact in it is also in the table beside
    it, which is how a keyboard or a screen reader goes through the chart. */
-import { useMemo } from 'react'
+import { useMemo, type Ref } from 'react'
 import { signInfo } from '../../domain/starprint'
 import type { Element } from '../../types'
 import { ASPECT_WORDS } from '../interpret'
@@ -28,7 +28,10 @@ function spread(points: { id: BodyId; lon: number }[], asc: number, gap: number)
   return items.map((it, k) => ({ id: it.id, lon: it.lon, shown: norm360(pos[k] + asc) }))
 }
 
-export function ChartWheel({ sky, title, focus, focusAspect, onPick }: { sky: CelestialBirthRecord; title: string; focus: PointId | null; focusAspect: Aspect | null; onPick: (p: PointId) => void }) {
+/** The wheel's outer circle as a share of its half-width (for lining things up behind it). */
+export const WHEEL_RIM = R.outer / C
+
+export function ChartWheel({ sky, title, focus, focusAspect, onPick, svgRef }: { sky: CelestialBirthRecord; title: string; focus: PointId | null; focusAspect: Aspect | null; onPick: (p: PointId) => void; svgRef?: Ref<SVGSVGElement> }) {
   const asc = sky.angles?.ascendant.lon ?? 0
   const xy = (lon: number, r: number) => { const t = rad(180 + lon - asc); return [C + r * Math.cos(t), C - r * Math.sin(t)] as const }
   const placed = useMemo(() => spread(BODIES.map(b => ({ id: b, lon: sky.bodies[b].lon })), asc, 10.5), [sky, asc])
@@ -41,7 +44,7 @@ export function ChartWheel({ sky, title, focus, focusAspect, onPick }: { sky: Ce
   const f = (n: number) => Math.round(n * 100) / 100
 
   return (
-    <svg className="sk-wheel" viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-labelledby="sk-wheel-t sk-wheel-d">
+    <svg ref={svgRef} className="sk-wheel" viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-labelledby="sk-wheel-t sk-wheel-d">
       <title id="sk-wheel-t">{title}</title>
       <desc id="sk-wheel-d">A zodiac wheel showing where the Sun, Moon and planets were. The same details are listed in the table of placements.</desc>
       <circle className="sk-w-bg" cx={C} cy={C} r={R.outer} />

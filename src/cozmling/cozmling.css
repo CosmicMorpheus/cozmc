@@ -277,6 +277,21 @@
 .sl-adopt section > p.sl-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg); font: 700 11px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: .03em; color: var(--cyan); overflow-wrap: anywhere }
 .sl-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 4px }
 
+/* ---------- the Cosmic Vortex: a living sky behind a page (components/CosmicVortex.tsx) ----------
+   Fixed behind everything, under the content. The gradients are a still stand-in for the canvas:
+   what shows before it draws, or if it can't. */
+.cv { position: fixed; left: 0; top: 0; z-index: -1; width: 100vw; height: 100vh; height: 100lvh; pointer-events: none; opacity: 0; transition: opacity .9s ease;
+  background:
+    radial-gradient(ellipse 55% 14% at 50% 46%, rgba(255, 196, 110, .16), transparent 70%),
+    radial-gradient(circle at 50% 40%, #000 0 9%, transparent 9.5%),
+    radial-gradient(circle at 8% 6%, rgba(160, 24, 24, .28), transparent 34%),
+    radial-gradient(circle at 94% 92%, rgba(160, 24, 24, .24), transparent 38%),
+    radial-gradient(circle at 22% 72%, rgba(16, 26, 78, .45), transparent 60%),
+    #020207 }
+.cv.is-on { opacity: 1 }
+.cv canvas { display: block; width: 100%; height: 100% }
+@media (prefers-reduced-motion: reduce) { .cv { transition: none } }
+
 /* ---------- the compact views (the Arcade Buddy and the Home Spotlight) ---------- */
 .sl-compact { position: relative; overflow: hidden; isolation: isolate; aspect-ratio: 1; border: 2px solid var(--line-3); background: #070a14 }
 .sl-compact--spotlight { aspect-ratio: 4 / 3 }

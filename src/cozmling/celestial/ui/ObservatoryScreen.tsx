@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { signInfo } from '../../domain/starprint'
 import { nameOf } from '../../domain/care'
-import { StarSky } from '../../components/StarSky'
+import { CosmicVortex } from '../../components/CosmicVortex'
 import type { Companion } from '../../types'
 import { aspectReading, aspectTitle, bigThree, DISCLAIMER, moonPhaseReading, patternReading, placementReading, type Reading } from '../interpret'
 import { clockText } from '../observatory'
@@ -13,7 +13,7 @@ import { starprintDisagrees } from '../options'
 import type { AspectKind, CelestialBirthRecord, PointId } from '../types'
 import { skyColors, useLateSky } from '../useSky'
 import { BODIES, dms, ORDINAL, POINTS } from '../zodiac'
-import { ChartWheel } from './ChartWheel'
+import { ChartWheel, WHEEL_RIM } from './ChartWheel'
 import './celestial.css'
 
 type Pick = { kind: 'point'; id: PointId } | { kind: 'aspect'; i: number } | { kind: 'pattern'; i: number } | { kind: 'phase' }
@@ -25,6 +25,7 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
   const sky = c.celestial, name = nameOf(c), [o1, o2] = skyColors(c)
   const [pick, setPick] = useState<Pick>({ kind: 'point', id: 'sun' })
   const readingBox = useRef<HTMLDivElement>(null)
+  const stage = useRef<HTMLDivElement>(null), wheel = useRef<SVGSVGElement>(null)
   /** Show what something means. On a phone the reading sits above the lists, so bring it into view. */
   const choose = (next: Pick) => {
     setPick(next)
@@ -60,9 +61,11 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
   return (
     <div className="sk-page sl-page" style={{ '--o1': o1, '--o2': o2 } as CSSProperties}>
       <p className="sk-back"><a className="link" href="#/cozmling">← Back to the Star Loft</a></p>
-      <header className="sl-hero sk-hero">
-        <StarSky seed={`${c.companionId}:sky`} a={o1} b={o2} />
-        <div className="sl-hero__text">
+      {/* a living sky behind the chart: its dark sphere sits exactly behind the wheel */}
+      <CosmicVortex stage={stage} anchor={wheel} anchorRatio={WHEEL_RIM} />
+      <div className="sk-stage" ref={stage}>
+      <header className="sk-head">
+        <div>
           <p className="kicker">Observatory</p>
           <h1>{name}’s {sky.kind === 'birth' ? 'birth sky' : 'awakening sky'}</h1>
           <p className="sk-when">
@@ -76,8 +79,8 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
       <section className="sk-main">
         <div className="sk-col">
           <div className="sk-wheelbox sk-o1">
-            <ChartWheel sky={sky} title={`${name}’s ${sky.kind} sky: ${bigThree(sky)}`} focus={pick.kind === 'point' ? pick.id : null} focusAspect={pick.kind === 'aspect' ? sky.aspects[pick.i] : null} onPick={id => setPick({ kind: 'point', id })} />
-            <p className="sl-fine sk-legend"><span className="sk-key sk-key--flow" /> flowing <span className="sk-key sk-key--tension" /> tense · tap a planet or a row to read about it</p>
+            <ChartWheel svgRef={wheel} sky={sky} title={`${name}’s ${sky.kind} sky: ${bigThree(sky)}`} focus={pick.kind === 'point' ? pick.id : null} focusAspect={pick.kind === 'aspect' ? sky.aspects[pick.i] : null} onPick={id => setPick({ kind: 'point', id })} />
+            <p className="sl-fine sk-legend"><span className="sk-legend__item"><span className="sk-key sk-key--flow" /> flowing</span><span className="sk-legend__item"><span className="sk-key sk-key--tension" /> tense</span><span className="sk-legend__item">tap a planet or a row to read about it</span></p>
           </div>
           <div className="panel sk-o4">
             <header className="panel__head"><h2>Aspects</h2><span className="sl-fine sl-fine--flush">{sky.aspects.length} in all</span></header>
@@ -141,6 +144,7 @@ export function ObservatoryScreen({ companion: c }: { companion: Companion }) {
           </div>
         </div>
       </section>
+      </div>
 
       <section className="sk-more">
         <About sky={sky} name={name} note={c.kind === 'adventurer' && starprintDisagrees(c) ? `${name}’s Starprint was chosen before skies were read. At its birth minute the Sun was in ${signName(sky.bodies.sun.sign)}.` : null} />

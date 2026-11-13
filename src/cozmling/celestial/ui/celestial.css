@@ -3,8 +3,16 @@
    Loaded only with the observatory page; every rule is under .sk.
    ============================================================ */
 .sk-back { margin-bottom: 14px }
-.sk-hero { min-height: clamp(170px, 16vw, 200px) }
-.sk-when { margin-top: 12px; color: var(--mist); max-width: 52rem; text-wrap: pretty; text-shadow: 0 1px 0 #000 }
+/* the stage: the header and the chart, in front of the Cosmic Vortex */
+.sk-stage { position: relative; isolation: isolate }
+.sk-head { position: relative; margin: 6px 0 clamp(18px, 3vw, 28px); max-width: 46rem }
+.sk-head::before { content: ""; position: absolute; z-index: -1; inset: -34px -48px -26px -48px; pointer-events: none; background: radial-gradient(ellipse 72% 78% at 35% 50%, rgba(2, 3, 8, .9), rgba(2, 3, 8, .66) 55%, rgba(2, 3, 8, 0) 82%) }
+.sk-head .kicker { color: var(--cyan); margin-bottom: 10px; text-shadow: 1px 1px 0 #000 }
+.sk-head h1 { font: 800 clamp(2.4rem, 4.6vw, 3.6rem)/.9 var(--sans); font-stretch: 70%; text-transform: uppercase; letter-spacing: -.01em; overflow-wrap: anywhere; text-shadow: 0 3px 0 #000, 0 0 24px #000 }
+.sk-when { margin-top: 12px; color: #c9c7bf; max-width: 52rem; text-wrap: pretty; text-shadow: 0 1px 0 #000, 0 0 12px #000 }
+.sk-stage .panel { background: rgba(4, 5, 11, .86); border-color: rgba(70, 74, 100, .5) }
+.sk-stage .sk-reading { background: linear-gradient(160deg, rgba(6, 23, 28, .92), rgba(4, 5, 11, .88) 60%) }
+.sk-stage .sk-wheelbox { background: none; border-color: transparent; box-shadow: none }
 .sk-page .sl-id { margin-top: 14px }
 
 .sk-main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(300px, 1fr); gap: 22px; align-items: start; margin-bottom: 22px }
@@ -12,7 +20,9 @@
 .sk-col > .panel { min-width: 0 }
 .sk-wheelbox { min-width: 0; padding: clamp(8px, 2vw, 18px); border: 1px solid var(--line-2); background: radial-gradient(circle at 50% 50%, #0b1124, #020308 72%); box-shadow: 0 0 50px -20px var(--o1) }
 .sk-wheel { display: block; width: 100%; height: auto; max-width: 600px; margin: 0 auto; user-select: none; -webkit-tap-highlight-color: transparent }
-.sk-legend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin-top: 10px }
+.sk-legend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; width: fit-content; max-width: 100%; margin: 12px auto 0; padding: 6px 12px; background: rgba(2, 3, 8, .82); border: 1px solid rgba(70, 74, 100, .45) }
+.sk-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
+.sk-legend__item + .sk-legend__item::before { content: '·'; margin-right: 2px; color: var(--dim) }
 .sk-key { display: inline-block; width: 18px; height: 2px; vertical-align: middle }
 .sk-key--flow { background: var(--cyan) }
 .sk-key--tension { background: var(--sl-coral) }
