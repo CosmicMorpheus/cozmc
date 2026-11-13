@@ -1,6 +1,6 @@
 /* A first-version Cozmling, drawn exactly as the first version draws it: the same Room, the same
    look, home and stage. Only where its state comes from has changed (the v2 store). */
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, type PointerEvent } from 'react'
 import { mood, settle } from '../../companion/care'
 import { GLOWS, STAGE_NAME } from '../../companion/look'
 import { Room } from '../../companion/room'
@@ -9,8 +9,8 @@ import { legacyStage, stageWithFloor } from '../integrations/legacyAdapter'
 import type { LegacyCompanion } from '../types'
 import type { RendererHandle, RenderMode } from './CompanionRenderer'
 
-export const LegacyCompanionRenderer = forwardRef<RendererHandle, { companion: LegacyCompanion; mode: RenderMode; crack?: number; className?: string }>(
-  function LegacyCompanionRenderer({ companion, mode, crack = 0, className }, ref) {
+export const LegacyCompanionRenderer = forwardRef<RendererHandle, { companion: LegacyCompanion; mode: RenderMode; crack?: number; className?: string; onTap?: () => void }>(
+  function LegacyCompanionRenderer({ companion, mode, crack = 0, className, onTap }, ref) {
     const canvas = useRef<HTMLCanvasElement>(null)
     const room = useRef<Room | null>(null)
     const live = useRef({ companion, crack })
@@ -43,6 +43,10 @@ export const LegacyCompanionRenderer = forwardRef<RendererHandle, { companion: L
     }), [])
 
     const pet = companion.legacy.pet
-    return <canvas ref={canvas} width={CW} height={CH} className={className} data-mode={mode} role="img" aria-label={`${pet.name}, ${STAGE_NAME[legacyStage(companion)]}`} />
+    const tap = onTap && ((e: PointerEvent<HTMLCanvasElement>) => {
+      const b = e.currentTarget.getBoundingClientRect()
+      if (room.current?.hit((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height)) onTap()
+    })
+    return <canvas ref={canvas} width={CW} height={CH} className={className} data-mode={mode} role="img" aria-label={`${pet.name}, ${STAGE_NAME[legacyStage(companion)]}`} onPointerDown={tap || undefined} />
   },
 )

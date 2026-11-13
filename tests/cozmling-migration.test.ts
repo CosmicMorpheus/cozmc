@@ -355,19 +355,36 @@ test('a stage is never shown lower than the one it came in with', async () => {
 
 /* ---------------- writes that must not go through ---------------- */
 
-test('a tab working from an older copy cannot overwrite a newer change', async () => {
+test('a tab working from an older copy of a first-version Cozmling catches up before it changes anything', async () => {
   put('wallet-sprout')
   const f = fx('wallet-sprout'), repo = memoryRepository(), a = await page(repo), b = await page(repo)
   const id = legacy(a, f.storageKey)!.companionId
   clock += 1000
-  assert.ok((await a.updateLegacy(id, pet => care.feed(pet, care.FOODS[0]).pet)).ok)            // fed 6
+  assert.ok((await a.updateLegacy(id, pet => care.feed(pet, care.FOODS[0]).pet)).ok)            // fed 6, and the v1 key now says so
   clock += 1000
-  const late = await b.updateLegacy(id, pet => care.play(pet).pet)                               // b still holds revision 0
-  assert.ok(!late.ok && late.reason === 'stale')
-  assert.equal(legacy(b, f.storageKey)!.legacy.pet.fed, 6)                                       // b now shows the newer one
-  assert.ok((await b.updateLegacy(id, pet => care.play(pet).pet)).ok)                            // and trying again works on top of it
+  const late = await b.updateLegacy(id, pet => care.play(pet).pet)                               // b still holds revision 0…
+  assert.ok(late.ok)                                                                             // …sees the v1 key has moved on, reads the newer copy, and plays on top of it
+  assert.equal(late.companion.revision, 2)
   const end = (await repo.load()).companions[0] as LegacyCompanion
   assert.equal(end.legacy.pet.fed, 6); assert.equal(end.legacy.pet.played, 4); assert.equal(end.revision, 2)
+  assert.equal(storage.getItem(f.storageKey), v1Text(end.legacy.pet))
+})
+
+test('the arcade (still the first version\'s code) saves a run, then the new page feeds: the run is not lost', async () => {
+  put('wallet-cadet')
+  const f = fx('wallet-cadet'), owner = ownerOf(f.storageKey)!, repo = memoryRepository(), s = await page(repo)
+  const id = legacy(s, f.storageKey)!.companionId, before = legacy(s, f.storageKey)!.legacy.pet
+  clock += 60_000
+  const run = care.cheer(owner, { daily: false, best: false }, clock)                             // the first version's own code, writing the v1 key directly
+  assert.ok(run, 'the old code found and cheered the Cozmling')
+  assert.equal(care.load(owner)!.arcade, (before.arcade ?? 0) + 1)
+  clock += 5000
+  const fed = await s.updateLegacy(id, pet => care.feed(pet, care.FOODS[2]).pet)                 // the new page, which has not looked at the key since
+  assert.ok(fed.ok)
+  const end = (await repo.load()).companions[0] as LegacyCompanion
+  assert.equal(end.legacy.pet.arcade, (before.arcade ?? 0) + 1, 'the arcade run is still counted')
+  assert.equal(end.legacy.pet.fed, before.fed + 1)
+  assert.equal(care.load(owner)!.arcade, (before.arcade ?? 0) + 1); assert.equal(care.load(owner)!.fed, before.fed + 1)
 })
 
 test('a write that fails is never shown as saved, and the v1 copy is left alone', async () => {

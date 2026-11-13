@@ -1,0 +1,240 @@
+/* ============================================================
+   COZMLING v2 — the Star Loft, adoption, and the compact views.
+
+   Loaded only with the rebuilt Cozmling page. Every rule is under
+   an .sl name, so nothing else on the site is touched. Colours are
+   the site's own, plus three with a job each: coral for care,
+   green for actions, cyan for who the Cozmling is.
+   ============================================================ */
+:root { --sl-coral: #ff6f61; --sl-coral-deep: #7a2a23; --sl-id-line: #1d5361; --sl-id-bg: #06171c }
+
+/* ---------- small pieces ---------- */
+.sl-glyph { display: inline-block; flex: none; vertical-align: -0.2em }
+.sl-glyph--text { display: inline-grid; place-items: center; line-height: 1; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif; font-weight: 400 }
+.sl-orb { display: inline-block; flex: none; border-radius: 50%; vertical-align: -0.15em;
+  background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.95) 0 9%, transparent 10%), radial-gradient(circle at 38% 34%, var(--o1) 0 34%, var(--o2) 100%);
+  box-shadow: 0 0 0 1.5px rgba(0,0,0,.65), 0 0 10px 1px var(--o1) }
+.sl-fine { color: var(--dim); font-size: 13px; line-height: 1.5; margin-top: 12px; text-wrap: pretty }
+.sl-fine--flush { margin-top: 0 }
+.sl-devnote { padding: 10px 12px; border: 1px dashed #5a4410; background: #120d03; color: var(--mist); font-size: 13px; line-height: 1.6; text-wrap: pretty }
+.sl-devnote .link { font-size: 11px; text-decoration: underline; text-underline-offset: 3px }
+.sl-quarantine { max-width: 720px }
+
+/* ---------- who it is ---------- */
+.sl-head { margin-bottom: clamp(18px, 3vw, 28px); max-width: none }
+.sl-head .kicker { color: var(--cyan); margin-bottom: 10px }
+.sl-head h1 { overflow-wrap: anywhere }
+.page-head .sl-id { margin-top: 14px; color: var(--mist); font-size: 1.05rem }
+.page-head .sl-id--print { display: flex; flex-wrap: wrap; gap: 8px; font: 700 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-id--print span { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg) }
+.sl-id--print .sl-id__sign { color: #d9f8ff; border-color: var(--cyan) }
+.sl-id--print .sl-id__born { color: var(--mist); border-color: var(--line-2); background: none }
+
+/* ---------- the page: scene and more on the left, care on the right; one column on a phone ---------- */
+.sl { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); grid-template-rows: auto 1fr; gap: 22px; align-items: start }
+.sl__scene { grid-column: 1; grid-row: 1; min-width: 0 }
+.sl__care { grid-column: 2; grid-row: 1 / span 2; display: grid; gap: 18px; min-width: 0 }
+.sl__more { grid-column: 1; grid-row: 2; display: grid; gap: 18px; min-width: 0; align-content: start }
+.sl .panel { min-width: 0 }
+@media (max-width: 900px) {
+  .sl { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 18px }
+  .sl__scene, .sl__care, .sl__more { grid-column: 1; grid-row: auto }
+}
+
+/* ---------- the scene ---------- */
+.sl__screen { position: relative; border: 2px solid var(--line-3); background: #000; box-shadow: 8px 8px 0 #141414; transition: border-color .4s }
+.sl__screen.is-night { border-color: #232a42 }
+.sl__screen canvas { width: 100%; height: auto; aspect-ratio: 3 / 2; cursor: pointer; touch-action: manipulation }
+.sl__say { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: calc(100% - 24px); padding: 7px 11px; background: rgba(0,0,0,.82); border: 1px solid var(--line-3); font: 700 11px/1.4 var(--pixel); color: var(--text); pointer-events: none }
+.sl__say:empty { display: none }
+
+.sl-scene { position: relative; aspect-ratio: 3 / 2; overflow: hidden; isolation: isolate; background: #070a14; --floor: 11%; --at: 46% }
+.sl-scene__room { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: filter .8s }
+.sl-scene.is-night .sl-scene__room { filter: brightness(.4) saturate(.7) }
+.sl-scene__note { position: absolute; z-index: 3; right: 8px; top: 8px; max-width: calc(100% - 16px); padding: 4px 7px; background: rgba(0,0,0,.72); border: 1px dashed var(--line-3); font: 700 9px/1.3 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--mist) }
+
+.sl-who { position: absolute; z-index: 1; left: var(--at); bottom: var(--floor); translate: -50% 0; display: block; transform-origin: 50% 100%; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; animation: sl-breathe 4.6s ease-in-out infinite; transition: filter .8s }
+.sl-who::before { content: ""; position: absolute; z-index: -1; left: 8%; right: 8%; bottom: -3.5%; height: 9%; background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent) }
+.sl-who > img { width: 100%; height: 100%; max-width: none; object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)); user-select: none; -webkit-user-drag: none }
+.sl-who[data-low] > img { filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)) saturate(.72) }
+.sl-scene.is-night .sl-who { filter: brightness(.58) saturate(.8) }
+.sl-who__orb { position: absolute; width: 17%; aspect-ratio: 1; translate: -50% -50%; animation: sl-float 3.4s ease-in-out infinite }
+.sl-who[data-standin] .sl-who__orb { width: 26% }
+.sl-standin { position: relative; display: block; height: 100%; aspect-ratio: 0.6 }
+.sl-standin svg { width: 100%; height: 100% }
+.sl-standin__glyph { position: absolute; left: 50%; top: 66%; translate: -50% -50%; color: var(--o1) }
+
+.sl-egg { position: absolute; z-index: 1; left: var(--at); bottom: calc(var(--floor) + 1%); translate: -50% 0; width: 14.5%; aspect-ratio: 5 / 6; border-radius: 50% 50% 48% 48% / 62% 62% 40% 40%; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transform-origin: 50% 100%;
+  background: radial-gradient(circle at 33% 24%, rgba(255,255,255,.9) 0 5%, transparent 6%), radial-gradient(circle at 38% 30%, #fff 0, var(--o1) 42%, var(--o2) 100%);
+  box-shadow: 0 0 0 3px #0b0b12, 0 0 28px 2px var(--o1), inset -8px -10px 0 rgba(0,0,0,.2); animation: sl-egg-idle 2.8s ease-in-out infinite }
+.sl-egg::after { content: ""; position: absolute; left: 50%; top: 60%; width: 30%; aspect-ratio: 1; translate: -50% -50%; opacity: .85; background: #fff; clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%) }
+.sl-egg i { position: absolute; width: 16%; height: 0; background: #0b0b12; clip-path: polygon(35% 0, 65% 0, 45% 30%, 80% 52%, 40% 100%, 52% 58%, 15% 36%); transition: height .18s }
+.sl-egg i:nth-child(1) { left: 44%; top: 6% }
+.sl-egg i:nth-child(2) { left: 22%; top: 20%; rotate: 24deg }
+.sl-egg i:nth-child(3) { left: 62%; top: 16%; rotate: -28deg }
+.sl-egg[data-crack="1"] i:nth-child(1), .sl-egg[data-crack="2"] i:nth-child(-n+2), .sl-egg[data-crack="3"] i { height: 36% }
+.sl-egg--sm { left: 50%; bottom: 9%; width: 40%; box-shadow: 0 0 0 2px #0b0b12, 0 0 12px 1px var(--o1), inset -4px -5px 0 rgba(0,0,0,.2) }
+
+.sl-zzz { position: absolute; z-index: 2; left: calc(var(--at) + 9%); bottom: calc(var(--floor) + var(--tall, 50%) - 6%); font: 700 clamp(12px, 2.2vw, 18px) var(--pixel); color: #cfe3ff; pointer-events: none }
+.sl-zzz b { position: absolute; left: 0; bottom: 0; opacity: 0; animation: sl-z 3s linear infinite }
+.sl-zzz b:nth-child(2) { animation-delay: 1s }
+.sl-zzz b:nth-child(3) { animation-delay: 2s }
+.sl-pop { position: absolute; z-index: 2; left: var(--at); bottom: calc(var(--floor) + var(--tall, 50%)); translate: -50% 0; font: 700 clamp(18px, 3.4vw, 28px)/1 var(--sans); color: var(--sl-coral); text-shadow: 2px 2px 0 #000; pointer-events: none; animation: sl-pop .9s ease-out both }
+.sl-scene.is-play .sl-pop { color: var(--ember) }
+.sl-scene.is-feed .sl-pop { color: var(--gold) }
+.sl-flash { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: radial-gradient(circle at var(--at) 70%, #fff 0, var(--o1) 22%, transparent 58%); animation: sl-flash 1.2s ease-out both }
+
+@keyframes sl-breathe { 50% { transform: scaleY(1.013) } }
+@keyframes sl-float { 50% { transform: translateY(-14%) } }
+@keyframes sl-egg-idle { 0%, 100% { transform: rotate(-1.2deg) } 50% { transform: rotate(1.2deg) } }
+@keyframes sl-z { 0% { transform: translate(0, 0) scale(.7); opacity: 0 } 25% { opacity: 1 } 100% { transform: translate(120%, -260%) scale(1.15); opacity: 0 } }
+@keyframes sl-pop { 0% { transform: translateY(20%) scale(.6); opacity: 0 } 22% { opacity: 1 } 100% { transform: translateY(-130%) scale(1.1); opacity: 0 } }
+@keyframes sl-flash { 0% { opacity: 0 } 14% { opacity: .95 } 100% { opacity: 0 } }
+@keyframes sl-low { 50% { opacity: .5 } }
+@keyframes sl-menu { from { opacity: 0; transform: translateY(-6px) } }
+
+/* ---------- care ---------- */
+.sl-mood { font-weight: 600; font-size: 1.14rem; line-height: 1.35; text-wrap: pretty }
+.sl-mood--great { color: var(--phos) }
+.sl-mood--low { color: var(--sl-coral) }
+.sl-meters { display: grid; gap: 8px; margin-top: 16px }
+.sl-meter { display: grid; grid-template-columns: 58px minmax(0, 1fr) 42px; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--line-2); background: var(--bg-2) }
+.sl-meter__label { font: 700 11px var(--pixel); text-transform: uppercase; color: var(--text) }
+.sl-meter__bar { display: block; height: 12px; background: #24242a; overflow: hidden }
+.sl-meter__bar i { display: block; height: 100%; background: var(--sl-coral); transition: width .5s var(--out) }
+.sl-meter__value { font: 700 12px var(--mono); color: var(--sl-coral); text-align: right; font-variant-numeric: tabular-nums }
+.sl-meter.is-low { border-color: var(--sl-coral-deep) }
+.sl-meter.is-low .sl-meter__bar i { animation: sl-low 1.2s steps(2) infinite }
+.sl-meters.is-dim { opacity: .45 }
+.sl-meters.is-dim .sl-meter__value { color: var(--dim) }
+
+.sl-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px }
+.sl-actions .btn { width: 100%; padding: 0 10px }
+.sl-actions .btn svg { flex: none }
+.sl-actions--egg { grid-template-columns: minmax(0, 1fr) auto; align-items: center }
+.sl-actions--egg .btn--ghost { grid-column: 1 / -1 }
+.sl-pips { display: inline-flex; gap: 6px; padding-inline: 4px }
+.sl-pips i { width: 12px; height: 12px; border: 2px solid var(--phos-deep) }
+.sl-pips i.on { background: var(--phos); border-color: var(--phos) }
+.sl-feed { position: relative; display: flex; min-width: 0 }
+.sl-menu { position: absolute; z-index: 6; left: 0; top: calc(100% + 10px); width: max(100%, 264px); max-width: calc(100vw - 2 * var(--gutter) - 44px); display: grid; background: var(--bg-1); border: 2px solid var(--line-3); box-shadow: 6px 6px 0 #141414; animation: sl-menu .14s var(--out) }
+.sl-menu button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 46px; padding: 10px 14px; text-align: left; font-weight: 600 }
+.sl-menu button + button { border-top: 1px solid var(--line) }
+.sl-menu button:hover, .sl-menu button:focus-visible { background: var(--bg-3) }
+.sl-menu button:focus-visible { outline-offset: -3px }
+.sl-menu small { color: var(--dim); font: 700 10px var(--pixel); text-transform: uppercase }
+
+/* ---------- where it is saved ---------- */
+.sl-save__line { display: flex; align-items: baseline; gap: 8px; font: 700 12px/1.45 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos) }
+.sl-save--problem .sl-save__line, .sl-save--visit .sl-save__line { color: var(--ember); font: 600 15px/1.45 var(--sans); text-transform: none; letter-spacing: 0; text-wrap: pretty }
+.sl-save__tick { flex: none }
+.sl-save .sl-fine { margin-top: 8px }
+.sl-save__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px }
+.sl-save__plan { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--line-3); color: var(--mist); font-size: 14.5px; text-wrap: pretty }
+
+/* ---------- wardrobe, and the same choices at adoption ---------- */
+.sl-wardrobe { display: grid; gap: 18px }
+.sl-looks, .sl-skins, .sl-homes { border: 0; min-width: 0 }
+.sl-looks legend, .sl-skins legend, .sl-homes legend, .sl-field label { display: block; margin-bottom: 9px; font: 700 11px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--mist) }
+.sl-looks__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 420px }
+.sl-look { position: relative; display: grid; justify-items: center; align-content: start; gap: 8px; padding: 12px 8px; border: 2px solid var(--line-2); background: var(--bg-2); cursor: pointer; font: 700 12px var(--pixel); text-transform: uppercase; color: var(--mist); transition: border-color .15s, color .15s }
+.sl-look input, .sl-skin input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer }
+.sl-look:hover { border-color: var(--line-3); color: var(--text) }
+.sl-look.is-on { border-color: var(--phos); background: #8dff6a10; color: var(--text) }
+.sl-look:focus-within, .sl-skin:focus-within { outline: 2px solid var(--phos); outline-offset: 3px }
+.sl-look__art { display: grid; place-items: center; width: min(100%, 132px); aspect-ratio: 1; overflow: hidden; border-radius: 50%; border: 4px solid var(--skin, var(--line-3)); background: radial-gradient(circle at 50% 38%, #16224a, #05070f 74%); color: var(--o1) }
+.sl-look__art img { width: 100%; height: 100%; object-fit: cover }
+.sl-look__note { color: var(--dim); font: 400 12px var(--sans); text-transform: none }
+.sl-skins__row { display: flex; flex-wrap: wrap; gap: 10px }
+.sl-skin { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border: 2px solid var(--line-2); background: var(--bg-2); cursor: pointer; transition: border-color .15s }
+.sl-skin:hover { border-color: var(--line-3) }
+.sl-skin.is-on { border-color: var(--text) }
+.sl-skin__dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #000 }
+.sl-homes { display: flex; flex-wrap: wrap; gap: 8px }
+.sl-homes legend { float: left; width: 100%; margin-bottom: 0 }
+.sl-homes .chip { height: 36px }
+.sl-field { display: flex; flex-wrap: wrap; align-items: center; gap: 12px }
+.sl-field label { flex: 1 0 100%; margin-bottom: -3px }
+.sl-field input { flex: 1 1 190px; min-width: 0; max-width: 320px; height: 46px; padding: 0 12px; background: var(--bg-2); border: 2px solid var(--line-3); color: var(--text); font: 600 1.05rem var(--sans); color-scheme: dark }
+.sl-field input:focus { border-color: var(--phos) }
+
+/* ---------- adoption ---------- */
+.sl-adopt { max-width: 720px; display: grid; gap: 22px }
+.sl-adopt section { display: grid; gap: 16px }
+.sl-adopt section > h2 { font: 800 clamp(1.6rem, 4.4vw, 2.1rem)/1 var(--sans); font-stretch: 70%; letter-spacing: 0; text-transform: uppercase; color: var(--text) }
+.sl-adopt section > p { color: var(--mist); text-wrap: pretty }
+.sl-adopt section > p.state--err { color: #ff8a7a; margin-top: 0 }
+.sl-adopt section > p.sl-fine { color: var(--dim); margin-top: 0 }
+.sl-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 18px; font: 700 11px var(--pixel); text-transform: uppercase; color: var(--dim) }
+.sl-steps li { display: inline-flex; align-items: center; gap: 8px }
+.sl-steps li span { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--line-3) }
+.sl-steps li.is-on { color: var(--text) }
+.sl-steps li.is-on span { border-color: var(--phos); color: var(--phos) }
+.sl-steps li.is-done { color: var(--mist) }
+.sl-steps li.is-done span { border-color: var(--phos-deep); background: var(--phos-deep); color: #fff }
+.sl-adopt section > p.sl-hint { color: var(--mist); min-height: 1.6em }
+.sl-hint b { color: var(--cyan) }
+.sl-print { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border: 1px solid var(--sl-id-line); background: linear-gradient(120deg, var(--sl-id-bg), var(--bg-1) 70%) }
+.sl-print__glyph { color: var(--cyan) }
+.sl-print__sign { font: 800 2rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase; color: var(--text) }
+.sl-print__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font: 700 11px/1.3 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-adopt section > p.sl-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg); font: 700 11px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: .03em; color: var(--cyan); overflow-wrap: anywhere }
+.sl-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 4px }
+
+/* ---------- growing up, memories, the way to the arcade ---------- */
+.sl-grow__row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; color: var(--mist); font-size: 14px }
+.sl-grow__row b { color: var(--phos); font: 700 13px var(--pixel); text-transform: uppercase }
+.sl-bar { height: 12px; margin-top: 10px; background: var(--bg-3); border: 1px solid var(--line-2) }
+.sl-bar i { display: block; height: 100%; background: var(--phos) }
+.sl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line) }
+.sl-stats dt { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim) }
+.sl-stats dd { font: 700 1.35rem/1.2 var(--sans); font-variant-numeric: tabular-nums }
+.sl-memories { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 18px; align-items: start }
+.sl-memories .sl-fine { margin-top: 0 }
+.sl-starmap { width: 100%; height: auto; aspect-ratio: 1; background: radial-gradient(circle at 30% 20%, #101a3c, #04060d 72%) }
+.sl-starmap rect { fill: none; stroke: var(--line-3); stroke-width: 1 }
+.sl-starmap circle { fill: #fff3c4 }
+.sl-memories__list { list-style: none; margin-top: 8px }
+.sl-memories__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px dashed var(--line-2); font-size: 14.5px }
+.sl-memories__list time { flex: none; color: var(--dim); font: 500 11.5px var(--mono); white-space: nowrap }
+.sl-memories .link { display: inline-block; margin-top: 10px; font-size: 11px }
+.sl-arcade { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 22px }
+.sl-arcade p { margin-top: 8px; color: var(--mist); font-size: 14.5px; text-wrap: pretty }
+.sl-devpanel { border-style: dashed; border-color: #5a4410 }
+.sl-devpanel::before { border-color: var(--ember) }
+.sl-switch { display: grid; gap: 10px; margin-top: 30px }
+.sl-switch h2 { font: 700 12px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--mist) }
+.sl-switch .chip { height: auto; min-height: 38px; padding: 6px 14px; font: 600 14.5px var(--sans); text-transform: none; color: var(--text) }
+.sl-switch .chip.on { color: #000 }
+.sl-switch__kind { font-weight: 400; opacity: .78 }
+
+/* ---------- the compact views (the Arcade Buddy and the Home Spotlight) ---------- */
+.sl-compact { position: relative; overflow: hidden; isolation: isolate; aspect-ratio: 1; border: 2px solid var(--line-3); background: #070a14 }
+.sl-compact--spotlight { aspect-ratio: 4 / 3 }
+.sl-compact__room { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 46% 70%; filter: brightness(.7); transition: filter .8s }
+.sl-compact__who { position: absolute; left: 50%; bottom: 0; translate: -50% 0; height: 94%; width: auto; max-width: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)) }
+.sl-compact .sl-standin { position: absolute; left: 50%; bottom: 0; translate: -50% 0; height: 90% }
+.sl-compact__tag { position: absolute; left: 5px; top: 5px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .86); color: var(--cyan) }
+.sl-compact.is-night .sl-compact__room { filter: brightness(.32) saturate(.7) }
+.sl-compact.is-night .sl-compact__who, .sl-compact.is-night .sl-standin { filter: brightness(.6) }
+
+/* ---------- phones ---------- */
+@media (max-width: 520px) {
+  .sl__screen { box-shadow: 5px 5px 0 #141414 }
+  .sl-memories { grid-template-columns: 92px minmax(0, 1fr); gap: 14px }
+  .sl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .sl-meter { grid-template-columns: 54px minmax(0, 1fr) 40px; gap: 8px }
+  .sl-arcade .btn { width: 100% }
+  .sl-nav .btn { flex: 1 1 auto }
+  .sl-print__sign { font-size: 1.7rem }
+  .sl-memories__list li { flex-wrap: wrap; gap: 2px 14px }
+}
+
+/* ---------- less motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sl-who, .sl-who__orb, .sl-egg, .sl-meter.is-low .sl-meter__bar i, .sl-menu { animation: none }
+  .sl-zzz b { animation: none; opacity: 1; position: static }
+  .sl-pop { animation: none; opacity: 1 }
+  .sl-flash { display: none }
+  .sl-scene__room, .sl-compact__room, .sl-who, .sl-meter__bar i, .sl-egg i { transition: none }
+}

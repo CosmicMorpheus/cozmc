@@ -18,7 +18,7 @@ import { ASA_ID, HAYSTACK_INVITE } from './config'
 import { GAMES } from './arcade/games'
 import { unlock } from './lib/profile'
 import { sfx } from './arcade/sfx'
-import { COZMLING_DEV, CozmlingProvider } from './cozmling'
+import { COZMLING_DEV, COZMLING_V2, CozmlingProvider } from './cozmling'
 
 const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a']
 
@@ -35,6 +35,8 @@ const Philosophy = lazy(() => import('./tabs/Philosophy').then(m => ({ default: 
 const Bonfire = lazy(() => import('./tabs/Bonfire').then(m => ({ default: m.Bonfire })))
 const Token = lazy(() => import('./tabs/Token').then(m => ({ default: m.Token })))
 const About = lazy(() => import('./tabs/About').then(m => ({ default: m.About })))
+// the rebuilt Cozmling page: only when it is switched on (otherwise none of it is even in the build)
+const CozmlingV2 = COZMLING_V2 ? lazy(() => import('./cozmling/screens/CozmlingApp').then(m => ({ default: m.CozmlingApp }))) : null
 // only in local work and on the preview site, and only when the rebuilt Cozmling is switched on
 const CozmlingDev = COZMLING_DEV ? lazy(() => import('./cozmling/dev/DevPanel').then(m => ({ default: m.DevPanel }))) : null
 
@@ -187,7 +189,7 @@ export function App() {
         <SubNav tab={route.tab} active={pageOf(route.tab, route.sub)} />
         <div className="page" key={`${route.tab}/${pageOf(route.tab, route.sub)}`}>
         {route.tab === 'home' && <Home go={go} onBurn={openBurn} />}
-        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev /> : <Companion />)}
+        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev /> : CozmlingV2 ? <CozmlingV2 /> : <Companion />)}
         {route.tab === 'arcade' && (
           route.sub === 'boards' ? <Leaderboard go={go} onBurn={openBurn} />
           : route.sub === 'giveaway' ? <Giveaway go={go} />

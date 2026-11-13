@@ -220,6 +220,24 @@ test('care is one saved change per action, and the first care of each day is kep
 
 /* ---------------- wardrobe ---------------- */
 
+test('a tab working from an older copy cannot overwrite a newer change', async () => {
+  const repo = memoryRepository(), a = await page(repo)
+  const id = fresh().companionId
+  ids--                                                    // adopt that very record
+  assert.ok((await a.adopt(fresh())).ok)
+  const b = await page(repo)                               // a second tab, opened now
+  clock += 1000
+  assert.ok((await a.update(id, (c, now) => hatch(c, now), { event: { eventId: `hatched:${id}`, type: 'hatched' } })).ok)
+  clock += 1000
+  const late = await b.update(id, c => (c.kind === 'adventurer' ? customize(c, { name: 'Nova' }) : null))      // b still holds revision 0
+  assert.ok(!late.ok && late.reason === 'stale')
+  const seen = b.getState().companions.find(c => c.companionId === id)!
+  assert.equal(seen.revision, 1); assert.equal(seen.hatch.status, 'hatched')                                    // b now shows the newer one
+  assert.ok((await b.update(id, c => (c.kind === 'adventurer' ? customize(c, { name: 'Nova' }) : null))).ok)    // and trying again works on top of it
+  const end = (await repo.load()).companions[0] as AdventurerCompanion
+  assert.equal(end.name, 'Nova'); assert.equal(end.hatch.status, 'hatched'); assert.equal(end.revision, 2)
+})
+
 test('changing the look, skin or name never touches the Starprint or the identity', () => {
   const a = fresh(), b = customize(a, { look: 'b', skin: 'rose', name: 'Nova' })!
   assert.equal(b.appearance.appearanceOption, 'b'); assert.equal(b.appearance.skin, 'rose'); assert.equal(b.name, 'Nova')

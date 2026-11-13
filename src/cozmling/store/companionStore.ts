@@ -88,34 +88,51 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     return res
   }
 
+  /** Has this Cozmling's v1 key been written by something other than this store since we last looked at it? */
+  async function changedOutside(sourceKey: string, companionId: string): Promise<boolean> {
+    const src = sources.get(sourceKey)
+    if (!src || src.companionId !== companionId) return false
+    let raw: string | null = null
+    try { raw = env.storage?.getItem(sourceKey) ?? null } catch { return false }
+    return raw != null && (await env.hash(raw)) !== src.lastSeenHash
+  }
+
   /**
    * Change one companion. `change` gets the current record and returns the new one (or null to
    * leave it alone). One call = one all-or-nothing write. For a first-version Cozmling its v1 key
    * is then updated to match, so the old page and a roll-back always find the same Cozmling.
    */
   async function update(companionId: string, change: (c: Companion, now: number) => Companion | null, opts: UpdateOptions = {}): Promise<Change> {
-    const c = byId(companionId)
+    let c = byId(companionId)
     if (!c || c.archived) return { ok: false, reason: 'missing', detail: companionId }
+    if (c.kind === 'legacy' && await changedOutside(c.legacy.sourceKey, companionId)) {
+      // the first version's own code (the arcade Buddy, an old tab) has saved this Cozmling since we last looked:
+      // take that in first, so this change is made to the newest copy and never written over it
+      await sync()
+      c = byId(companionId)
+      if (!c || c.archived) return { ok: false, reason: 'missing', detail: companionId }
+    }
     const now = env.now(), changed = change(c, now)
     if (!changed) return { ok: true, companion: c }
-    let record: Companion = { ...changed, companionId: c.companionId, revision: c.revision + 1, updatedAt: now }
+    const was = c
+    let record: Companion = { ...changed, companionId: was.companionId, revision: was.revision + 1, updatedAt: now }
     let text: string | null = null, src: SourceRecord | undefined
     if (record.kind === 'legacy') {
-      record = { ...record, hatch: hatchOf(record.legacy.pet, c.hatch) }
+      record = { ...record, hatch: hatchOf(record.legacy.pet, was.hatch) }
       src = sources.get(record.legacy.sourceKey)
       if (src && src.companionId === companionId) text = v1Text(record.legacy.pet); else src = undefined
     }
     const stamp = (e: EventInput): JourneyEvent => ({ ...e, companionId, at: now })
     const note = opts.note && !notes.has(opts.note.eventId) ? opts.note : undefined
     const mirrored: SourceRecord[] = src && text != null ? [{ ...src, lastSeenHash: await env.hash(text) }] : []
-    const write = (withNote: boolean) => commit(record, c.revision, {
+    const write = (withNote: boolean) => commit(record, was.revision, {
       sources: mirrored,
       events: [...(opts.event ? [stamp(opts.event)] : []), ...(withNote && note ? [stamp(note)] : [])],
     })
     let res = await write(true)
     if (!res.ok && res.reason === 'duplicate' && note && res.detail === note.eventId) {       // another tab already kept that memory
       notes.add(note.eventId)
-      if (byId(companionId)?.revision === c.revision) res = await write(false)
+      if (byId(companionId)?.revision === was.revision) res = await write(false)
     }
     if (!res.ok) return res
     if (note) notes.add(note.eventId)
