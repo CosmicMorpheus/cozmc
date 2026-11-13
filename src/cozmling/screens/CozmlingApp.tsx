@@ -4,7 +4,7 @@
      no Cozmling yet    → adoption
      otherwise          → the Star Loft, for the Cozmling that is selected
    A first-version Cozmling shows here as itself. Nothing on this page needs a wallet. */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import '../cozmling.css'
 import { COZMLING_DEV, cozmlingStore, startCozmling, useCozmling } from '../index'
 import { nameOf } from '../domain/care'
@@ -21,7 +21,7 @@ export function CozmlingApp() {
   const st = useCozmling()
   const [adopting, setAdopting] = useState(false)
   const [retrying, setRetrying] = useState(false)
-  const [arrived, setArrived] = useState<string | null>(null)        // the Cozmling adopted a moment ago, if any
+  const [moved, setMoved] = useState(false)          // true once the player has adopted or switched Cozmling on this visit (not on a plain page load)
 
   // The first version's own code still writes its saves directly (the arcade Buddy does, for one).
   // Whenever this page is opened or comes back into view, take in anything it has saved.
@@ -33,6 +33,12 @@ export function CozmlingApp() {
     document.addEventListener('visibilitychange', look)
     return () => document.removeEventListener('visibilitychange', look)
   }, [ready])
+
+  const active = st.companions.filter(c => !c.archived)
+  const selected = active.find(c => c.companionId === st.selectedId) ?? active[0] ?? null
+  const adoptionShown = ready && (!selected || adopting)
+  const wasAdoption = useRef(false)
+  useEffect(() => { if (wasAdoption.current && !adoptionShown) setMoved(true); wasAdoption.current = adoptionShown }, [adoptionShown])
 
   if (st.status === 'loading') return (
     <>
@@ -47,11 +53,9 @@ export function CozmlingApp() {
     </>
   )
 
-  const active = st.companions.filter(c => !c.archived)
-  const selected = active.find(c => c.companionId === st.selectedId) ?? active[0] ?? null
   if (!selected || adopting) return (
     <>
-      <AdoptedWatcher ids={active.map(c => c.companionId)} onAdopted={id => { setArrived(id); setAdopting(false) }} />
+      <AdoptedWatcher ids={active.map(c => c.companionId)} onAdopted={() => setAdopting(false)} />
       <AdoptionScreen onCancel={selected ? () => setAdopting(false) : undefined} />
       {st.quarantined.length > 0 && !selected && <p className="sl-fine sl-quarantine">A Cozmling save from before was found on this device, but it couldn’t be read. It hasn’t been changed or deleted.</p>}
     </>
@@ -59,7 +63,7 @@ export function CozmlingApp() {
 
   return (
     <>
-      <StarLoftScreen key={selected.companionId} companion={selected} arrived={arrived === selected.companionId} />
+      <StarLoftScreen key={selected.companionId} companion={selected} arrived={moved} />
       {(active.length > 1 || COZMLING_DEV) && (
         <section className="sl-switch" aria-label="Your Cozmlings">
           {active.length > 1 && (
@@ -67,7 +71,7 @@ export function CozmlingApp() {
               <h2>Your Cozmlings</h2>
               <div className="chips">
                 {active.map(c => (
-                  <button key={c.companionId} className={`chip${c.companionId === selected.companionId ? ' on' : ''}`} aria-pressed={c.companionId === selected.companionId} onClick={() => void cozmlingStore()?.select(c.companionId)}>
+                  <button key={c.companionId} className={`chip${c.companionId === selected.companionId ? ' on' : ''}`} aria-pressed={c.companionId === selected.companionId} onClick={() => { setMoved(true); void cozmlingStore()?.select(c.companionId) }}>
                     {nameOf(c)} <span className="sl-switch__kind">· {kindText(c)}</span>
                   </button>
                 ))}
@@ -81,10 +85,10 @@ export function CozmlingApp() {
   )
 }
 
-/** Leaves the adoption steps as soon as the new Cozmling is in the store, and says which one it is. */
-function AdoptedWatcher({ ids, onAdopted }: { ids: string[]; onAdopted: (id: string) => void }) {
+/** Leaves the adoption steps as soon as the new Cozmling is in the store. */
+function AdoptedWatcher({ ids, onAdopted }: { ids: string[]; onAdopted: () => void }) {
   const [before] = useState(() => new Set(ids))
-  const fresh = ids.find(id => !before.has(id))
-  useEffect(() => { if (fresh) onAdopted(fresh) }, [fresh, onAdopted])
+  const fresh = ids.some(id => !before.has(id))
+  useEffect(() => { if (fresh) onAdopted() }, [fresh, onAdopted])
   return null
 }

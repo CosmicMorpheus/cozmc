@@ -5,7 +5,7 @@
    same: who it is, under its own sky; the scene; Food / Fun / Energy; the care buttons; its
    Starprint, wardrobe, growth and memories; where it is saved; and the way to the arcade.
    Every action is a real button. Nothing here needs a wallet. */
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ageText, FOODS, GROWTH, HOMES, utcDay, type Pet } from '../../companion/care'
 import { GLOWS, STAGE_NAME, STAGES } from '../../companion/look'
 import { ART } from '../../companion/room'
@@ -15,7 +15,7 @@ import { CareMeters } from '../components/CareMeters'
 import { Glyph, Orb } from '../components/Glyph'
 import { SaveChip, SaveStatus } from '../components/SaveStatus'
 import { StarSky } from '../components/StarSky'
-import { careFor, hatch, look, nameOf, type CareAction } from '../domain/care'
+import { careFor, hatch, look, nameOf, type CareAction, type CareResult } from '../domain/care'
 import { birthdayText, ELEMENTS, signInfo } from '../domain/starprint'
 import { legacyGrowth, legacyStage } from '../integrations/legacyAdapter'
 import { CompanionRenderer, type RendererHandle } from '../render/CompanionRenderer'
@@ -37,7 +37,7 @@ function skyOf(c: Companion): [string, string] {
   return [glow, deepen(glow)]
 }
 
-export function StarLoftScreen({ companion: c, arrived }: { companion: Companion; /** just adopted: put the keyboard at the top of its new page */ arrived?: boolean }) {
+export function StarLoftScreen({ companion: c, arrived }: { companion: Companion; /** just adopted, or just switched to: start at the top of its page, keyboard included */ arrived?: boolean }) {
   const scene = useRef<RendererHandle>(null)
   const title = useRef<HTMLHeadingElement>(null)
   const hatchedHere = useRef(false)
@@ -62,30 +62,40 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
     return () => { removeEventListener('pointerdown', down); removeEventListener('keydown', key) }
   }, [menu])
 
+  /** Up and down arrows (and Home and End) move through the food menu, as they do in any menu. */
+  const menuKeys = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const items = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')], at = items.indexOf(document.activeElement as HTMLElement)
+    const to = e.key === 'ArrowDown' ? (at + 1) % items.length : e.key === 'ArrowUp' ? (at - 1 + items.length) % items.length : e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : -1
+    if (to < 0) return
+    e.preventDefault(); items[to]?.focus()
+  }
+
   const id = c.companionId, name = nameOf(c)
   const { pet, mood, hatched, asleep } = look(c)
   const [o1, o2] = skyOf(c)
 
-  /** One care action: say what happened, act it out, and save it (once). */
-  const care = async (a: CareAction, show: Parameters<RendererHandle['react']>[0], food?: string) => {
+  /** One care action. It is made in its turn (after any change still being saved), then the page says and shows what really happened. */
+  const care = async (a: CareAction, food?: string) => {
     const store = cozmlingStore()
     if (!store || busy) return
-    const first = careFor(c, a, Date.now())
-    if (first.say) setSay(first.say)
-    if (!first.ok) { scene.current?.react('refuse'); return }
-    scene.current?.react(show, food)
-    const res = await store.update(id, (cur, now) => careFor(cur, a, now).companion, { note: { eventId: `care:${id}:${utcDay()}`, type: 'care' } })
-    if (!res.ok) setSay(NOT_SAVED)
+    const got: { out?: CareResult } = {}
+    const res = await store.update(id, (cur, now) => (got.out = careFor(cur, a, now)).companion, { note: { eventId: `care:${id}:${utcDay()}`, type: 'care' } })
+    if (!res.ok) { setSay(NOT_SAVED); scene.current?.react('refuse'); return }
+    const out = got.out
+    if (!out) return
+    if (out.say) setSay(out.say)
+    if (!out.ok || !out.companion) scene.current?.react('refuse')
+    else scene.current?.react(a.do === 'rest' ? (look(out.companion).asleep ? 'sleep' : 'wake') : a.do, food)
   }
   const doHatch = async () => {
     const store = cozmlingStore()
     if (!store || busy) return
     setBusy(true)
+    hatchedHere.current = true                 // set before the save: the page can show the hatchling before the save call returns
     const res = await store.update(id, hatch, { event: { eventId: `hatched:${id}`, type: 'hatched' } })
     setBusy(false)
     setCrack(0)
-    if (!res.ok) { if (res.reason !== 'duplicate') setSay(NOT_SAVED); return }      // 'duplicate' = it already hatched in another tab
-    hatchedHere.current = true
+    if (!res.ok) { hatchedHere.current = false; if (res.reason !== 'duplicate') setSay(NOT_SAVED); return }      // 'duplicate' = it already hatched in another tab
     scene.current?.react('hatch')
     setSay(`Welcome to the world, ${name}!`)
   }
@@ -104,15 +114,17 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
         <div className="sl-hero__text">
           <p className="kicker">Star Loft</p>
           <h1 ref={title} tabIndex={-1}>{name}</h1>
-          <Identity c={c} pet={pet} hatched={hatched} />
+          <div className="sl-hero__tags">
+            <Identity c={c} pet={pet} hatched={hatched} />
+            <SaveChip />
+          </div>
         </div>
-        <SaveChip />
       </header>
 
       <section className="sl">
         <div className="sl__main">
           <div className={`sl__screen${asleep ? ' is-night' : ''}`}>
-            <CompanionRenderer ref={scene} companion={c} mode="loft" crack={crack} previewStage={preview} onTap={!hatched ? warm : asleep ? undefined : () => void care({ do: 'pat' }, 'pat')} />
+            <CompanionRenderer ref={scene} companion={c} mode="loft" crack={crack} previewStage={preview} onTap={!hatched ? warm : asleep ? undefined : () => void care({ do: 'pat' })} />
             <p className="sl__say" aria-live="polite">{say}</p>
           </div>
 
@@ -134,9 +146,9 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
                   <PixelArt rows={ART.cheese.rows} palette={ART.cheese.pal} size={26} /><span>Feed</span>
                 </button>
                 {menu && (
-                  <div className="sl-menu" id="sl-feed-menu" role="menu" aria-label="Food">
+                  <div className="sl-menu" id="sl-feed-menu" role="menu" aria-label="Food" onKeyDown={menuKeys}>
                     {FOODS.map((f, i) => (
-                      <button key={f.id} role="menuitem" autoFocus={i === 0} onClick={() => { setMenu(false); void care({ do: 'feed', food: f.id }, 'feed', f.id) }}>
+                      <button key={f.id} role="menuitem" autoFocus={i === 0} onClick={() => { setMenu(false); document.getElementById('sl-feed-btn')?.focus(); void care({ do: 'feed', food: f.id }, f.id) }}>
                         <PixelArt rows={ART[f.id].rows} palette={ART[f.id].pal} size={20} />
                         <span>{f.name}</span><small>{f.fun > 10 ? 'treat' : `+${f.food} food`}</small>
                       </button>
@@ -144,9 +156,9 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
                   </div>
                 )}
               </div>
-              <button className="sl-act" onClick={() => void care({ do: 'play' }, 'play')} disabled={asleep}><PixelArt rows={ART.ball.rows} palette={ART.ball.pal} size={26} /><span>Play</span></button>
-              <button className="sl-act" onClick={() => void care({ do: 'pat' }, 'pat')} disabled={asleep}><PixelArt rows={ART.heart.rows} palette={ART.heart.pal} size={26} /><span>Pat</span></button>
-              <button className="sl-act" onClick={() => void care({ do: 'rest' }, asleep ? 'wake' : 'sleep')}><PixelArt rows={ART.z.rows} palette={ART.z.pal} size={24} /><span>{asleep ? 'Wake up' : 'Rest'}</span></button>
+              <button className="sl-act" onClick={() => void care({ do: 'play' })} disabled={asleep}><PixelArt rows={ART.ball.rows} palette={ART.ball.pal} size={26} /><span>Play</span></button>
+              <button className="sl-act" onClick={() => void care({ do: 'pat' })} disabled={asleep}><PixelArt rows={ART.heart.rows} palette={ART.heart.pal} size={26} /><span>Pat</span></button>
+              <button className="sl-act" onClick={() => void care({ do: 'rest' })}><PixelArt rows={ART.z.rows} palette={ART.z.pal} size={24} /><span>{asleep ? 'Wake up' : 'Rest'}</span></button>
             </div>
           )}
           <p className="sl-fine">Needs run down over about a day, even while you’re away. {name} never dies; a neglected Cozmling just gets hungry, bored or sleepy.</p>

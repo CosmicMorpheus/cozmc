@@ -220,7 +220,7 @@ test('care is one saved change per action, and the first care of each day is kep
 
 /* ---------------- wardrobe ---------------- */
 
-test('a tab working from an older copy cannot overwrite a newer change', async () => {
+test('a tab working from an older copy makes its change on top of the newer one, never over it', async () => {
   const repo = memoryRepository(), a = await page(repo)
   const id = fresh().companionId
   ids--                                                    // adopt that very record
@@ -229,13 +229,32 @@ test('a tab working from an older copy cannot overwrite a newer change', async (
   clock += 1000
   assert.ok((await a.update(id, (c, now) => hatch(c, now), { event: { eventId: `hatched:${id}`, type: 'hatched' } })).ok)
   clock += 1000
-  const late = await b.update(id, c => (c.kind === 'adventurer' ? customize(c, { name: 'Nova' }) : null))      // b still holds revision 0
-  assert.ok(!late.ok && late.reason === 'stale')
-  const seen = b.getState().companions.find(c => c.companionId === id)!
-  assert.equal(seen.revision, 1); assert.equal(seen.hatch.status, 'hatched')                                    // b now shows the newer one
-  assert.ok((await b.update(id, c => (c.kind === 'adventurer' ? customize(c, { name: 'Nova' }) : null))).ok)    // and trying again works on top of it
+  // b still holds revision 0. Its write is refused as out of date, it reads the newer copy, and renames that one instead
+  const late = await b.update(id, c => (c.kind === 'adventurer' ? customize(c, { name: 'Nova' }) : null))
+  assert.ok(late.ok)
   const end = (await repo.load()).companions[0] as AdventurerCompanion
-  assert.equal(end.name, 'Nova'); assert.equal(end.hatch.status, 'hatched'); assert.equal(end.revision, 2)
+  assert.equal(end.name, 'Nova'); assert.equal(end.hatch.status, 'hatched'); assert.equal(end.revision, 2)      // the hatch was not lost
+  // but something that may only happen once is still refused the second time, whichever tab asks
+  const again = await b.update(id, (c, now) => ({ ...c, name: 'Twice' }), { event: { eventId: `hatched:${id}`, type: 'hatched' } })
+  assert.ok(!again.ok && again.reason === 'duplicate')
+  assert.equal(((await repo.load()).companions[0] as AdventurerCompanion).name, 'Nova')
+})
+
+test('changes sent in a burst are made one after another, and none is refused or lost', async () => {
+  const repo = memoryRepository(), s = await page(repo)
+  const c0 = fresh()
+  assert.ok((await s.adopt(c0)).ok)
+  const id = c0.companionId
+  assert.ok((await s.update(id, (c, now) => hatch(c, now))).ok)
+  clock += H
+  const act = (a: Parameters<typeof careFor>[1]) => s.update(id, (c, now) => careFor(c, a, now).companion, { note: { eventId: `care:${id}:1`, type: 'care' } })
+  const all = await Promise.all([act({ do: 'feed', food: 'cookie' }), act({ do: 'play' }), act({ do: 'pat' }), act({ do: 'pat' }), act({ do: 'pat' }), act({ do: 'rest' })])     // six taps, none waiting for the one before
+  assert.deepEqual(all.map(r => r.ok), [true, true, true, true, true, true])
+  const end = (await repo.load()).companions[0] as AdventurerCompanion
+  assert.deepEqual({ fed: end.progress.counters.fed, played: end.progress.counters.played, pets: end.progress.counters.pets }, { fed: 1, played: 1, pets: 3 })
+  assert.ok(end.care.asleepAt); assert.equal(end.revision, 7)
+  assert.equal((await repo.events(id)).filter(e => e.type === 'care').length, 1)
+  assert.equal(s.getState().companions[0].revision, 7); assert.equal(s.getState().saveProblem, null)
 })
 
 test('changing the look, skin or name never touches the Starprint or the identity', () => {

@@ -36,6 +36,11 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
   const isGuest = (c: Companion) => c.kind === 'legacy' && c.legacy.sourceKey === V1_KEY
   const touched = (c: Companion) => (c.kind === 'legacy' ? c.legacy.pet.at : c.updatedAt)
 
+  /* One thing at a time. Every change is made to the result of the one before it, so two taps in
+     quick succession never both start from the same copy (the second would be refused as out of date). */
+  let line: Promise<unknown> = Promise.resolve()
+  const inTurn = <T>(job: () => Promise<T>): Promise<T> => { const run = line.then(job, job); line = run.catch(() => {}); return run }
+
   /** Show what the repository holds. */
   function show(snap: Snapshot, report: SyncReport | null) {
     const good: Companion[] = [], unreadable: CozState['unreadable'] = []
@@ -53,7 +58,7 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
   }
 
   /** Look at the v1 saves and bring in whatever is new or changed. Safe to run at any time, any number of times. */
-  async function sync(): Promise<SyncReport> {
+  async function syncNow(): Promise<SyncReport> {
     for (let attempt = 0; ; attempt++) {
       const snap = await repo.load()
       const plan = await planSync(snap, env)
@@ -102,13 +107,13 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
    * leave it alone). One call = one all-or-nothing write. For a first-version Cozmling its v1 key
    * is then updated to match, so the old page and a roll-back always find the same Cozmling.
    */
-  async function update(companionId: string, change: (c: Companion, now: number) => Companion | null, opts: UpdateOptions = {}): Promise<Change> {
+  async function tryUpdate(companionId: string, change: (c: Companion, now: number) => Companion | null, opts: UpdateOptions): Promise<Change> {
     let c = byId(companionId)
     if (!c || c.archived) return { ok: false, reason: 'missing', detail: companionId }
     if (c.kind === 'legacy' && await changedOutside(c.legacy.sourceKey, companionId)) {
       // the first version's own code (the arcade Buddy, an old tab) has saved this Cozmling since we last looked:
       // take that in first, so this change is made to the newest copy and never written over it
-      await sync()
+      await syncNow()
       c = byId(companionId)
       if (!c || c.archived) return { ok: false, reason: 'missing', detail: companionId }
     }
@@ -140,6 +145,15 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     return { ok: true, companion: record }
   }
 
+  async function updateNow(companionId: string, change: (c: Companion, now: number) => Companion | null, opts: UpdateOptions): Promise<Change> {
+    const res = await tryUpdate(companionId, change, opts)
+    // another tab changed it first. Its newer copy is showing by now, so make the same change to that copy (once)
+    return !res.ok && res.reason === 'stale' ? tryUpdate(companionId, change, opts) : res
+  }
+  const update = (companionId: string, change: (c: Companion, now: number) => Companion | null, opts: UpdateOptions = {}): Promise<Change> =>
+    inTurn(() => updateNow(companionId, change, opts))
+  const sync = (): Promise<SyncReport> => inTurn(syncNow)
+
   /** Change a first-version Cozmling with the v1 rules: `change` gets its state brought up to now. */
   const updateLegacy = (companionId: string, change: (pet: Pet, now: number) => Pet | null, event?: EventInput): Promise<Change> =>
     update(companionId, (c, now) => {
@@ -149,17 +163,19 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     }, { event })
 
   /** A newly adopted adventurer joins the store and becomes the one that shows. */
-  async function adopt(record: AdventurerCompanion): Promise<Change> {
+  const adopt = (record: AdventurerCompanion): Promise<Change> => inTurn(() => adoptNow(record))
+  async function adoptNow(record: AdventurerCompanion): Promise<Change> {
     const now = env.now()
     const res = await commit(record, null, { events: [{ eventId: `adopted:${record.companionId}`, companionId: record.companionId, type: 'adopted', at: now, data: { sign: record.starprint.coreSign } }] })
     if (!res.ok) return res
-    await select(record.companionId)
+    await selectNow(record.companionId)
     // the first adoption is the moment to ask the browser to keep our storage. Play never waits on the answer
     if (persist && repo.durable) void persist.ask().then(ok => set({ persisted: ok }), () => {})
     return { ok: true, companion: record }
   }
 
-  async function select(companionId: string): Promise<boolean> {
+  const select = (companionId: string): Promise<boolean> => inTurn(() => selectNow(companionId))
+  async function selectNow(companionId: string): Promise<boolean> {
     const c = byId(companionId)
     if (!c || c.archived) return false
     const res = await repo.write({ meta: { selectedId: companionId } })
@@ -168,8 +184,8 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     return true
   }
 
-  // another tab changed something: show it
-  channel?.listen(() => { repo.load().then(snap => show(snap, null), () => {}) })
+  // another tab changed something: show it (in turn, so it can't land on top of a change this tab is in the middle of)
+  channel?.listen(() => { inTurn(async () => { show(await repo.load(), null) }).catch(() => {}) })
 
   /** The first load: read, bring v1 saves in, show. */
   async function hydrate(): Promise<SyncReport> {
@@ -191,7 +207,7 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     events: (companionId: string) => repo.events(companionId),
     /** For the pieces built on top of this (adoption, the arcade bridge, import). */
     commit,
-    reload: async () => { show(await repo.load(), null) },
+    reload: () => inTurn(async () => { show(await repo.load(), null) }),
     source: (key: string) => sources.get(key),
     repo,
   }

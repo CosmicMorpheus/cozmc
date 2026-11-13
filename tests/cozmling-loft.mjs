@@ -1,0 +1,407 @@
+/* The rebuilt Cozmling page in a real browser: adopt, hatch, look after, reload, with no wallet.
+   Also: the keyboard alone, reduced motion, art that fails to load, a first-version Cozmling
+   inside the new page, a browser that stores nothing, two tabs, and a 360 px phone.
+   Nothing here touches Algorand or any wallet: every outside request is refused.
+
+   It needs Playwright (not one of the site's dependencies) and a dev server with v2 and its
+   preview tools switched on:
+     VITE_COZMLING_V2=1 VITE_COZMLING_DEV=1 npm run dev -- --port 5198
+     SITE=http://localhost:5198 node tests/cozmling-loft.mjs [folder for screenshots]
+   Set PW_CHROMIUM to a Chromium binary if Playwright's own isn't installed.                      */
+import { createRequire } from 'node:module'
+import { mkdirSync, readFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
+const { chromium } = createRequire(import.meta.url)('playwright')
+
+const SITE = process.env.SITE || 'http://localhost:5198'
+const SHOTS = process.argv[2] || ''
+if (SHOTS) mkdirSync(SHOTS, { recursive: true })
+const fixtures = JSON.parse(readFileSync(new URL('./fixtures/legacy-local-v1.json', import.meta.url), 'utf8')).fixtures
+const fx = id => fixtures.find(f => f.id === id)
+const PHONE = { width: 390, height: 844 }, SMALL = { width: 360, height: 740 }, DESK = { width: 1280, height: 900 }
+
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {})
+const results = []
+
+/** A fresh browser profile. */
+async function profile({ seed = [], viewport = PHONE, noStorage = false, reducedMotion = 'no-preference', blockArt = false } = {}) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion })
+  const errors = [], outside = []
+  await ctx.route(u => !['localhost', '127.0.0.1'].includes(new URL(u).hostname), r => { outside.push(`${r.request().method()} ${r.request().url()}`); return r.abort() })
+  if (blockArt) await ctx.route('**/assets/cozmling/**', r => r.abort())
+  await ctx.addInitScript(({ entries, noStorage }) => {
+    // did the page ever offer adoption? (it must not, while a Cozmling that exists is still loading)
+    window.__sawAdopt = false
+    new MutationObserver(() => { if (/Adopt a Cozmling/.test(document.querySelector('main')?.textContent ?? '')) window.__sawAdopt = true }).observe(document, { subtree: true, childList: true, characterData: true })
+    if (noStorage) {
+      Object.defineProperty(window, 'indexedDB', { get: () => undefined })
+      const fail = () => { throw new DOMException('storage is off', 'SecurityError') }
+      Object.defineProperty(window, 'localStorage', { get: () => ({ get length() { return fail() }, key: fail, getItem: fail, setItem: fail, removeItem: fail }) })
+      return
+    }
+    if (localStorage.getItem('__seeded')) return
+    for (const [k, v] of entries) localStorage.setItem(k, v)
+    localStorage.setItem('__seeded', '1')
+  }, { entries: seed.map(id => [fx(id).storageKey, fx(id).raw]), noStorage })
+  const open = async (hash = '#/cozmling') => {
+    const page = await ctx.newPage()
+    page.on('pageerror', e => errors.push(e.message))
+    page.on('console', m => { if (m.type() === 'error' && !/ERR_FAILED|net::|Failed to load resource/.test(m.text())) errors.push(m.text()) })
+    await page.goto(`${SITE}/${hash}`)
+    await ready(page)
+    return page
+  }
+  return { ctx, open, errors, outside }
+}
+const ready = page => page.waitForFunction(() => window.__cozmling?.getState().status === 'ready', null, { timeout: 20000 })
+const state = page => page.evaluate(() => JSON.parse(JSON.stringify(window.__cozmling.getState())))
+const mine = async page => { const s = await state(page); return s.companions.find(c => c.companionId === s.selectedId) }
+const events = (page, id) => page.evaluate(id => window.__cozmling.events(id), id)
+const button = (page, name) => page.getByRole('button', { name, exact: true })
+/** Wait for the Cozmling's speech bubble to say something (it speaks once the change has really been saved). */
+const says = (page, text) => page.waitForFunction(t => (document.querySelector('.sl__say')?.textContent ?? '').includes(t), text, { timeout: 8000 })
+const shot = async (page, name, full = false) => { if (SHOTS) { await page.waitForTimeout(350); await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: full }) } }
+/** Everything inside the page that sticks out past the edge of the screen. */
+const sticksOut = page => page.evaluate(() => [...document.querySelectorAll('main *')].filter(el => { const r = el.getBoundingClientRect(); return r.width && (r.right > innerWidth + 1 || r.left < -1) }).map(el => `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} ${Math.round(el.getBoundingClientRect().right)}`).slice(0, 5))
+
+/** Go through the three adoption steps with the mouse. */
+async function adopt(page, { birthday = '2026-11-05', look = 'a', skin = '', name = 'Orbi' } = {}) {
+  await page.getByRole('heading', { name: 'Adopt a Cozmling' }).waitFor({ timeout: 15000 })
+  await page.locator('#sl-bday').fill(birthday)
+  await button(page, 'Next').click()
+  if (look === 'b') await page.getByRole('radio', { name: 'Look B' }).check()
+  if (skin) await page.getByRole('radio', { name: skin }).check()
+  await button(page, 'Next').click()
+  await page.locator('#sl-name').fill(name)
+  await button(page, 'Create the Star Egg').click()
+  await button(page, 'Warm the egg').waitFor({ timeout: 10000 })
+}
+
+async function scenario(name, fn) {
+  if (process.env.ONLY && !name.includes(process.env.ONLY)) return          // ONLY="keyboard" runs just the scenarios whose name has that word
+  const t0 = Date.now()
+  try { await fn(); results.push(true); console.log(`ok   ${name} (${Math.round((Date.now() - t0) / 1000)}s)`) }
+  catch (e) { results.push(false); console.log(`FAIL ${name}\n     ${String(e?.message ?? e).split('\n').slice(0, 8).join('\n     ')}`) }
+}
+
+await scenario('a guest adopts, hatches and looks after a Cozmling, and it is all still there after a reload, with no wallet', async () => {
+  const p = await profile(), page = await p.open()
+  await page.getByRole('heading', { name: 'Adopt a Cozmling' }).waitFor()
+  await shot(page, 'adopt-1-birthday-390', true)
+  // step 1: the Cozmling's birthday, and the sign it gives
+  assert.equal(await button(page, 'Next').isDisabled(), true)
+  await page.locator('#sl-bday').fill('2026-11-05')
+  assert.match(await page.locator('.sl-hint').innerText(), /November 5 falls under Scorpio/)
+  assert.match(await page.locator('.sl-banner').innerText(), /SCORPIO/i)
+  await button(page, 'Next').click()
+  // step 2: its Starprint, a look and a skin colour
+  assert.match(await page.locator('.sl-adopt').innerText(), /Scorpio.*water element, the Seeker/s)
+  assert.doesNotMatch(await page.locator('.sl-adopt').innerText(), /\bMoon\b|Rising/)                 // nothing is made up
+  await page.getByRole('radio', { name: 'Look B' }).check()
+  await page.getByRole('radio', { name: 'Rose' }).check()
+  await shot(page, 'adopt-2-starprint-390', true)
+  await button(page, 'Next').click()
+  // step 3: its name
+  assert.equal(await button(page, 'Create the Star Egg').isDisabled(), true)
+  await page.locator('#sl-name').fill('<O>r!b_i*')
+  assert.equal(await page.locator('#sl-name').inputValue(), 'Orbi')                                    // cleaned as the first version cleans names
+  assert.equal(await page.locator('#sl-name').getAttribute('maxlength'), '14')
+  await shot(page, 'adopt-3-name-390', true)
+  await button(page, 'Create the Star Egg').click()
+
+  // a Star Egg in the Star Loft
+  await button(page, 'Warm the egg').waitFor()
+  assert.equal(await page.locator('.sl-hero h1').innerText(), 'ORBI')
+  assert.match(await page.locator('.sl-hero').innerText(), /SCORPIO[\s\S]*WATER[\s\S]*THE SEEKER[\s\S]*STAR EGG/)
+  assert.match(await page.locator('[data-save-chip]').innerText(), /SAVED ON THIS DEVICE/)
+  assert.equal(await page.evaluate(() => document.activeElement?.tagName), 'H1')                       // the keyboard starts at the top of the new page
+  let c = await mine(page)
+  const id = c.companionId
+  assert.equal(c.kind, 'adventurer'); assert.equal(c.hatch.status, 'egg'); assert.equal(c.appearance.appearanceOption, 'b'); assert.equal(c.appearance.skin, 'rose')
+  assert.deepEqual(c.starprint, { chosenBirthday: '2026-11-05', coreSign: 'scorpio', element: 'water', archetype: 'Seeker', status: 'partial', engineVersion: 'calendar-1' })
+  assert.deepEqual(c.walletLinks, [])
+  await shot(page, 'loft-egg-390')
+
+  // warm it four times and it hatches, once
+  for (let i = 0; i < 4; i++) await button(page, 'Warm the egg').click()
+  await button(page, 'Play').waitFor()
+  await says(page, 'Welcome to the world, Orbi!')
+  assert.match(await page.locator('.sl-hero').innerText(), /HATCHLING/)
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'sl-feed-btn')                   // the egg's buttons are gone: the keyboard moves to Feed
+  c = await mine(page)
+  assert.equal(c.hatch.status, 'hatched'); assert.equal(c.hatch.provenance, 'known'); assert.equal(c.progress.visualStage, 'hatchling'); assert.equal(c.revision, 1)
+  await page.waitForTimeout(1700)
+  await shot(page, 'loft-hatched-390', true)
+
+  // care, by the first version's numbers
+  await button(page, 'Play').click()
+  await says(page, 'Again, again!')
+  await button(page, 'Feed').click()
+  await page.getByRole('menuitem', { name: /Comet cookie/ }).click()
+  await button(page, 'Pat').click()
+  await page.waitForFunction(id => window.__cozmling.getState().companions.find(c => c.companionId === id)?.revision === 4, id)
+  c = await mine(page)
+  assert.deepEqual({ fed: c.progress.counters.fed, played: c.progress.counters.played, pets: c.progress.counters.pets }, { fed: 1, played: 1, pets: 1 })
+  assert.ok(Math.abs(c.care.fun - 100) < 0.5 && Math.abs(c.care.food - (80 - 4 + 12)) < 0.5 && Math.abs(c.care.energy - (90 - 8)) < 0.5, JSON.stringify(c.care))
+  assert.equal(await page.locator('.sl-meter--fun [role="meter"]').getAttribute('aria-valuenow'), '100')
+  await button(page, 'Rest').click()
+  await button(page, 'Wake up').waitFor()
+  assert.equal(await button(page, 'Play').isDisabled(), true)
+  assert.match(await page.locator('.sl-mood').innerText(), /fast asleep/)
+  await shot(page, 'loft-asleep-390')
+  // what was recorded: adopted, hatched, and one care memory for the day (not one per tap)
+  assert.deepEqual((await events(page, id)).map(e => e.type).sort(), ['adopted', 'care', 'hatched'])
+  assert.match(await page.locator('.sl-mempanel').innerText(), /You adopted Orbi[\s\S]*|Orbi hatched/)
+
+  // reload: the same Cozmling, the same progress, and never a flash of "adopt one"
+  await page.reload()
+  await ready(page)
+  await button(page, 'Wake up').waitFor()
+  assert.equal(await page.evaluate(() => window.__sawAdopt), false)
+  const again = await mine(page)
+  assert.equal(again.companionId, id); assert.equal(again.revision, 5); assert.equal(again.name, 'Orbi'); assert.equal(again.hatch.status, 'hatched')
+  assert.deepEqual(again.progress.counters, c.progress.counters); assert.ok(again.care.asleepAt)
+  await button(page, 'Wake up').click()
+  await page.waitForFunction(id => window.__cozmling.getState().companions.find(c => c.companionId === id)?.care.asleepAt == null, id)
+
+  // no wallet, no first-version save, and nothing sent anywhere. (The site's own header still looks up public
+  // figures such as the burn total, as it does on every page: those are plain reads, and are the only outside requests.)
+  assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('cozmc-cozmling-v1'))), [])
+  assert.deepEqual(p.outside.filter(u => !u.startsWith('GET ') || /walletconnect|perawallet|defly|lute/i.test(u)), [])
+  assert.equal(await page.getByRole('button', { name: /^connect$/i }).count() > 0, true)             // still not connected at the end
+  assert.deepEqual(await sticksOut(page), [])
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('the keyboard alone can adopt, hatch and look after a Cozmling', async () => {
+  const p = await profile({ viewport: DESK }), page = await p.open()
+  await page.getByRole('heading', { name: 'Adopt a Cozmling' }).waitFor()
+  const key = k => page.keyboard.press(k), focus = () => page.evaluate(() => { const a = document.activeElement; return `${a?.tagName.toLowerCase()}${a?.id ? '#' + a.id : ''}:${(a?.textContent || a?.getAttribute('aria-label') || '').trim().slice(0, 24)}` })
+  await page.locator('#sl-bday').focus()
+  for (let i = 0; i < 5 && !/button:Today/.test(await focus()); i++) await key('Tab')               // a date field has a stop for each of its parts
+  assert.match(await focus(), /button:Today/); await key('Enter')
+  for (let i = 0; i < 6 && !/button:Next/.test(await focus()); i++) await key('Tab')
+  assert.match(await focus(), /button:Next/); await key('Enter')
+  assert.match(await focus(), /h2#sl-s2/)                                                            // the new step starts at its heading
+  await key('Tab'); await key('ArrowRight')                                                          // the look: radios, moved with the arrows
+  assert.equal(await page.getByRole('radio', { name: 'Look B' }).isChecked(), true)
+  await key('Tab'); await key('ArrowRight')                                                          // the skin colour
+  assert.equal(await page.getByRole('radio', { name: 'Lilac' }).isChecked(), true)
+  await key('Tab'); assert.match(await focus(), /button:Back/); await key('Tab'); await key('Enter')
+  assert.match(await focus(), /h2#sl-s3/)
+  await key('Tab'); await page.keyboard.type('Kip')
+  for (let i = 0; i < 4 && !/button:Create the Star Egg/.test(await focus()); i++) await key('Tab')
+  await key('Enter')
+  await button(page, 'Warm the egg').waitFor()
+  assert.match(await focus(), /^h1:Kip/)
+  await key('Tab'); assert.match(await focus(), /button:Warm the egg/)
+  for (let i = 0; i < 4; i++) await key('Enter')
+  await button(page, 'Play').waitFor()
+  assert.match(await focus(), /button#sl-feed-btn/)
+  await key('Enter'); assert.match(await focus(), /button:Moon cheese/)
+  await key('ArrowDown'); assert.match(await focus(), /button:Star fruit/)
+  await key('ArrowUp'); await key('End'); assert.match(await focus(), /button:Comet cookie/)
+  await key('Escape'); assert.match(await focus(), /button#sl-feed-btn/)                            // Escape closes the menu and gives the keyboard back to Feed
+  assert.equal(await page.getByRole('menu').count(), 0)
+  await key('Enter'); await key('ArrowDown'); await key('Enter')                                     // Star fruit
+  assert.match(await focus(), /button#sl-feed-btn/)
+  await key('Tab'); assert.match(await focus(), /button:Play/); await key('Enter')
+  await key('Tab'); assert.match(await focus(), /button:Pat/); await key('Enter')
+  await key('Tab'); assert.match(await focus(), /button:Rest/); await key('Enter')
+  if (process.env.DEBUG) { await page.waitForTimeout(500); console.log(await focus(), await page.locator('.sl__say').innerText(), JSON.stringify((await mine(page)).care)) }
+  await button(page, 'Wake up').waitFor()
+  const c = await mine(page)
+  assert.equal(c.name, 'Kip'); assert.equal(c.appearance.appearanceOption, 'b'); assert.equal(c.appearance.skin, 'lilac'); assert.equal(c.hatch.status, 'hatched')
+  assert.deepEqual({ fed: c.progress.counters.fed, played: c.progress.counters.played, pets: c.progress.counters.pets }, { fed: 1, played: 1, pets: 1 }); assert.ok(c.care.asleepAt)
+  // the buttons the keyboard lands on can be seen to have it
+  await page.getByRole('button', { name: 'Wake up', exact: true }).focus(); await key('Shift+Tab')
+  assert.notEqual(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), 'none')
+  await shot(page, 'loft-keyboard-1280')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('reduced motion: nothing in the page moves, and hatching still works at once', async () => {
+  const p = await profile({ reducedMotion: 'reduce' }), page = await p.open()
+  await adopt(page)
+  // animations and scripted movement in the Cozmling's page (a button's brief colour change on press is not movement)
+  const moving = () => page.evaluate(() => document.getAnimations().filter(a => a.playState === 'running' && a.constructor.name !== 'CSSTransition' && a.effect?.target?.closest?.('.sl-page, .sl-adopt')).map(a => a.animationName || 'script'))
+  assert.deepEqual(await moving(), [])
+  await button(page, 'Hatch now').click()                                                             // the skip: no tapping, no waiting
+  await button(page, 'Play').waitFor()
+  await page.waitForTimeout(200)
+  assert.deepEqual(await moving(), [])
+  assert.equal(await page.locator('.sl-flash').count() ? await page.locator('.sl-flash').evaluate(el => getComputedStyle(el).display) : 'none', 'none')
+  await button(page, 'Play').click()
+  await says(page, 'Again, again!')
+  assert.deepEqual(await moving(), [])
+  assert.equal((await mine(page)).progress.counters.played, 1)
+  await shot(page, 'loft-reduced-motion-390')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('art that fails to load, or is not made yet, becomes a stand-in with the sign, and care carries on', async () => {
+  const p = await profile({ blockArt: true }), page = await p.open()
+  await adopt(page, { birthday: '2026-05-05', name: 'Moss' })                                        // Taurus has art, but none of it will load here
+  await button(page, 'Hatch now').click()
+  await button(page, 'Play').waitFor()
+  await page.locator('.sl-scene .sl-standin').waitFor()
+  assert.match(await page.locator('.sl-scene__note').innerText(), /ART DIDN’T LOAD · TAURUS KEEPER/)
+  assert.match(await page.locator('.sl-scene').getAttribute('aria-label'), /Moss, Taurus Keeper, in the Star Loft/)
+  await button(page, 'Play').click()
+  await page.waitForFunction(() => { const s = window.__cozmling.getState(); return s.companions.find(c => c.companionId === s.selectedId)?.progress.counters.played === 1 })
+  await shot(page, 'loft-art-failed-390')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+
+  const q = await profile(), page2 = await q.open()
+  await adopt(page2, { birthday: '2026-08-01', name: 'Sol' })                                        // Leo: no art yet
+  assert.match(await page2.locator('.sl-hero').innerText(), /LEO[\s\S]*FIRE[\s\S]*THE RADIANT HEART/)
+  await button(page2, 'Hatch now').click()
+  await page2.locator('.sl-scene .sl-standin').waitFor()
+  assert.match(await page2.locator('.sl-scene__note').innerText(), /ART ON ITS WAY · LEO RADIANT HEART/)
+  await shot(page2, 'loft-no-art-yet-390')
+  assert.deepEqual(q.errors, [])
+  await q.ctx.close()
+})
+
+await scenario('a first-version Cozmling shows in the new page as itself, and what you do is kept for the old page too', async () => {
+  const p = await profile({ seed: ['wallet-cadet'], viewport: DESK }), page = await p.open()
+  await page.locator('.sl-hero h1').waitFor()
+  const f = fx('wallet-cadet')
+  assert.equal(await page.evaluate(() => window.__sawAdopt), false)
+  assert.equal(await page.locator('.sl-hero h1').innerText(), JSON.parse(f.raw).name.toUpperCase())
+  assert.match(await page.locator('.sl-hero').innerText(), /CADET/)
+  assert.equal(await page.locator('.sl__screen canvas').count(), 1)                                   // drawn by the first version's own renderer
+  assert.equal(await page.locator('.sl-scene').count(), 0)
+  assert.match(await page.locator('.sl-print').innerText(), /First-version Cozmling[\s\S]*Cadet/)
+  assert.doesNotMatch(await page.locator('main').innerText(), /Starprint|Scorpio|Taurus/i)            // it is not given a sign
+  const before = await mine(page)
+  assert.deepEqual({ fed: before.legacy.pet.fed, played: before.legacy.pet.played, pets: before.legacy.pet.pets }, { fed: f.expect.counters.fed, played: f.expect.counters.played, pets: f.expect.counters.pets })
+  await shot(page, 'loft-first-version-1280', true)
+  await button(page, 'Play').click()
+  await page.waitForFunction(() => { const s = window.__cozmling.getState(); return s.companions.find(c => c.companionId === s.selectedId)?.revision === 1 })
+  const after = await mine(page)
+  assert.equal(after.legacy.pet.played, before.legacy.pet.played + 1)
+  assert.equal(JSON.parse(await page.evaluate(k => localStorage.getItem(k), f.storageKey)).played, before.legacy.pet.played + 1)
+  // its own ladder and numbers, exactly
+  assert.match(await page.locator('.sl-grow').innerText(), /STAR EGG[\s\S]*SPROUT[\s\S]*CADET[\s\S]*EXPLORER[\s\S]*GUARDIAN/)
+  assert.match(await page.locator('.sl-grow__row').innerText(), /\/ 200 to Explorer/)
+  // the wardrobe moves it to another of its homes
+  await button(page, 'Customize').click()
+  await page.getByRole('button', { name: 'Cosmic Grove', exact: true }).click()
+  await page.waitForFunction(() => { const s = window.__cozmling.getState(); return s.companions.find(c => c.companionId === s.selectedId)?.legacy.pet.home === 'grove' })
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('a first-version egg hatches into a Sprout, once, and the arcade Buddy (still the first version) finds it', async () => {
+  const p = await profile({ seed: ['guest-egg'] }), page = await p.open()
+  await button(page, 'Warm the egg').waitFor()
+  assert.match(await page.locator('.sl-hero').innerText(), /STAR EGG/)
+  for (let i = 0; i < 4; i++) await button(page, 'Warm the egg').click()
+  await button(page, 'Play').waitFor()
+  assert.match(await page.locator('.sl-hero').innerText(), /SPROUT/)
+  const c = await mine(page)
+  assert.equal(c.hatch.status, 'hatched'); assert.ok(JSON.parse(await page.evaluate(() => localStorage.getItem('cozmc-cozmling-v1'))).hatched)
+  assert.equal((await events(page, c.companionId)).filter(e => e.type === 'hatched').length, 1)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('a first-version Cozmling and a new adventurer live side by side, and the choice between them is remembered', async () => {
+  const p = await profile({ seed: ['wallet-cadet'], viewport: DESK }), page = await p.open()
+  await page.locator('.sl-hero h1').waitFor()
+  await page.getByRole('button', { name: 'adopt another Cozmling' }).click()                          // a preview tool: whether players may keep several is still to be decided
+  await adopt(page, { name: 'Nova', birthday: '2026-05-05' })
+  assert.equal(await page.locator('.sl-hero h1').innerText(), 'NOVA')
+  const st = await state(page)
+  assert.equal(st.companions.length, 2); assert.equal(st.companions.filter(c => c.kind === 'legacy').length, 1)
+  assert.equal(st.companions.find(c => c.kind === 'legacy').revision, 0)                              // the first one was not touched
+  const sw = page.getByRole('region', { name: 'Your Cozmlings' })
+  await sw.getByRole('button', { name: /Comet/ }).click()
+  await page.waitForFunction(() => document.querySelector('.sl-hero h1')?.textContent === 'Comet')
+  assert.equal(await page.evaluate(() => document.activeElement?.tagName), 'H1')
+  await page.reload(); await ready(page)
+  await page.locator('.sl-hero h1').waitFor()
+  assert.equal(await page.locator('.sl-hero h1').innerText(), 'COMET')
+  await shot(page, 'loft-two-cozmlings-1280', true)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('a browser that stores nothing: adoption works for the visit, and the page says it will not last', async () => {
+  const p = await profile({ noStorage: true }), page = await p.open()
+  await adopt(page, { name: 'Zib' })
+  assert.match(await page.locator('[data-save-chip]').innerText(), /THIS VISIT ONLY/)
+  assert.match(await page.locator('[data-save="visit"]').innerText(), /This visit only: this browser isn’t storing anything, so Zib won’t be here next time/)
+  assert.doesNotMatch(await page.locator('main').innerText(), /Saved on this device/i)
+  await button(page, 'Hatch now').click()
+  await button(page, 'Play').click()
+  await says(page, 'Again, again!')
+  assert.equal((await mine(page)).progress.counters.played, 1)
+  await shot(page, 'loft-visit-only-390')
+  await p.ctx.close()
+})
+
+await scenario('two tabs: an egg hatched in one is hatched in the other, and only once', async () => {
+  const p = await profile(), a = await p.open()
+  await adopt(a)
+  const b = await p.open()
+  await button(b, 'Warm the egg').waitFor()
+  await button(a, 'Hatch now').click()
+  await button(a, 'Play').waitFor()
+  await button(b, 'Play').waitFor({ timeout: 10000 })                                                  // the other tab catches up by itself
+  assert.equal(await button(b, 'Warm the egg').count(), 0)
+  const id = (await mine(a)).companionId
+  await button(b, 'Play').click()
+  await a.waitForFunction(id => window.__cozmling.getState().companions.find(c => c.companionId === id)?.progress.counters.played === 1, id, { timeout: 10000 })
+  assert.equal((await events(a, id)).filter(e => e.type === 'hatched').length, 1)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('on a 360 px phone nothing is cut off: the four care buttons, the food menu and every step of adoption fit', async () => {
+  const p = await profile({ viewport: SMALL }), page = await p.open()
+  await page.getByRole('heading', { name: 'Adopt a Cozmling' }).waitFor()
+  assert.deepEqual(await sticksOut(page), [])
+  await page.locator('#sl-bday').fill('2026-11-05'); await button(page, 'Next').click()
+  assert.deepEqual(await sticksOut(page), [])
+  await button(page, 'Next').click(); await page.locator('#sl-name').fill('Wwwwwwwwwwwwww')        // the widest name there can be
+  assert.deepEqual(await sticksOut(page), [])
+  await button(page, 'Create the Star Egg').click()
+  await button(page, 'Warm the egg').waitFor()
+  assert.deepEqual(await sticksOut(page), [])
+  await shot(page, 'loft-egg-360')
+  await button(page, 'Hatch now').click()
+  await button(page, 'Play').waitFor()
+  await page.waitForTimeout(1700)
+  assert.deepEqual(await sticksOut(page), [])
+  const acts = await page.evaluate(() => [...document.querySelectorAll('.sl-act')].map(b => { const r = b.getBoundingClientRect(); return { text: b.textContent, left: r.left, right: r.right, w: r.width, h: r.height, clipped: b.scrollWidth > b.clientWidth + 1 } }))
+  assert.deepEqual(acts.map(a => a.text), ['Feed', 'Play', 'Pat', 'Rest'])
+  for (const a of acts) assert.ok(a.left >= 0 && a.right <= 360 && a.h >= 44 && a.w >= 44 && !a.clipped, JSON.stringify(a))
+  // the four buttons sit together on one row, on screen at the same time as each other
+  assert.equal(new Set(await page.evaluate(() => [...document.querySelectorAll('.sl-act')].map(b => Math.round(b.getBoundingClientRect().top)))).size, 1)
+  await button(page, 'Feed').click()
+  const menu = await page.getByRole('menu').boundingBox()
+  assert.ok(menu.x >= 0 && menu.x + menu.width <= 360, JSON.stringify(menu))
+  await page.keyboard.press('Escape')
+  // the Cozmling itself is not covered by anything: a tap on it reaches it
+  await page.locator('.sl__screen').scrollIntoViewIfNeeded()
+  const who = await page.locator('.sl-who').boundingBox()
+  assert.ok(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.sl-who'), [who.x + who.width / 2, who.y + who.height / 2]))
+  // the identity can be read at this size: the glyph is a real drawing at least 18 px across
+  const glyph = await page.locator('.sl-hero .sl-id__sign .sl-glyph').boundingBox()
+  assert.ok(glyph.width >= 18 && glyph.height >= 18, JSON.stringify(glyph))
+  await button(page, 'Rest').click(); await button(page, 'Wake up').waitFor()                         // the longest label still fits its button
+  assert.equal(await page.getByRole('button', { name: 'Wake up', exact: true }).evaluate(b => b.scrollWidth > b.clientWidth + 1), false)
+  await shot(page, 'loft-360', true)
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await browser.close()
+console.log(`\n${results.filter(Boolean).length} of ${results.length} browser scenarios passed`)
+process.exit(results.every(Boolean) ? 0 : 1)
