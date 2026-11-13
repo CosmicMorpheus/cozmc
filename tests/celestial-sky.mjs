@@ -18,6 +18,8 @@ const fixtures = JSON.parse(readFileSync(new URL('./fixtures/legacy-local-v1.jso
 const fx = id => fixtures.find(f => f.id === id)
 const PHONE = { width: 390, height: 844 }, SMALL = { width: 360, height: 740 }, DESK = { width: 1280, height: 900 }
 const HOME = new URL(SITE).hostname
+/** The astronomy, wherever it is served from: the dev server's own files, or the built chunk on a deployed site. */
+const ENGINE_FILES = /astronomy-engine|\/celestial\/engine\.ts|\/static\/engine-[\w-]+\.js/
 
 const browser = await chromium.launch({ ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), ...(process.env.PW_PROXY ? { proxy: { server: process.env.PW_PROXY } } : {}) })
 const results = []
@@ -193,13 +195,13 @@ await scenario('first-version Cozmlings: nothing is read unless asked; a recorde
 })
 
 await scenario('if the astronomy can’t load, the egg still hatches; its sky is read from its record as soon as it can be', async () => {
-  const p = await profile({ block: '**/*astronomy-engine*' }), page = await p.open()
+  const p = await profile({ block: ENGINE_FILES }), page = await p.open()
   await adopt(page)                                                  // the calendar's sign stands in while the astronomy is missing
   await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
   const c = await mine(page)
   assert.equal(c.hatch.status, 'hatched'); assert.equal(c.celestial, undefined)
   assert.match(await page.locator('.sl-print').innerText(), /Reading the sky it was born under/)
-  await p.ctx.unroute('**/*astronomy-engine*')
+  await p.ctx.unroute(ENGINE_FILES)
   const later = await p.open()
   await later.waitForFunction(() => !!window.__cozmling.getState().companions[0].celestial, null, { timeout: 15000 })
   const read = await mine(later)
