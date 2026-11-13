@@ -8,7 +8,9 @@
    are the Cozmling's own two colours (its element's): they tint
    its sky and the glow around its scene.
    ============================================================ */
-:root { --sl-coral: #ff6f61; --sl-coral-deep: #6e2620; --sl-id-line: #1d5361; --sl-id-bg: #06171c;
+:root { --sl-coral: #ff6f61; --sl-coral-deep: #6e2620;
+  /* Nebula Cyan (Cosmic Electric Blue), the accent for who a Cozmling is and for its sky */
+  --nebula: #00bffe; --nebula-ink: #ccf2ff; --nebula-deep: #022333; --sl-id-line: #0a4d68; --sl-id-bg: #021723;
   /* planet and zodiac symbols: fonts that have them on Windows, Mac and iPhone, Android, and Linux */
   --sl-sym: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif }
 
@@ -26,20 +28,20 @@
 .sl-quarantine { max-width: 720px }
 
 /* ---------- who it is, under its own sky ---------- */
-.sl-page { --o1: #59e6ff; --o2: #0b2a4a }
+.sl-page { --o1: #00bffe; --o2: #03263a }
 .sl-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; align-content: start; justify-items: start; gap: 12px; min-height: clamp(150px, 15vw, 176px); margin-bottom: 20px; padding: clamp(16px, 2vw, 22px); border: 1px solid var(--line-2); background: #020308; box-shadow: 0 0 50px -20px var(--o1) }
 .sl-hero > .sl-sky { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; max-width: none }
 .sl-hero::after { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(1,2,6,.84) 0, rgba(1,2,6,.5) 40%, rgba(1,2,6,0) 68%) }
 .sl-hero__text { min-width: 0; max-width: 100% }
-.sl-hero .kicker { color: var(--cyan); margin-bottom: 10px; text-shadow: 1px 1px 0 #000 }
+.sl-hero .kicker { color: var(--nebula); margin-bottom: 10px; text-shadow: 1px 1px 0 #000 }
 .sl-hero h1 { font: 800 clamp(2.4rem, 4.6vw, 3.6rem)/.9 var(--sans); font-stretch: 70%; text-transform: uppercase; letter-spacing: -.01em; overflow-wrap: anywhere; text-shadow: 0 3px 0 #000, 0 0 22px #000 }
 .sl-hero h1:focus { outline: none }
 .sl-hero h1:focus-visible { outline: 2px solid var(--phos); outline-offset: 4px }
 .sl-adopt section > h2:focus { outline: none }
 .sl-hero__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px }
-.sl-id { display: contents; font: 700 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-id { display: contents; font: 700 11px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--nebula) }
 .sl-id > span { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .9) }
-.sl-id > .sl-id__sign { color: #d9f8ff; border-color: var(--cyan) }
+.sl-id > .sl-id__sign { color: var(--nebula-ink); border-color: var(--nebula) }
 .sl-id > .sl-id__born { color: var(--mist); border-color: var(--line-3); background: rgba(0, 0, 0, .78) }
 .sl-chip { position: absolute; right: clamp(12px, 2vw, 20px); top: clamp(12px, 2vw, 20px); display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border: 1px solid var(--phos-deep); background: rgba(0, 0, 0, .8); color: var(--phos); font: 700 10px/1 var(--pixel); text-transform: uppercase; letter-spacing: .05em }
 .sl-chip--visit, .sl-chip--problem { border-color: #6b4f12; color: var(--ember) }
@@ -152,17 +154,17 @@
 .sl-menu small { color: var(--dim); font: 700 10px var(--pixel); text-transform: uppercase }
 
 /* ---------- the panels ---------- */
-.sl-print { border-color: var(--sl-id-line); background: linear-gradient(160deg, var(--sl-id-bg), var(--bg-1) 58%); box-shadow: 0 0 30px -16px var(--cyan) }
-.sl-print.panel::before { border-color: var(--cyan) }
+.sl-print { border-color: var(--sl-id-line); background: linear-gradient(160deg, var(--sl-id-bg), var(--bg-1) 58%); box-shadow: 0 0 30px -16px var(--nebula) }
+.sl-print.panel::before { border-color: var(--nebula) }
 .sl-print__row { display: flex; align-items: center; gap: 22px }
 /* the sign, in a dark disc with a ring of light in the element's colours */
 .sl-medal { flex: none; display: grid; place-items: center; width: 82px; aspect-ratio: 1; margin: 8px; border-radius: 50%; background: #000; color: var(--o1); box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 0 4px var(--o1), 0 0 24px 6px var(--o1), 0 0 54px 6px var(--o2) }
 .sl-facts { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px }
 .sl-facts dt { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim) }
 .sl-facts dd { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere }
-.sl-pglyph { display: inline-block; min-width: 1.4em; font: 400 15px/1 var(--sl-sym); color: var(--cyan); text-align: center }
+.sl-pglyph { display: inline-block; min-width: 1.4em; font: 400 15px/1 var(--sl-sym); color: var(--nebula); text-align: center }
 .sl-print .panel__head .link { font-size: 11px }
-.sl-inlink { color: var(--cyan); text-decoration: underline; text-underline-offset: 3px }
+.sl-inlink { color: var(--nebula); text-decoration: underline; text-underline-offset: 3px }
 .sl-skyask { display: grid; gap: 10px; justify-items: start; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-2) }
 .sl-skyask p { color: var(--mist); font-size: 14px; line-height: 1.5; text-wrap: pretty }
 
@@ -213,7 +215,7 @@
 .sl-games { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
 .sl-game { --g: var(--sl-coral); display: grid; place-items: center; min-height: 58px; padding: 8px 6px; border: 2px solid var(--g); background: #090909; color: var(--text); text-align: center; text-decoration: none; font: 700 11px/1.3 var(--pixel); text-transform: uppercase; box-shadow: 0 0 20px -9px var(--g); transition: transform .1s, background-color .2s }
 .sl-game--brick-by-brick { --g: var(--gold) }
-.sl-game--moonshot { --g: var(--cyan) }
+.sl-game--moonshot { --g: var(--cyan) }                   /* the arcade's own colour for this game */
 .sl-game:hover { transform: translateY(-2px); background: #151515 }
 
 .sl-switch { display: grid; gap: 10px; margin-top: 30px }
@@ -254,10 +256,10 @@
 .sl-banner > .sl-sky { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; max-width: none }
 .sl-banner::after { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, rgba(1,2,6,.8) 0, rgba(1,2,6,.4) 44%, rgba(1,2,6,0) 66%) }
 .sl-banner__text { display: grid; align-content: start; gap: 8px; padding: clamp(12px, 3vw, 22px); max-width: 100% }
-.sl-banner__k { font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--cyan); text-shadow: 1px 1px 0 #000 }
+.sl-banner__k { font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula); text-shadow: 1px 1px 0 #000 }
 .sl-banner__sign { display: flex; align-items: center; gap: 10px; font: 800 clamp(2rem, 7vw, 3.2rem)/.9 var(--sans); font-stretch: 70%; text-transform: uppercase; color: var(--text); text-shadow: 0 3px 0 #000 }
 .sl-banner__sign .sl-glyph { color: var(--o1); filter: drop-shadow(0 0 6px var(--o1)) }
-.sl-banner__more { display: flex; flex-wrap: wrap; gap: 6px; font: 700 10px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--cyan) }
+.sl-banner__more { display: flex; flex-wrap: wrap; gap: 6px; font: 700 10px/1 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--nebula) }
 .sl-banner__more > span { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 8px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .9) }
 .sl-adopt section { display: grid; gap: 16px }
 .sl-adopt section > h2 { font: 800 clamp(1.6rem, 4.4vw, 2.1rem)/1 var(--sans); font-stretch: 70%; letter-spacing: 0; text-transform: uppercase; color: var(--text) }
@@ -273,8 +275,8 @@
 .sl-steps li.is-done { color: var(--mist) }
 .sl-steps li.is-done span { border-color: var(--phos-deep); background: var(--phos-deep); color: #fff }
 .sl-adopt section > p.sl-hint { min-height: 1.6em }
-.sl-adopt section > p.sl-hint b { color: var(--cyan) }
-.sl-adopt section > p.sl-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg); font: 700 11px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: .03em; color: var(--cyan); overflow-wrap: anywhere }
+.sl-adopt section > p.sl-hint b { color: var(--nebula) }
+.sl-adopt section > p.sl-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; border: 1px solid var(--sl-id-line); background: var(--sl-id-bg); font: 700 11px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: .03em; color: var(--nebula); overflow-wrap: anywhere }
 .sl-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 4px }
 
 /* ---------- the Cosmic Vortex: a living sky behind a page (components/CosmicVortex.tsx) ----------
@@ -298,7 +300,7 @@
 .sl-compact__room { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 46% 70%; filter: brightness(.7); transition: filter .8s }
 .sl-compact__who { position: absolute; left: 50%; bottom: 0; translate: -50% 0; height: 94%; width: auto; max-width: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)) }
 .sl-compact .sl-standin { position: absolute; left: 50%; bottom: 0; translate: -50% 0; height: 90% }
-.sl-compact__tag { position: absolute; left: 5px; top: 5px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .86); color: var(--cyan) }
+.sl-compact__tag { position: absolute; left: 5px; top: 5px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid var(--sl-id-line); background: rgba(3, 14, 18, .86); color: var(--nebula) }
 .sl-compact.is-night .sl-compact__room { filter: brightness(.32) saturate(.7) }
 .sl-compact.is-night .sl-compact__who, .sl-compact.is-night .sl-standin { filter: brightness(.6) }
 

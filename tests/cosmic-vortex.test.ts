@@ -70,6 +70,8 @@ test('the palette is crimson, gold and midnight, as in the references', () => {
   assert.ok(p.dust[1][0] > p.dust[1][2] * 1.5 && p.dust[1][1] > 150, 'the disk is gold')
   assert.ok(p.wash[2] > p.wash[0] * 2, 'the dark has midnight blue in it')
   assert.deepEqual(along(p.dust, 0), [...p.dust[0]]); assert.deepEqual(along(p.dust, 1), [...p.dust[p.dust.length - 1]])
+  assert.deepEqual([...p.dust[p.dust.length - 1]], [0, 191, 254], 'the disk cools to Nebula Cyan, #00BFFE')
+  assert.deepEqual([...p.streak[0]], [0, 191, 254])
 })
 
 test('no new library was added for it', () => {

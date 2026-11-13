@@ -42,7 +42,7 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
   const skySign = useMemo(() => (engine && birthday ? engine.sunSignOnBirthday(birthday, minute * 60_000) : null), [engine, birthday, minute])
   const sign = useMemo(() => (skySign ? signInfo(skySign.sign) : signFor(birthday)), [skySign, birthday])
   const cusp = skySign?.cusp ?? null
-  const sky: [string, string] = sign ? ELEMENTS[sign.element].orb : ['#59e6ff', '#0b2a4a']
+  const sky: [string, string] = sign ? ELEMENTS[sign.element].orb : ['#00bffe', '#03263a']
   const surprise = () => { const y = new Date().getFullYear(), t = Date.UTC(y, 0, 1) + Math.floor(Math.random() * 365) * 86_400_000, d = new Date(t); setBirthday(`${y}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`) }
 
   const create = async (e: FormEvent) => {

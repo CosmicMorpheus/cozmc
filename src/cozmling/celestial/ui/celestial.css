@@ -7,7 +7,7 @@
 .sk-stage { position: relative; isolation: isolate }
 .sk-head { position: relative; margin: 6px 0 clamp(18px, 3vw, 28px); max-width: 46rem }
 .sk-head::before { content: ""; position: absolute; z-index: -1; inset: -34px -48px -26px -48px; pointer-events: none; background: radial-gradient(ellipse 72% 78% at 35% 50%, rgba(2, 3, 8, .9), rgba(2, 3, 8, .66) 55%, rgba(2, 3, 8, 0) 82%) }
-.sk-head .kicker { color: var(--cyan); margin-bottom: 10px; text-shadow: 1px 1px 0 #000 }
+.sk-head .kicker { color: var(--nebula); margin-bottom: 10px; text-shadow: 1px 1px 0 #000 }
 .sk-head h1 { font: 800 clamp(2.4rem, 4.6vw, 3.6rem)/.9 var(--sans); font-stretch: 70%; text-transform: uppercase; letter-spacing: -.01em; overflow-wrap: anywhere; text-shadow: 0 3px 0 #000, 0 0 24px #000 }
 .sk-when { margin-top: 12px; color: #c9c7bf; max-width: 52rem; text-wrap: pretty; text-shadow: 0 1px 0 #000, 0 0 12px #000 }
 .sk-stage .panel { background: rgba(4, 5, 11, .86); border-color: rgba(70, 74, 100, .5) }
@@ -24,7 +24,7 @@
 .sk-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
 .sk-legend__item + .sk-legend__item::before { content: '·'; margin-right: 2px; color: var(--dim) }
 .sk-key { display: inline-block; width: 18px; height: 2px; vertical-align: middle }
-.sk-key--flow { background: var(--cyan) }
+.sk-key--flow { background: var(--nebula) }
 .sk-key--tension { background: var(--sl-coral) }
 
 /* the wheel */
@@ -47,11 +47,11 @@
 .sk-w-axis line { stroke: #4f5574; stroke-width: 1.2; stroke-dasharray: 3 3 }
 .sk-w-axis text { fill: #8fa0c8; font: 700 9px var(--pixel); text-anchor: middle; dominant-baseline: central }
 .sk-w-axis.is-main { cursor: pointer }
-.sk-w-axis.is-main line { stroke: var(--cyan); stroke-dasharray: none; stroke-width: 1.6 }
-.sk-w-axis.is-main text { fill: var(--cyan) }
+.sk-w-axis.is-main line { stroke: var(--nebula); stroke-dasharray: none; stroke-width: 1.6 }
+.sk-w-axis.is-main text { fill: var(--nebula) }
 .sk-w-axis.is-focus line { stroke-width: 3 }
 .sk-w-asp { stroke-width: 1.2; stroke-linecap: round }
-.sk-w-asp--flow { stroke: var(--cyan) }
+.sk-w-asp--flow { stroke: var(--nebula) }
 .sk-w-asp--tension { stroke: var(--sl-coral) }
 .sk-w-star { fill: #fff3c4; opacity: .85 }
 .sk-w-pl { cursor: pointer }
@@ -59,27 +59,27 @@
 .sk-w-lead { stroke: #6b7090; stroke-width: .8 }
 .sk-w-plbg { fill: #04060d; stroke: transparent; stroke-width: 1.5 }
 .sk-w-pl:hover .sk-w-plbg { stroke: var(--line-3) }
-.sk-w-pl.is-focus .sk-w-plbg { fill: #072029; stroke: var(--cyan) }
+.sk-w-pl.is-focus .sk-w-plbg { fill: var(--nebula-deep); stroke: var(--nebula) }
 .sk-w-glyph { fill: var(--text); font-size: 18px }
-.sk-w-pl.is-focus .sk-w-glyph { fill: #d9f8ff }
+.sk-w-pl.is-focus .sk-w-glyph { fill: var(--nebula-ink) }
 .sk-w-deg { fill: var(--mist); font: 500 9.5px var(--mono); text-anchor: middle; dominant-baseline: central }
 
 /* beside the wheel */
 .sk-side { display: grid; gap: 18px; min-width: 0 }
 .sk-reading { min-height: 170px; border-color: var(--sl-id-line); background: linear-gradient(160deg, var(--sl-id-bg), var(--bg-1) 60%) }
-.sk-reading.panel::before { border-color: var(--cyan) }
-.sk-reading h2 { color: var(--cyan) }
+.sk-reading.panel::before { border-color: var(--nebula) }
+.sk-reading h2 { color: var(--nebula) }
 .sk-reading p { margin-top: 10px; color: var(--mist); font-size: 15px; line-height: 1.55; text-wrap: pretty }
 .sk-table { width: 100%; border-collapse: collapse; font-size: 14.5px }
 .sk-table th, .sk-table td { padding: 4px 6px; text-align: left; border-bottom: 1px dashed var(--line-2); font-weight: 400 }
 .sk-table thead th { font: 700 10px var(--pixel); text-transform: uppercase; color: var(--dim); padding-bottom: 8px }
 .sk-table tbody th button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; color: var(--text); font-weight: 600; text-align: left }
-.sk-table tbody th button:hover { color: var(--cyan) }
-.sk-table tr.is-on { background: #072029 }
-.sk-table tr.is-on th button { color: var(--cyan) }
+.sk-table tbody th button:hover { color: var(--nebula) }
+.sk-table tr.is-on { background: var(--nebula-deep) }
+.sk-table tr.is-on th button { color: var(--nebula) }
 .sk-table td:last-child { width: 2em; text-align: center; color: var(--sl-coral) }
 .sk-table abbr { text-decoration: none; cursor: help }
-.sk-g { display: inline-block; min-width: 1.5em; font-family: var(--sl-sym); color: var(--cyan); text-align: center }
+.sk-g { display: inline-block; min-width: 1.5em; font-family: var(--sl-sym); color: var(--nebula); text-align: center }
 .sk-dms { color: var(--dim); font: 500 12px var(--mono); white-space: nowrap }
 
 /* aspects, shapes, the Moon, and how it was worked out */
@@ -87,7 +87,7 @@
 .sk-list { list-style: none; display: grid; gap: 2px }
 .sk-list button { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 42px; padding: 6px 8px; border: 1px solid transparent; color: var(--text); text-align: left }
 .sk-list button:hover { background: var(--bg-3) }
-.sk-list button.is-on { border-color: var(--sl-id-line); background: #072029 }
+.sk-list button.is-on { border-color: var(--sl-id-line); background: var(--nebula-deep) }
 .sk-list button > span:only-child, .sk-list button > span:first-child:nth-last-child(2) { grid-column: span 2 }
 .sk-list + p .link { display: inline-block; margin-top: 10px; font-size: 11px }
 .sk-moon { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: #fff6d6; box-shadow: inset calc(var(--side) * (1 - var(--lit)) * 18px) 0 0 0 #1c2133, 0 0 0 1px #3a4060 }

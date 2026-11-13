@@ -32,18 +32,18 @@ export interface VortexPalette {
   /** star tints */ stars: readonly RGB[]
   /** light streaming out of the sphere */ streak: readonly RGB[]
 }
-/** Crimson, gold and midnight. */
+/** Crimson, gold and midnight, with Nebula Cyan (#00BFFE) as the electric blue. */
 export const ORIGIN_PALETTE: VortexPalette = {
   space: [2, 2, 7],
   wash: [16, 26, 78],
   cloud: [9, 11, 30],
   edge: [222, 36, 34],
-  vein: [52, 66, 140],
-  dust: [[255, 248, 228], [255, 216, 124], [242, 164, 70], [196, 62, 44], [70, 120, 236]],
-  streak: [[150, 200, 255], [255, 255, 255], [255, 214, 140]],
+  vein: [0, 150, 205],
+  dust: [[255, 248, 228], [255, 216, 124], [242, 164, 70], [196, 62, 44], [0, 191, 254]],
+  streak: [[0, 191, 254], [255, 255, 255], [255, 214, 140]],
   rim: [232, 40, 34],
   glow: [255, 186, 92],
-  stars: [[255, 255, 255], [200, 218, 255], [255, 228, 184]],
+  stars: [[255, 255, 255], [150, 228, 255], [255, 228, 184]],
 }
 
 export interface Sphere { x: number; y: number; r: number }
