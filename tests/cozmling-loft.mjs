@@ -20,14 +20,15 @@ const fixtures = JSON.parse(readFileSync(new URL('./fixtures/legacy-local-v1.jso
 const fx = id => fixtures.find(f => f.id === id)
 const PHONE = { width: 390, height: 844 }, SMALL = { width: 360, height: 740 }, DESK = { width: 1280, height: 900 }
 
-const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {})
+const browser = await chromium.launch({ ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), ...(process.env.PW_PROXY ? { proxy: { server: process.env.PW_PROXY } } : {}) })
+const HOME = new URL(SITE).hostname            // the site under test may be a deployed preview (set PW_PROXY if it is reached through a proxy)
 const results = []
 
 /** A fresh browser profile. */
 async function profile({ seed = [], viewport = PHONE, noStorage = false, reducedMotion = 'no-preference', blockArt = false } = {}) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion })
   const errors = [], outside = []
-  await ctx.route(u => !['localhost', '127.0.0.1'].includes(new URL(u).hostname), r => { outside.push(`${r.request().method()} ${r.request().url()}`); return r.abort() })
+  await ctx.route(u => !['localhost', '127.0.0.1', HOME].includes(new URL(u).hostname), r => { outside.push(`${r.request().method()} ${r.request().url()}`); return r.abort() })
   if (blockArt) await ctx.route('**/assets/cozmling/**', r => r.abort())
   await ctx.addInitScript(({ entries, noStorage }) => {
     // did the page ever offer adoption? (it must not, while a Cozmling that exists is still loading)
