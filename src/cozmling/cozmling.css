@@ -292,7 +292,7 @@
   .sl__screen { box-shadow: 5px 5px 0 #101010, 0 0 40px -16px var(--o1) }
   .sl-status { padding: 12px }
   .sl-meters { grid-template-columns: minmax(0, 1fr); gap: 7px }
-  .sl-meter { grid-template-columns: 18px 52px minmax(0, 1fr) 40px; grid-template-areas: "icon label bar value"; padding: 8px 10px }
+  .sl-meter { grid-template-columns: 18px 66px minmax(0, 1fr) 40px; grid-template-areas: "icon label bar value"; padding: 8px 10px }
   .sl-actions { gap: 8px }
   .sl-act { min-height: 72px; font-size: 11px; letter-spacing: 0; box-shadow: 3px 3px 0 var(--sh), 0 0 20px -10px var(--phos) }
   .sl-eggacts { grid-template-columns: minmax(0, 1fr) auto }

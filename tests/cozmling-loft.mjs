@@ -383,6 +383,8 @@ await scenario('on a 360 px phone nothing is cut off: the four care buttons, the
   const acts = await page.evaluate(() => [...document.querySelectorAll('.sl-act')].map(b => { const r = b.getBoundingClientRect(); return { text: b.textContent, left: r.left, right: r.right, w: r.width, h: r.height, clipped: b.scrollWidth > b.clientWidth + 1 } }))
   assert.deepEqual(acts.map(a => a.text), ['Feed', 'Play', 'Pat', 'Rest'])
   for (const a of acts) assert.ok(a.left >= 0 && a.right <= 360 && a.h >= 44 && a.w >= 44 && !a.clipped, JSON.stringify(a))
+  // the three needs each have a label that fits its place (the longest is "Energy")
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.sl-meter__label')].filter(l => l.scrollWidth > l.clientWidth + 1).map(l => l.textContent)), [])
   // the four buttons sit together on one row, on screen at the same time as each other
   assert.equal(new Set(await page.evaluate(() => [...document.querySelectorAll('.sl-act')].map(b => Math.round(b.getBoundingClientRect().top)))).size, 1)
   await button(page, 'Feed').click()
