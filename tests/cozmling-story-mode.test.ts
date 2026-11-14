@@ -225,4 +225,10 @@ test('the preview’s test save: its own story day, advanced once per tap, reset
   assert.equal(JSON.stringify(await main.events()), before, 'the regular save is exactly as it was')
   assert.ok((await main.events()).every(e => !String(e.data?.run ?? '').startsWith('test')), 'and holds nothing from the test save')
   assert.equal((await TS.leaveTestSave(CID))!.active, false)
+  // a new test save for a Cozmling that hasn't reached the story's stage starts at that stage, so the story can begin at once
+  TS.useTestRepo(memoryRepository())
+  const young = await TS.startTestSave('test-sm-young', D, 'cadet')
+  assert.deepEqual([young.stage, young.run], ['cadet', 1])
+  assert.equal((await TS.resetTestStory('test-sm-young', D, 'cadet')).stage, 'cadet')
+  assert.equal((await TS.setTestStage('test-sm-young', null))!.stage, null, 'and the tester can still choose its own stage')
 })

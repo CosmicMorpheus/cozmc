@@ -15,7 +15,7 @@ import { localDay, playerTimeZone } from '../celestial/observatory'
 import { nameOf } from '../domain/care'
 import { originalStage } from '../integrations/originalScene'
 import type { Companion, JourneyEvent } from '../types'
-import { choiceEvent, nextVisit, type Visit } from './arc'
+import { choiceEvent, nextVisit, stageReached, type Visit } from './arc'
 import { ARCS } from './starflower'
 import * as testSave from './testSave'
 import { voiceOf } from './voices'
@@ -99,12 +99,16 @@ export function useStoryMode(c: Companion): StoryModeState {
     finally { setBusy(false); setTick(t => t + 1) }
   }, [visit, busy, save, id, c, run])
 
+  // when the Cozmling is too young for every story here, a test save starts at the youngest stage one of them needs, so a story can begin at once
+  const own = originalStage(c)
+  const needs = ARCS_HERE.some(a => stageReached(own, a.minStage)) ? null
+    : ARCS_HERE.reduce<Stage | null>((lo, a) => lo && stageReached(a.minStage, lo) ? lo : a.minStage, null)
   const act = (f: () => Promise<unknown>) => async () => { setBusy(true); try { await f() } finally { setBusy(false); setTick(t => t + 1) } }
   const testingTools: StoryModeState['testing'] = COZMLING_DEV ? {
-    start: act(() => testSave.startTestSave(id, today)),
+    start: act(() => testSave.startTestSave(id, today, needs)),
     leave: act(() => testSave.leaveTestSave(id)),
     advance: act(() => testSave.advanceTestDay(id, day)),
-    reset: act(() => testSave.resetTestStory(id, today)),
+    reset: act(() => testSave.resetTestStory(id, today, needs)),
     setStage: (s: Stage | null) => act(() => testSave.setTestStage(id, s))(),
   } : undefined
 

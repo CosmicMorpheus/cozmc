@@ -15,20 +15,24 @@ import type { StoryModeState } from './useStoryMode'
 import { voiceOf } from './voices'
 
 export function StoryModePanel({ c, story }: { c: Companion; story: StoryModeState }) {
-  const name = nameOf(c), v = story.visit, head = useRef<HTMLHeadingElement>(null)
+  const name = nameOf(c), v = story.visit, head = useRef<HTMLHeadingElement>(null), card = useRef<HTMLElement>(null)
   const sceneKey = v?.kind === 'scene' ? `${v.arc.id}:${v.scene.id}:${story.day}` : v?.kind ?? ''
   const shown = useRef(sceneKey)
   // a new scene or what followed a choice: take the reader there
   useEffect(() => { if (shown.current !== sceneKey && shown.current) head.current?.focus({ preventScroll: true }); shown.current = sceneKey }, [sceneKey])
   const testing = story.test?.active ? story.test : null
+  // a link straight to Story Mode (#/cozmling/story) opens the page at this card
+  const opened = useRef(false)
+  useEffect(() => { if (!opened.current && v && /^#\/cozmling\/story\b/.test(location.hash)) { opened.current = true; card.current?.scrollIntoView({ block: 'start' }) } }, [v])
   if (!COZMLING_DEV && (!v || v.kind === 'quiet' || v.kind === 'waiting')) return null       // nothing to tell yet
 
   const kicker = <p className="kicker">Story Mode · {dayText(story.day)}{testing ? ' · test save' : ''}</p>
   return (
-    <section className={`panel sl-sm${testing ? ' is-test' : ''}`} aria-labelledby="sl-sm-title" data-visit={v?.kind ?? 'none'} data-scene={v?.kind === 'scene' ? v.scene.id : v?.kind === 'today' ? v.last.scene : undefined} data-day={story.day}>
+    <section ref={card} id="story-mode" className={`panel sl-sm${testing ? ' is-test' : ''}`} aria-labelledby="sl-sm-title" data-visit={v?.kind ?? 'none'} data-scene={v?.kind === 'scene' ? v.scene.id : v?.kind === 'today' ? v.last.scene : undefined} data-day={story.day}>
+      {COZMLING_DEV && story.testing && testing && <TestControls name={name} own={originalStage(c)} story={story} />}
       {v ? <Body c={c} name={name} v={v} story={story} head={head} kicker={kicker} />
         : <>{kicker}<p className="sl-fine" role="status" aria-busy={story.status === 'loading'}>{story.status === 'failed' ? 'Story Mode couldn’t be opened just now. It is tried again when you come back.' : 'Opening this story day…'}</p></>}
-      {COZMLING_DEV && story.testing && <TestControls name={name} own={originalStage(c)} story={story} />}
+      {COZMLING_DEV && story.testing && !testing && <TestControls name={name} own={originalStage(c)} story={story} />}
     </section>
   )
 }
@@ -71,6 +75,9 @@ function Body({ c, name, v, story, head, kicker }: { c: Companion; name: string;
       {kicker}
       <h2 id="sl-sm-title" ref={head} tabIndex={-1}>A story is waiting</h2>
       <p className="sl-fine">When {name} becomes a {STAGE_NAME[v.stage]}, a new story begins in the Cosmic Grove, told over a few days.</p>
+      {COZMLING_DEV && story.testing && (story.test?.active
+        ? <p className="sl-cs__go"><button type="button" className="btn btn--phos btn--sm" onClick={() => void story.testing!.setStage(v.stage)} disabled={story.busy}>Start it as a {STAGE_NAME[v.stage]} (test save only)</button></p>
+        : <p className="sl-fine">To try it now, start a test story save below.</p>)}
     </>
   )
   return (

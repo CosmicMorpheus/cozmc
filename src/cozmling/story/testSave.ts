@@ -59,10 +59,10 @@ async function write(companionId: string, s: TestSave): Promise<TestSave> {
   return s
 }
 
-/** Use the test save (making one from today, at the Cozmling's own stage, the first time). */
-export const startTestSave = (companionId: string, today: string) => inTurn(async () => {
+/** Use the test save (making one from today the first time). `stage`: the growth stage a story needs, when the Cozmling hasn't reached it yet, so a test can begin at once. */
+export const startTestSave = (companionId: string, today: string, stage: Stage | null = null) => inTurn(async () => {
   const s = await readTestSave(companionId)
-  return write(companionId, s ? { ...s, active: true } : { schema: 1, active: true, run: 1, day: today, stage: null, startedAt: Date.now() })
+  return write(companionId, s ? { ...s, active: true, stage: s.stage ?? stage } : { schema: 1, active: true, run: 1, day: today, stage, startedAt: Date.now() })
 })
 /** Go back to the regular save. The test save stays as it is, for next time. */
 export const leaveTestSave = (companionId: string) => inTurn(async () => {
@@ -76,9 +76,9 @@ export const advanceTestDay = (companionId: string, fromDay: string) => inTurn(a
   return write(companionId, { ...s, day: addDays(fromDay, 1) })
 })
 /** A new run from today: its story starts again. The earlier run's events stay, unread; the regular save is untouched. */
-export const resetTestStory = (companionId: string, today: string) => inTurn(async () => {
+export const resetTestStory = (companionId: string, today: string, stage: Stage | null = null) => inTurn(async () => {
   const s = await readTestSave(companionId)
-  return write(companionId, { schema: 1, active: true, run: (s?.run ?? 0) + 1, day: today, stage: s?.stage ?? null, startedAt: Date.now() })
+  return write(companionId, { schema: 1, active: true, run: (s?.run ?? 0) + 1, day: today, stage: s?.stage ?? stage, startedAt: Date.now() })
 })
 /** The growth stage Story Mode uses in the test save (null: the Cozmling's own). The Cozmling itself doesn't change. */
 export const setTestStage = (companionId: string, stage: Stage | null) => inTurn(async () => {

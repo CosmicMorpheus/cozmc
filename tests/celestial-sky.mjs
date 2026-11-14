@@ -824,8 +824,13 @@ await scenario('Story Mode, test save: Ask for help, advance one story day, and 
   assert.deepEqual([x.visit, x.test], ['waiting', false]); assert.match(x.text + (await page.locator('.sl-sm').innerText()), /When Orbi becomes a Cadet, a new story begins/)
   const realEvents = JSON.stringify(await page.evaluate(id => window.__cozmling.events(id), id)), realCozmling = JSON.stringify(c)
   // a separate test save, at Cadet for this story only
-  await testSaveAt(page)
+  assert.match(await page.locator('.sl-sm').innerText(), /To try it now, start a test story save below\./)
+  // starting a test save begins the story straight away, at the stage it needs (Cadet), with the date and Advance at the top
+  const box = page.getByRole('group', { name: 'Story test save (preview only)' })
+  await box.getByRole('button', { name: 'Start a test story save' }).click()
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+  assert.equal(await box.getByRole('button', { name: 'Cadet', exact: true }).getAttribute('aria-pressed'), 'true')
+  assert.ok(await page.evaluate(() => document.querySelector('.sl-sm__test').compareDocumentPosition(document.querySelector('.sl-sm h2')) & Node.DOCUMENT_POSITION_FOLLOWING), 'the test controls come before the story')
   x = await sm(page)
   assert.match(x.kicker, /^Story Mode · Friday, November 13 · test save$/); assert.match(x.testDay, /Simulated story day: Friday, November 13 \(run 1\)/)
   assert.deepEqual(x.labels, ['Stay a while.', 'Ask for help.', 'Rest for now.']); assert.deepEqual([x.flower, x.lantern], ['fading', 'none'])
@@ -888,6 +893,11 @@ await scenario('Story Mode, every branch on the screen: Stay a while (shared lat
   await page.locator('.sl-sm').waitFor({ timeout: 15000 })
   await testSaveAt(page)
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+  // at its own stage (a Sprout) the story waits, and one tap starts it as a Cadet in the test save
+  await page.getByRole('group', { name: 'Story test save (preview only)' }).getByRole('button', { name: /^Its own/ }).click()
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'waiting')
+  await button(page, 'Start it as a Cadet (test save only)').click()
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
   // Stay a while
   await pickStory(page, 'stay')
   assert.match((await sm(page)).text, /the petals fold, one by one, toward the warm side of the stone/)
@@ -933,8 +943,10 @@ await scenario('Story Mode in a regular save on real days: a first-version Cadet
   await smWait(page, () => /The Fading Starflower: Ask for help\./.test(document.querySelector('.sl-memories__list')?.textContent ?? ''))
   // three days later (two story days skipped)
   await p.ctx.clock.setFixedTime(new Date('2026-11-16T17:00:00Z'))
-  await page.reload(); await page.waitForFunction(ready)
+  // opened from a direct link to Story Mode: the page opens at its card
+  await page.evaluate(() => { location.hash = '#/cozmling/story' }); await page.reload(); await page.waitForFunction(ready)
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+  await page.waitForFunction(() => Math.abs(document.querySelector('.sl-sm').getBoundingClientRect().top) < 120, null, { timeout: 5000 })
   x = await sm(page)
   assert.match(x.text, /^It has been three days since \S+ was last by the mossy stone\. The starflower has closed for the season\./)
   assert.match(x.text, /Beside the same stone stands a small brass lantern\. The lamplighter kept the promise/); assert.equal(x.lantern, 'stone')
