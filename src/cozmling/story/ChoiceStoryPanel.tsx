@@ -4,6 +4,7 @@
    good one. Only the Cozmling's voice lines depend on its Starprint. */
 import { useEffect, useRef, useState } from 'react'
 import { cozmlingStore } from '../index'
+import { newId } from '../store/util'
 import { nameOf } from '../domain/care'
 import type { Companion } from '../types'
 import { asChoiceRun, choiceEventId, runRecord, scene, type ChoiceRun, type ChoiceStory } from './choice'
@@ -14,7 +15,7 @@ const day = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 's
 export function ChoiceStoryPanel({ c, story, onKept }: { c: Companion; story: ChoiceStory; onKept?: () => void }) {
   const name = nameOf(c), who = { name, archetype: voiceOf(c) }, id = c.companionId
   const [past, setPast] = useState<{ eventId: string; run: ChoiceRun }[] | null>(null)
-  const [reading, setReading] = useState<{ picks: string[]; path: string[]; startedAt: number } | null>(null)
+  const [reading, setReading] = useState<{ picks: string[]; path: string[]; startedAt: number; nonce: string } | null>(null)
   const [kept, setKept] = useState<'saving' | 'kept' | 'failed' | null>(null)
   const head = useRef<HTMLHeadingElement>(null)
 
@@ -29,20 +30,21 @@ export function ChoiceStoryPanel({ c, story, onKept }: { c: Companion; story: Ch
   // a new scene: move the reader's focus to it
   useEffect(() => { if (reading) head.current?.focus({ preventScroll: false }) }, [reading?.path.length])
 
-  const begin = () => { setKept(null); setReading({ picks: [], path: [story.entry], startedAt: Date.now() }) }
+  const begin = () => { setKept(null); setReading({ picks: [], path: [story.entry], startedAt: Date.now(), nonce: newId().slice(0, 8) }) }
   const choose = (choiceId: string, to: string) => {
-    if (!reading) return
+    // only a choice the scene on screen offers (a second tap lands after the scene has moved on, and is ignored)
+    if (!reading || !story.nodes[reading.path[reading.path.length - 1]]?.choices?.some(ch => ch.id === choiceId)) return
     const r = { ...reading, picks: [...reading.picks, choiceId], path: [...reading.path, to] }
     setReading(r)
-    if (story.nodes[to]?.ending) void keep(r.picks, r.startedAt)
+    if (story.nodes[to]?.ending) void keep(r.picks, r.startedAt, r.nonce)
   }
-  async function keep(picks: string[], startedAt: number) {
+  async function keep(picks: string[], startedAt: number, nonce: string) {
     const store = cozmlingStore()
     if (!store) { setKept('failed'); return }
     setKept('saving')
     const first = past?.[0]?.eventId ?? null
     const run = runRecord(story, who, picks, { startedAt, finishedAt: Date.now() }, first)
-    const res = await store.keepEvent({ eventId: choiceEventId(id, story), companionId: id, type: 'choice-story', at: run.finishedAt, data: run as unknown as Record<string, unknown> }).catch(() => ({ ok: false as const }))
+    const res = await store.keepEvent({ eventId: choiceEventId(id, story, { startedAt, nonce }), companionId: id, type: 'choice-story', at: run.finishedAt, data: run as unknown as Record<string, unknown> }).catch(() => ({ ok: false as const }))
     setKept(res.ok ? 'kept' : 'failed')
     if (res.ok) onKept?.()
   }

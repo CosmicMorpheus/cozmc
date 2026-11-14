@@ -381,6 +381,19 @@
 .sl-cs__kept { margin-top: 12px; color: var(--phos); font-size: 14px }
 .sl-cs__go { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
 .sl-cs h2:focus { outline: none }
+/* Story Mode: a story told over several visits */
+.sl-sm { margin-top: 16px; padding: clamp(16px, 2.4vw, 22px); border-color: var(--sl-id-line); background: linear-gradient(165deg, #0d0a24, var(--bg-1) 55%); box-shadow: 0 0 40px -22px var(--nebula) }
+.sl-sm.panel::before { border-color: var(--nebula) }
+.sl-sm .kicker { color: var(--nebula); margin-bottom: 8px }
+.sl-sm.is-test .kicker { color: var(--ember) }
+.sl-sm h2 { font: 800 clamp(1.35rem, 2.6vw, 1.75rem)/1.05 var(--sans); font-stretch: 75%; text-transform: uppercase; letter-spacing: -.005em; color: var(--text); text-wrap: balance }
+.sl-sm h2:focus { outline: none }
+.sl-sm__visit { margin-top: 8px; font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula-ink) }
+.sl-sm__pic { display: block; width: 100%; max-width: 100%; height: auto; margin-top: 14px; border: 1px solid var(--sl-id-line); image-rendering: pixelated }
+.sl-sm__test { margin-top: 16px; padding: 12px 14px; border: 1px dashed #5a4410; background: rgba(40, 28, 4, .35) }
+.sl-sm__testhead { font: 700 10.5px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--ember) }
+.sl-sm__day { margin-top: 8px; color: var(--text); font-size: 15px }
+.sl-sm__test .chips { margin-bottom: 0 }
 
 /* ---------- where it was born (adoption): three options, a search, a surprise, and the place shown ---------- */
 .sl-bp { margin-top: 18px; padding-top: 16px; border: 0; border-top: 1px dashed var(--line-2); min-width: 0 }

@@ -781,6 +781,187 @@ await scenario('the same day, stage and story history: other Starprints and char
   console.log(`     (the same story for ${seen.length} Cozmlings: ${seen.map(x => `${x.archetype}${x.place ? ' in Reykjavík' : ''}`).join(', ')})`)
 })
 
+/* ---------------- Story Mode: stories told over several visits ---------------- */
+
+/** Story Mode as the page shows it. */
+const sm = page => page.evaluate(() => {
+  const el = document.querySelector('.sl-sm'), pic = el?.querySelector('.sl-sm__pic')
+  return el && {
+    visit: el.dataset.visit, scene: el.dataset.scene ?? null, day: el.dataset.day, test: el.classList.contains('is-test'),
+    title: el.querySelector('h2')?.textContent ?? '', kicker: el.querySelector('.kicker')?.textContent ?? '',
+    text: [...el.querySelectorAll('.sl-cs__body p:not(.sl-cs__voice)')].map(p => p.textContent).join(' '),
+    voice: [...el.querySelectorAll('.sl-cs__voice')].map(p => p.textContent),
+    choices: [...el.querySelectorAll('.sl-cs__choice')].map(b => b.dataset.choice),
+    labels: [...el.querySelectorAll('.sl-cs__choice span')].map(b => b.textContent),
+    flower: pic?.dataset.flower ?? null, lantern: pic?.dataset.lantern ?? null,
+    testDay: el.querySelector('.sl-sm__day')?.textContent ?? null,
+  }
+})
+/** The Story Mode events kept for a Cozmling: in its regular save, or in the preview's separate test database. */
+const smEvents = (page, id) => page.evaluate(id => window.__cozmling.events(id).then(es => es.filter(e => e.type === 'story-mode').map(e => e.eventId)), id)
+const testDbEvents = (page, id) => page.evaluate(id => new Promise((res, rej) => {
+  const r = indexedDB.open('cozmc-cozmling-v2-story-test'); r.onerror = () => rej(r.error)
+  r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('events')) { db.close(); return res([]) }; const q = db.transaction('events').objectStore('events').getAll(); q.onsuccess = () => { db.close(); res(q.result.filter(e => e.companionId === id).map(e => e.eventId)) } }
+}), id)
+const smWait = (page, f, arg) => page.waitForFunction(f, arg, { timeout: 20000 })
+/** Start the preview's test story save and set its story-only growth stage. */
+async function testSaveAt(page, stage = 'Cadet') {
+  const box = page.getByRole('group', { name: 'Story test save (preview only)' })
+  await box.getByRole('button', { name: 'Start a test story save' }).click()
+  await box.locator('.sl-sm__day').waitFor()
+  await box.getByRole('button', { name: stage, exact: true }).click()
+}
+const pickStory = async (page, choice) => { await page.locator(`.sl-sm [data-choice="${choice}"]`).click(); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'today') }
+const advance = async page => { const before = await page.locator('.sl-sm').getAttribute('data-day'); await button(page, 'Advance one story day').click(); await smWait(page, b => document.querySelector('.sl-sm')?.dataset.day !== b && document.querySelector('.sl-sm')?.dataset.visit !== undefined, before) }
+
+await scenario('Story Mode, test save: Ask for help, advance one story day, and the lantern is by the same stone; reloads and double taps apply nothing twice; reset leaves the real save as it was', async () => {
+  const p = await profile({ viewport: PHONE, timezoneId: 'America/New_York' })
+  await p.ctx.clock.setFixedTime(new Date('2026-11-13T17:00:00Z'))
+  const page = await hatched(p, '2026-05-05')
+  const c = await mine(page), id = c.companionId
+  await page.locator('.sl-sm').waitFor({ timeout: 15000 })
+  let x = await sm(page)
+  assert.deepEqual([x.visit, x.test], ['waiting', false]); assert.match(x.text + (await page.locator('.sl-sm').innerText()), /When Orbi becomes a Cadet, a new story begins/)
+  const realEvents = JSON.stringify(await page.evaluate(id => window.__cozmling.events(id), id)), realCozmling = JSON.stringify(c)
+  // a separate test save, at Cadet for this story only
+  await testSaveAt(page)
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+  x = await sm(page)
+  assert.match(x.kicker, /^Story Mode · Friday, November 13 · test save$/); assert.match(x.testDay, /Simulated story day: Friday, November 13 \(run 1\)/)
+  assert.deepEqual(x.labels, ['Stay a while.', 'Ask for help.', 'Rest for now.']); assert.deepEqual([x.flower, x.lantern], ['fading', 'none'])
+  assert.equal(x.voice[0], 'Something new stands out, like a fleck of gold in familiar stone.', 'its own voice (a Taurus, the Keeper)')
+  // all three choices on screen together
+  const boxes = await page.locator('.sl-sm .sl-cs__choice').evaluateAll(bs => bs.map(b => b.getBoundingClientRect()).map(r => [r.top, r.bottom]))
+  await page.locator('.sl-sm .sl-cs__choice').last().scrollIntoViewIfNeeded()
+  assert.equal(boxes.length, 3)
+  await shot(page, 'story-mode-visit1-390')
+  await pickStory(page, 'ask')
+  x = await sm(page)
+  assert.match(x.text, /“A starflower by the mossy stone\? I can bring a lantern,” says the lamplighter, “but not until my route is done\./)
+  assert.match(await page.locator('.sl-sm').innerText(), /Advance one story day to see what happens next\./)
+  assert.equal(x.lantern, 'none')
+  // advance one story day: the promise falls due, and the lantern stands beside the same stone
+  await advance(page)
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+  x = await sm(page)
+  assert.match(x.testDay, /Saturday, November 14/); assert.deepEqual([x.flower, x.lantern], ['curled', 'stone'])
+  assert.match(x.text, /Beside the same stone stands a small brass lantern, its glass still warm\. The lamplighter kept the promise, once the route was done\./)
+  assert.match(x.text, /“Where did that lantern come from\?”/)
+  await shot(page, 'story-mode-lantern-390')
+  // reload: the same day, the same scene, nothing kept twice
+  await page.reload(); await page.waitForFunction(ready); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+  assert.equal((await testDbEvents(page, id)).filter(e => e.endsWith(':keep-lantern')).length, 1)
+  // a double tap on a choice: kept once
+  await page.locator('.sl-sm [data-choice="tell"]').dblclick()
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'today')
+  assert.equal((await testDbEvents(page, id)).filter(e => e.endsWith(':lantern')).length, 1)
+  // a double tap on Advance: one story day, and the follow-up's effects once
+  await button(page, 'Advance one story day').dblclick()
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'return')
+  await page.waitForTimeout(300)
+  x = await sm(page)
+  assert.match(x.testDay, /Sunday, November 15/, 'one day, not two')
+  assert.match(x.text, /“When I came with the lantern, the petals were already curled,” they say\. “I think the frost got here first\. I can’t be sure\.”/)
+  assert.deepEqual(x.choices, ['leave', 'back'])
+  await pickStory(page, 'leave')
+  assert.equal((await sm(page)).lantern, 'path')
+  // reset: a new run from today; the real save is exactly as it was
+  await button(page, 'Reset test story').click()
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+  assert.match((await sm(page)).testDay, /Friday, November 13 \(run 2\)/)
+  await button(page, 'Back to the real save').click()
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'waiting')
+  assert.equal(JSON.stringify(await page.evaluate(id => window.__cozmling.events(id), id)), realEvents, 'the real save’s story is untouched')
+  assert.equal(JSON.stringify(await mine(page)), realCozmling, 'and so is the Cozmling')
+  assert.deepEqual(await smEvents(page, id), [])
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('Story Mode, every branch on the screen: Stay a while (shared later, across a reload) and Rest for now (a skipped day, a catch-up, the walk back together)', async () => {
+  const p = await profile({ viewport: PHONE, timezoneId: 'America/New_York' })
+  await p.ctx.clock.setFixedTime(new Date('2026-11-13T17:00:00Z'))
+  const page = await hatched(p, '2026-11-05')
+  await page.locator('.sl-sm').waitFor({ timeout: 15000 })
+  await testSaveAt(page)
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+  // Stay a while
+  await pickStory(page, 'stay')
+  assert.match((await sm(page)).text, /the petals fold, one by one, toward the warm side of the stone/)
+  await page.reload(); await page.waitForFunction(ready); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'today')
+  assert.match(await page.locator('.sl-sm').innerText(), /you chose: Stay a while\./i, 'kept across a reload')
+  await advance(page); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'share')
+  assert.match((await sm(page)).text, /“I didn’t see you all evening,” it says\. “What happened here\?”/)
+  await pickStory(page, 'show')
+  await advance(page); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'sketch')
+  let x = await sm(page)
+  assert.match(x.text, /In its sketch, the petals fold toward the warm side of the stone[\s\S]*Its friend adds the stream and the moss/); assert.equal(x.flower, 'seeds')
+  await pickStory(page, 'keep')
+  assert.match(await page.locator('.sl-sm').innerText(), /The end of The Fading Starflower\./)
+  await advance(page); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'quiet')
+  // Rest for now, after a reset, with a story day skipped
+  await button(page, 'Reset test story').click(); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+  await pickStory(page, 'rest')
+  await advance(page); await advance(page)
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'walk')
+  x = await sm(page)
+  assert.match(x.text, /^It has been two days since Orbi was last by the mossy stone\. The starflower has closed for the season\./)
+  assert.match(x.text, /“Shall we walk back together, like we said\?”/); assert.equal(x.labels[0], 'Walk back together, the long way round.')
+  await pickStory(page, 'walk')
+  await advance(page); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'next')
+  assert.match((await sm(page)).text, /On the way back, its friend asks, “Where should we go next time\?”/)
+  await pickStory(page, 'moon')
+  assert.deepEqual(await sticksOut(page), [])
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('Story Mode in a regular save on real days: a first-version Cadet asks for help, comes back three days later, finds the lantern, and it is kept once and remembered', async () => {
+  const cadet = fx('wallet-cadet')
+  const p = await profile({ seed: [[cadet.storageKey, cadet.raw]], viewport: DESK, timezoneId: 'America/New_York' })
+  await p.ctx.clock.setFixedTime(new Date('2026-11-13T17:00:00Z'))
+  let page = await p.open()
+  await page.locator('.sl-sm').waitFor({ timeout: 15000 })
+  const id = (await mine(page)).companionId
+  let x = await sm(page)
+  assert.deepEqual([x.scene, x.test], ['find', false]); assert.match(x.kicker, /^Story Mode · Friday, November 13$/)
+  await pickStory(page, 'ask')
+  assert.deepEqual(await smEvents(page, id), [`sm:${id}:main:starflower:find`])
+  await smWait(page, () => /The Fading Starflower: Ask for help\./.test(document.querySelector('.sl-memories__list')?.textContent ?? ''))
+  // three days later (two story days skipped)
+  await p.ctx.clock.setFixedTime(new Date('2026-11-16T17:00:00Z'))
+  await page.reload(); await page.waitForFunction(ready)
+  await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+  x = await sm(page)
+  assert.match(x.text, /^It has been three days since \S+ was last by the mossy stone\. The starflower has closed for the season\./)
+  assert.match(x.text, /Beside the same stone stands a small brass lantern\. The lamplighter kept the promise/); assert.equal(x.lantern, 'stone')
+  await page.reload(); await page.waitForFunction(ready); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+  assert.deepEqual((await smEvents(page, id)).sort(), [`sm:${id}:main:starflower:find`, `sm:${id}:main:starflower:keep-lantern`].sort(), 'the promise kept once, however often the page is opened')
+  assert.match(await page.locator('.sl-memories__list').innerText(), /The lamplighter left a lantern by the mossy stone, after the route\./)
+  assert.equal(await page.getByRole('button', { name: 'Advance one story day' }).count(), 0, 'no test day in the regular save')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('Story Mode across Starprints: two signs on the same day, at the same stage, with the same history, get the same scenes and choices, in their own voices', async () => {
+  const seen = []
+  for (const birthday of ['2026-04-05', '2026-10-05']) {
+    const p = await profile({ viewport: PHONE, timezoneId: 'America/New_York' })
+    await p.ctx.clock.setFixedTime(new Date('2026-11-13T17:00:00Z'))
+    const page = await hatched(p, birthday)
+    await page.locator('.sl-sm').waitFor({ timeout: 15000 })
+    await testSaveAt(page)
+    await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'find')
+    const v1 = await sm(page)
+    await pickStory(page, 'ask'); await advance(page); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+    seen.push({ v1, v2: await sm(page) })
+    await p.ctx.close()
+  }
+  const plain = x => ({ scene: x.scene, text: x.text, choices: x.choices, flower: x.flower, lantern: x.lantern })
+  assert.deepEqual(plain(seen[0].v1), plain(seen[1].v1)); assert.deepEqual(plain(seen[0].v2), plain(seen[1].v2))
+  assert.notDeepEqual(seen[0].v1.voice, seen[1].v1.voice); assert.notDeepEqual(seen[0].v2.voice, seen[1].v2.voice)
+})
+
 await browser.close()
 console.log(`\n${results.filter(Boolean).length} of ${results.length} browser scenarios passed`)
 process.exit(results.every(Boolean) ? 0 : 1)

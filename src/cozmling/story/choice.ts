@@ -7,10 +7,10 @@
    - Every route reaches a safe ending with a friend nearby. No route earns a reward, a rank, a
      badge or a teaching; nothing in the care meters, growth, scores or tokens changes.
    - A finished story is kept as one 'choice-story' event with the text exactly as shown and both
-     choices, so a later edit of the story never changes what was read. Reading it again is a new
-     event that points to the first; the first is never overwritten.
+     choices, so a later edit of the story never changes what was read. Its id comes from the moment
+     the reading began, so a choice pressed twice is kept once. Reading it again is a new event that
+     points to the first; the first is never overwritten.
    ============================================================ */
-import { newId } from '../store/util'
 import { voiceLine, type Archetype, type VoiceMoment } from './voices'
 
 export interface StoryChoice { id: string; label: string; to: string }
@@ -122,8 +122,9 @@ export interface ChoiceRun {
   replayOf: string | null
 }
 
-/** The id a finished story is kept under. The random part keeps two readings (or two devices' readings, merged) apart. */
-export const choiceEventId = (companionId: string, story: Pick<ChoiceStory, 'id' | 'version'>) => `choice:${companionId}:${story.id}@${story.version}:${newId()}`
+/** The id a finished reading is kept under: one per reading (from the moment it began), so a choice pressed twice, or a
+    retried save, is kept once, while two readings (or two devices' readings, merged) stay apart. */
+export const choiceEventId = (companionId: string, story: Pick<ChoiceStory, 'id' | 'version'>, reading: { startedAt: number; nonce: string }) => `choice:${companionId}:${story.id}@${story.version}:${reading.startedAt.toString(36)}-${reading.nonce}`
 
 /** The record of one reading, from the choices made. Throws if the choices don't make a route to an ending. */
 export function runRecord(story: ChoiceStory, who: Who, picks: string[], times: { startedAt: number; finishedAt: number }, replayOf: string | null = null): ChoiceRun {

@@ -174,8 +174,44 @@ How it stays permanent:
 
 - **The Bridge After the Rain.** Rain has loosened two planks of the bridge the Cozmling built. After its friend arrives, it has a line of its own (one per archetype, from the zodiac writing review), and then the player chooses: look closely, ask a friend to help make a new plan, or rest together. Each leads to a second choice and one of four safe endings, with a friend nearby, an invitation and a reflection. Where three routes meet in "A new plan", its first line says which way you came.
 - **The same for everyone.** Scenes, choices and endings are identical for every Starprint and stage; only the voice lines differ (the opening, and its line for noticing, asking for help, resting and a small win). Nothing is rewarded or lost.
-- **Kept as it was read.** A finished reading is one `choice-story` event, `choice:<companionId>:<storyId>@<version>:<random>`, with the scenes passed, both choices and their wording, the ending, every paragraph as shown and the choices offered. Reading it again is a new event that points to the first.
+- **Kept as it was read.** A finished reading is one `choice-story` event, `choice:<companionId>:<storyId>@<version>:<started>-<nonce>`, with the scenes passed, both choices and their wording, the ending, every paragraph as shown and the choices offered. Its id is fixed when the reading begins, so a choice pressed twice is kept once. Reading it again is a new event that points to the first.
 - **A draft for now.** It shows only on the preview site and in local work. A reading left halfway isn't kept; it starts again from the beginning. There is no notes box yet.
+
+## Story Mode: stories told over several visits
+
+`story/world.ts` (what the game remembers), `story/arc.ts` (scenes and the director), `story/starflower.ts` (the first arc), `story/useStoryMode.ts` and `story/StoryModePanel.tsx` (on the Star Loft page, under the bridge).
+
+- **One visit a story day.** A story day is the player's own calendar day, the same boundary as the daily story. Once a choice is made, the page shows what followed until the next story day.
+- **Choices carried forward, in saved game state.** Everything that happens is one `story-mode` event with a stable id: `sm:<companionId>:<run>:<arc>:<scene>` for a choice, `sm:<companionId>:<run>:<arc>:keep-<promise>` for the world keeping a promise. The store keeps an id only once, so pressing a choice twice, refreshing or a second tab applies its effects once. The world is worked out from these events in order:
+  - what each character saw, heard or guessed, and from whom;
+  - promises: by whom, to whom, the day they fall due, kept or still open;
+  - where objects are; offers for a later visit; threads a later story can pick up;
+  - for each arc: the day it began, which way it went, every visit and choice, the day it ended.
+- **The world's own rules.** When a story day begins, a promise that has fallen due is kept, on the day it fell due, once. The starflower's frost and seeds follow the days alone, the same for every player and choice.
+- **The director** picks the visit: today's choice if one was made; otherwise an arc under way whose next scene is due (one with something new to see first); otherwise a new arc whose growth stage the Cozmling has reached (`minStage`); otherwise a word about the stage a story is waiting for, or a quiet day. Two or more story days away gives a short catch-up.
+- **Characters with a point of view.** The lamplighter wants to help but has an evening route to finish, and promises a lantern for afterwards. Arriving after the frost, they see the curled petals and can only guess why. Its friend, if it was elsewhere, asks what happened. Each line comes from what that character saw, heard or promised.
+- **The same for every Starprint.** The director, the scenes, the choices and their effects read the world, the story day and the growth stage only, never the sign, the chart or any notes. The Starprint fills in voice lines (`story/voices.ts`). Journaling stays optional, and nothing private is read.
+- **The Fading Starflower** (a draft, at Cadet stage or older), over three visits:
+
+  | First visit | Next visit | Last visit |
+  |---|---|---|
+  | **Stay a while:** it sees the petals fold toward the warm side of the stone (an observation) | Its friend, who was elsewhere, asks what happened: show it the fold, or keep it for later | The fold is in its sketch of the stone |
+  | **Ask for help:** the lamplighter promises a lantern after the route (a promise, due the next day) | The lantern stands beside the same stone, in the scene and the picture; its friend asks where it came from | The lamplighter, who saw the curled petals, asks whether to leave the lantern for the path home or take it back |
+  | **Rest for now:** its friend sits with it and offers to walk home together next time (an offer) | That offer is a new choice: walk back together, or stay a little longer | On the walk, where to go next time (a thread for a later story) |
+
+  The flower is curled by frost on the second day and has gone to seed by the third, whatever was chosen. Every visit ends at a natural place to stop.
+- **Old saves.** A save with no Story Mode events is an empty world: nothing to migrate.
+
+### The preview's test save
+
+On the preview site (and in local work), the Story Mode card has a dashed box, **Story test save · preview only**:
+- **Start a test story save:** Story Mode then plays in a separate IndexedDB database (`cozmc-cozmling-v2-story-test`). Its story and its simulated story day, shown next to the controls, are kept there, one per Cozmling. The Cozmling's real save, its story and its Memories are never touched, and the test save is never exported.
+- **Advance one story day:** the simulated day moves on by one, and Story Mode runs as normal: due promises are kept, the next scene is chosen, and the next choice waits. The same advance tried twice (a double tap, a retry) moves one day.
+- **Reset test story:** a new run from today; the earlier run is left unread.
+- **Growth stage for this test story:** lets a new Cozmling reach the Cadet story without growing; the Cozmling itself doesn't change.
+- **Back to the real save:** Story Mode reads the regular save again.
+
+None of this is in a production build: the controls, the test database and the code behind them are left out (`COZMLING_DEV`), as is every draft story.
 
 ## The zodiac writing review (November 13, 2026)
 
@@ -236,7 +272,9 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
   - Sources: an editorial theme for a date, the licensed slot off, a failing source skipped.
   - 126 stories (21 days, three states, two Cozmlings) checked for forecasting words and template slips.
 - **`npm test` → `tests/cozmling-choice-story.test.ts`.** The bridge: six routes and four endings with no dead ends; three first choices with openings that start none of them; the same scenes, choices and endings for all twelve archetypes, only the voice lines differing; the three routes into "A new plan" kept as three different records; a reading kept exactly as shown; the 72 voice lines.
+- **`npm test` → `tests/cozmling-story-mode.test.ts`.** Every starflower route (12) in three visits, each ending at a place to stop; the lamplighter's promise kept the next day, once, with the lantern by the same stone and the lamplighter's own view; Stay a while shared later by a friend who was elsewhere; Rest for now's offer as a new choice; skipped visits with a catch-up and the promise kept on its due day; a choice pressed twice applied once; all twelve Starprints (and none) with the same scenes, choices and outcomes and twelve voices; the Cadet stage rule and old saves; the test save's advance, reset and separation.
 - **`npm test` → `tests/celestial-words.test.ts`.** Every sky reading, for 40 charts, every sign, house, kind of aspect and pattern, read as complete sentences with nothing unfilled and no forecast; the ten "today" fragments in both frames; the review's wording as shown.
+- **`tests/celestial-sky.mjs`**, in a real browser, Story Mode: Ask for help, advance one story day and find the lantern, with reloads and double taps on choices and on Advance applying nothing twice, and Reset leaving the real save exactly as it was; Stay a while across a reload; Rest for now with a skipped day; a first-version Cadet's regular save on real days (three days away, the lantern kept once and in its Memories); two signs with the same scenes and choices in their own voices.
 - **`tests/celestial-sky.mjs`**, in a real browser:
   - hatch → sky → reload;
   - the observatory at 360 px and on a desktop, by tap and by keyboard;
@@ -298,6 +336,7 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 - **A day follows the device.** Its clock and time zone are trusted. Changing time zone mid-day starts a new day's report for the new zone.
 - **Each device reads its own report.** There is no server, so two devices work the same report out separately. They agree, because nothing is random.
 - **No arcade or journal links yet.** That is MVP 4.
+- **Story Mode has one arc so far** (a draft, on the preview only). The starflower's outcome is the same for everyone by design; weather or other world rules could vary it later. Model-written lines are not used: every line is authored.
 - **Two Cozmlings at the same stage with the same story history share the day's story.** Their voice lines and sky readings differ. Before November 14, 2026, each Cozmling's id also varied the lines.
 - **Placidus houses are not offered.** Whole-sign only for now. Another house system would be a new `houseSystem` value, and saved charts would keep theirs.
 - **A town not in the atlas** can't be chosen; the nearest bigger town gives nearly the same chart (the Rising sign moves about 1° for every 4 minutes of longitude).
@@ -313,8 +352,9 @@ These follow the brief's own order.
 1. ~~**MVP 2, Living Sky.**~~ Built: see above.
 2. ~~**MVP 3, Living Story.**~~ Built: see above.
 3. **MVP 4, Shared Journey.** Arcade, care and milestones in a Star Journal, with each story read and every choice made.
-
-**Stories ahead (direction, not built).** As Cozmlings grow older, their choices can carry consequences into later stories: a friend remembers a promise, a place shows how it changed, two friends revisit a decision. Cozmlings at the same stage with the same story history always get the same options, across every Starprint; the player can see what a choice changed and has room to reconsider; resting and setting a boundary stay worthwhile answers. The bridge is the gentle first step, where every route is equally good. Any cost, survival rule or saved consequence needs its own design first; none is in the care system.
+   - **Started: Story Mode** (above). Choices carry consequences into later visits through saved game state; the first arc, The Fading Starflower, is playable on the preview, with a test save to advance the story day.
+   - **Still to come:** the Star Journal page itself (story history, read as it was), more arcs at each growth stage, arcade runs and care milestones in the journal (these need rebuild step 3: arcade runs counting for adventurers).
+   - **Direction:** as Cozmlings grow older, their choices can carry consequences into later stories: a friend remembers a promise, a place shows how it changed, two friends revisit a decision. Cozmlings at the same stage with the same story history always get the same options, across every Starprint; the player can see what a choice changed and has room to reconsider; resting and setting a boundary stay worthwhile answers. Any cost to care, survival rule or effect on growth needs its own design first; none is in the care system.
 4. **MVP 5.** "Then × now" overlays, and a slot for a licensed horoscope feed through a `DailyAstrologySource`. Nothing is copied or scraped.
 
 Rewards tied to the sky stay switched off until they are reviewed. Nothing here ever changes prizes, scores, tickets or token amounts.

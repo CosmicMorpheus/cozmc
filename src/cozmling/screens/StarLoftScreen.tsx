@@ -30,6 +30,8 @@ import { bigThree, todayHeadline } from '../celestial/interpret'
 import { StoryPanel } from '../story/StoryPanel'
 import { ChoiceStoryPanel } from '../story/ChoiceStoryPanel'
 import { BRIDGE } from '../story/bridge'
+import { StoryModePanel } from '../story/StoryModePanel'
+import { useStoryMode } from '../story/useStoryMode'
 import { useDailyStory, type DailyStoryState } from '../story/useDailyStory'
 import { POINTS } from '../celestial/zodiac'
 import { isDefaultPlace, placePhrase } from '../celestial/birthplace'
@@ -117,6 +119,8 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
   const today = useDailyStory(c)
   // a story read is kept as a memory without changing the Cozmling itself: tell Memories to look again
   const [memTick, setMemTick] = useState(0)
+  // Story Mode: stories told over several visits, worked out from its saved story
+  const storyMode = useStoryMode(c)
   // the egg's buttons are gone once it hatches: hand the keyboard to the first care button
   useEffect(() => { if (hatched && hatchedHere.current) { hatchedHere.current = false; document.getElementById('sl-feed-btn')?.focus({ preventScroll: true }) } }, [hatched])
   const warm = () => {
@@ -182,6 +186,7 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
           <p className="sl-fine">Needs run down over about a day, even while you’re away. {name} never dies; a neglected Cozmling just gets hungry, bored or sleepy.</p>
           <StoryPanel c={c} today={today} />
           {hatched && (BRIDGE.status === 'approved' || COZMLING_DEV) && <ChoiceStoryPanel c={c} story={BRIDGE} onKept={() => setMemTick(n => n + 1)} />}
+          {hatched && <StoryModePanel c={c} story={storyMode} />}
         </div>
 
         <aside className="sl__side" aria-label={`About ${name}`}>
@@ -208,7 +213,7 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
         <div className="sl__more">
           <div className="panel sl-mempanel">
             <header className="panel__head"><h2>Memories</h2></header>
-            <MemoriesPanel companionId={id} name={name} revision={c.revision} refresh={memTick} />
+            <MemoriesPanel companionId={id} name={name} revision={c.revision} refresh={memTick + (storyMode.world?.run === 'main' ? storyMode.world.log.length : 0)} />
           </div>
 
           {COZMLING_DEV && c.kind === 'adventurer' && hatched && (

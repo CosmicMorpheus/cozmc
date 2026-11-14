@@ -88,8 +88,10 @@ test('where routes meet, the ending says how you got there; each reading is kept
   // reading it again is a new record that points to the first
   const again = runRecord(BRIDGE, who, ['A', 'A2'], times, 'choice:first')
   assert.equal(again.replayOf, 'choice:first')
-  const id1 = choiceEventId('c1', BRIDGE), id2 = choiceEventId('c1', BRIDGE)
-  assert.match(id1, /^choice:c1:bridge-after-rain@draft-0\.3:/); assert.notEqual(id1, id2)
+  const r1 = { startedAt: 1_700_000_000_000, nonce: 'a1b2c3d4' }, id1 = choiceEventId('c1', BRIDGE, r1)
+  assert.match(id1, /^choice:c1:bridge-after-rain@draft-0\.3:/)
+  assert.equal(choiceEventId('c1', BRIDGE, { ...r1 }), id1, 'the same reading saved twice (a double tap, a retry) has one id, so it is kept once')
+  assert.notEqual(choiceEventId('c1', BRIDGE, { startedAt: r1.startedAt, nonce: 'e5f6a7b8' }), id1, 'two readings, two records, even begun in the same millisecond')
   assert.throws(() => runRecord(BRIDGE, who, ['A'], times)); assert.throws(() => runRecord(BRIDGE, who, ['A', 'Z'], times))
   // nothing in a reading is a reward, a score or a rank
   assert.deepEqual(Object.keys(c2).sort(), ['choices', 'ending', 'finishedAt', 'path', 'provenance', 'replayOf', 'schema', 'shown', 'startedAt', 'storyId', 'title', 'version'])

@@ -10,6 +10,7 @@ const WHAT: Record<JourneyEvent['type'], (name: string, e: JourneyEvent) => stri
   'arcade-run': n => `You played the arcade with ${n}`, customized: n => `${n} got a new look`, 'wallet-linked': n => `${n} was linked to a wallet`, imported: n => `${n} arrived from a save file`,
   'sky-read': n => `You read the sky over ${n}`,
   story: (n, e) => `${n}’s story: ${typeof e.data?.title === 'string' ? e.data.title : 'a day under the stars'}`,
+  'story-mode': (n, e) => typeof e.data?.note === 'string' ? e.data.note : `You and ${n}, ${typeof e.data?.title === 'string' ? e.data.title : 'a story'}: ${(e.data?.choice as { label?: unknown } | undefined)?.label ?? 'a choice'}`,
   'choice-story': (n, e) => { const end = (e.data?.ending as { title?: unknown } | undefined)?.title; return `You and ${n} read “${typeof e.data?.title === 'string' ? e.data.title : 'a story'}”${typeof end === 'string' ? `: ${end}` : ''}${e.data?.replayOf ? ' (again)' : ''}` },
 }
 const FIRST = 5
