@@ -2,7 +2,9 @@
    One scene a story day, every choice on screen, then what followed and a natural place to stop.
    What changed since last time shows in the scene: a character's words, an object by the stone, a new
    choice. Only the Cozmling's voice lines depend on its Starprint. On the preview site, a dashed box
-   holds the test save's controls: a simulated story day, Advance one story day, Reset test story. */
+   holds the test save's controls: a simulated story day, Advance one story day, Reset test story; and
+   Advance one story day is offered again under what followed a choice, where a phone reader already is.
+   After a tap in the card, the start of what follows is brought into view. */
 import { useEffect, useRef } from 'react'
 import { STAGE_NAME, type Stage } from '../../companion/look'
 import { dayText } from '../celestial/daily'
@@ -15,7 +17,7 @@ import type { StoryModeState } from './useStoryMode'
 import { voiceOf } from './voices'
 
 export function StoryModePanel({ c, story }: { c: Companion; story: StoryModeState }) {
-  const name = nameOf(c), v = story.visit, head = useRef<HTMLHeadingElement>(null), card = useRef<HTMLElement>(null)
+  const name = nameOf(c), v = story.visit, head = useRef<HTMLHeadingElement>(null), card = useRef<HTMLElement>(null), top = useRef<HTMLParagraphElement>(null)
   const sceneKey = v?.kind === 'scene' ? `${v.arc.id}:${v.scene.id}:${story.day}` : v?.kind ?? ''
   const shown = useRef(sceneKey)
   // a new scene or what followed a choice: take the reader there
@@ -24,11 +26,22 @@ export function StoryModePanel({ c, story }: { c: Companion; story: StoryModeSta
   // a link straight to Story Mode (#/cozmling/story) opens the page at this card
   const opened = useRef(false)
   useEffect(() => { if (!opened.current && v && /^#\/cozmling\/story\b/.test(location.hash)) { opened.current = true; card.current?.scrollIntoView({ block: 'start' }) } }, [v])
+  // after a tap in this card (a choice, a test day, a stage), what follows is read from its first line: brought
+  // into view, below the site's header, if it starts above the screen or low on it. Never on its own (a new day at midnight).
+  const acted = useRef(0), view = `${sceneKey}|${story.day}|${story.test?.run ?? ''}|${story.test?.active ?? ''}`, seen = useRef(view)
+  useEffect(() => {
+    if (seen.current === view) return
+    seen.current = view
+    if (Date.now() - acted.current > 5000 || !top.current) return
+    acted.current = 0
+    const pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0, y = top.current.getBoundingClientRect().top
+    if (y < pad || y > innerHeight / 2) top.current.scrollIntoView({ block: 'start' })
+  }, [view])
   if (!COZMLING_DEV && (!v || v.kind === 'quiet' || v.kind === 'waiting')) return null       // nothing to tell yet
 
-  const kicker = <p className="kicker">Story Mode · {dayText(story.day)}{testing ? ' · test save' : ''}</p>
+  const kicker = <p className="kicker" ref={top}>Story Mode · {dayText(story.day)}{testing ? ' · test save' : ''}</p>
   return (
-    <section ref={card} id="story-mode" className={`panel sl-sm${testing ? ' is-test' : ''}`} aria-labelledby="sl-sm-title" data-visit={v?.kind ?? 'none'} data-scene={v?.kind === 'scene' ? v.scene.id : v?.kind === 'today' ? v.last.scene : undefined} data-day={story.day}>
+    <section ref={card} id="story-mode" className={`panel sl-sm${testing ? ' is-test' : ''}`} aria-labelledby="sl-sm-title" data-visit={v?.kind ?? 'none'} data-scene={v?.kind === 'scene' ? v.scene.id : v?.kind === 'today' ? v.last.scene : undefined} data-day={story.day} onClickCapture={e => { if ((e.target as Element).closest('button')) acted.current = Date.now() }}>
       {COZMLING_DEV && story.testing && testing && <TestControls name={name} own={originalStage(c)} story={story} />}
       {v ? <Body c={c} name={name} v={v} story={story} head={head} kicker={kicker} />
         : <>{kicker}<p className="sl-fine" role="status" aria-busy={story.status === 'loading'}>{story.status === 'failed' ? 'Story Mode couldn’t be opened just now. It is tried again when you come back.' : 'Opening this story day…'}</p></>}
@@ -38,7 +51,10 @@ export function StoryModePanel({ c, story }: { c: Companion; story: StoryModeSta
 }
 
 function Body({ c, name, v, story, head, kicker }: { c: Companion; name: string; v: Visit; story: StoryModeState; head: React.RefObject<HTMLHeadingElement | null>; kicker: React.ReactNode }) {
-  const next = COZMLING_DEV && story.test?.active ? 'Advance one story day to see what happens next.' : 'Come back tomorrow to see what happens next.'
+  const test = COZMLING_DEV && story.testing && story.test?.active ? story.testing : null
+  const next = test ? 'In the test save, see what happens next:' : 'Come back tomorrow to see what happens next.'
+  // in the test save, the next story day is offered right here too (on a phone, the box at the top is far above)
+  const advanceHere = test && <p className="sl-cs__go sl-sm__next"><button type="button" className="btn btn--phos btn--sm" onClick={() => void test.advance()} disabled={story.busy}>Advance one story day</button></p>
   if (v.kind === 'scene') {
     const r = render(v.arc, v.scene, v.ctx, { name, archetype: voiceOf(c) })
     return (
@@ -67,6 +83,7 @@ function Body({ c, name, v, story, head, kicker }: { c: Companion; name: string;
         <div className="sl-cs__body" aria-live="polite">{(shown?.outcome ?? []).map((t, i) => <p key={i}>{t}</p>)}</div>
         <p className="sl-cs__kept" role="status"><span aria-hidden="true">✓</span> Kept in {name}’s story.</p>
         <p className="sl-fine">{done ? <>The end of {v.arc.title}. Something new may begin another day.</> : next}</p>
+        {advanceHere}
       </>
     )
   }
@@ -85,6 +102,7 @@ function Body({ c, name, v, story, head, kicker }: { c: Companion; name: string;
       {kicker}
       <h2 id="sl-sm-title" ref={head} tabIndex={-1}>A quiet day in the Grove</h2>
       <p className="sl-fine">{v.finished.length ? <>{v.finished.map(a => a.title).join(', ')}: told and kept. Nothing new by the mossy stone today.</> : <>Nothing new today.</>}</p>
+      {advanceHere}
     </>
   )
 }

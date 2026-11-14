@@ -812,7 +812,11 @@ async function testSaveAt(page, stage = 'Cadet') {
   await box.getByRole('button', { name: stage, exact: true }).click()
 }
 const pickStory = async (page, choice) => { await page.locator(`.sl-sm [data-choice="${choice}"]`).click(); await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'today') }
-const advance = async page => { const before = await page.locator('.sl-sm').getAttribute('data-day'); await button(page, 'Advance one story day').click(); await smWait(page, b => document.querySelector('.sl-sm')?.dataset.day !== b && document.querySelector('.sl-sm')?.dataset.visit !== undefined, before) }
+const testBox = page => page.getByRole('group', { name: 'Story test save (preview only)' })
+/** Advance the test save one story day: from its box at the top of the card or, `here`, from under what followed a choice. */
+const advance = async (page, here = false) => { const before = await page.locator('.sl-sm').getAttribute('data-day'); await (here ? page.locator('.sl-sm__next') : testBox(page)).getByRole('button', { name: 'Advance one story day', exact: true }).click(); await smWait(page, b => document.querySelector('.sl-sm')?.dataset.day !== b && document.querySelector('.sl-sm')?.dataset.visit !== undefined, before) }
+/** The story's first line (its kicker) is on the screen, in the top half: what follows a tap is read from its start. */
+const storyInView = async (page, what) => { const [y, h] = await page.evaluate(() => [Math.round(document.querySelector('.sl-sm .kicker').getBoundingClientRect().top), innerHeight]); assert.ok(y >= 0 && y <= h / 2, `${what}: the story's first line is at ${y}px of ${h}px`) }
 
 await scenario('Story Mode, test save: Ask for help, advance one story day, and the lantern is by the same stone; reloads and double taps apply nothing twice; reset leaves the real save as it was', async () => {
   const p = await profile({ viewport: PHONE, timezoneId: 'America/New_York' })
@@ -843,13 +847,17 @@ await scenario('Story Mode, test save: Ask for help, advance one story day, and 
   await pickStory(page, 'ask')
   x = await sm(page)
   assert.match(x.text, /“A starflower by the mossy stone\? I can bring a lantern,” says the lamplighter, “but not until my route is done\./)
-  assert.match(await page.locator('.sl-sm').innerText(), /Advance one story day to see what happens next\./)
+  // on a phone, what followed is read from its first line, and the next story day is offered right under it
+  await storyInView(page, 'after the choice')
+  assert.match(await page.locator('.sl-sm').innerText(), /In the test save, see what happens next:/)
+  assert.equal(await page.locator('.sl-sm__next').getByRole('button', { name: 'Advance one story day', exact: true }).count(), 1)
   assert.equal(x.lantern, 'none')
   // advance one story day: the promise falls due, and the lantern stands beside the same stone.
   // Watched as it happens: the next scene never shows, even for a moment, before the promise is kept.
   await page.evaluate(() => { window.__early = []; new MutationObserver(() => { const el = document.querySelector('.sl-sm'); if (el?.dataset.scene === 'lantern' && el.querySelector('.sl-sm__pic')?.dataset.lantern !== 'stone') window.__early.push(el.dataset.day) }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }) })
-  await advance(page)
+  await advance(page, true)
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
+  await storyInView(page, 'after advancing from under what followed')
   x = await sm(page)
   assert.match(x.testDay, /Saturday, November 14/); assert.deepEqual([x.flower, x.lantern], ['curled', 'stone'])
   assert.deepEqual(await page.evaluate(() => window.__early), [], 'the scene waited for the day to catch up')
@@ -864,7 +872,7 @@ await scenario('Story Mode, test save: Ask for help, advance one story day, and 
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.visit === 'today')
   assert.equal((await testDbEvents(page, id)).filter(e => e.endsWith(':lantern')).length, 1)
   // a double tap on Advance: one story day, and the follow-up's effects once
-  await button(page, 'Advance one story day').dblclick()
+  await testBox(page).getByRole('button', { name: 'Advance one story day', exact: true }).dblclick()
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'return')
   await page.waitForTimeout(300)
   x = await sm(page)
