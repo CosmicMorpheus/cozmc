@@ -840,11 +840,14 @@ await scenario('Story Mode, test save: Ask for help, advance one story day, and 
   assert.match(x.text, /“A starflower by the mossy stone\? I can bring a lantern,” says the lamplighter, “but not until my route is done\./)
   assert.match(await page.locator('.sl-sm').innerText(), /Advance one story day to see what happens next\./)
   assert.equal(x.lantern, 'none')
-  // advance one story day: the promise falls due, and the lantern stands beside the same stone
+  // advance one story day: the promise falls due, and the lantern stands beside the same stone.
+  // Watched as it happens: the next scene never shows, even for a moment, before the promise is kept.
+  await page.evaluate(() => { window.__early = []; new MutationObserver(() => { const el = document.querySelector('.sl-sm'); if (el?.dataset.scene === 'lantern' && el.querySelector('.sl-sm__pic')?.dataset.lantern !== 'stone') window.__early.push(el.dataset.day) }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }) })
   await advance(page)
   await smWait(page, () => document.querySelector('.sl-sm')?.dataset.scene === 'lantern')
   x = await sm(page)
   assert.match(x.testDay, /Saturday, November 14/); assert.deepEqual([x.flower, x.lantern], ['curled', 'stone'])
+  assert.deepEqual(await page.evaluate(() => window.__early), [], 'the scene waited for the day to catch up')
   assert.match(x.text, /Beside the same stone stands a small brass lantern, its glass still warm\. The lamplighter kept the promise, once the route was done\./)
   assert.match(x.text, /“Where did that lantern come from\?”/)
   await shot(page, 'story-mode-lantern-390')

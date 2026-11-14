@@ -21,13 +21,13 @@ export function StoryModePanel({ c, story }: { c: Companion; story: StoryModeSta
   // a new scene or what followed a choice: take the reader there
   useEffect(() => { if (shown.current !== sceneKey && shown.current) head.current?.focus({ preventScroll: true }); shown.current = sceneKey }, [sceneKey])
   const testing = story.test?.active ? story.test : null
-  if (!v && story.status === 'loading') return null
   if (!COZMLING_DEV && (!v || v.kind === 'quiet' || v.kind === 'waiting')) return null       // nothing to tell yet
 
   const kicker = <p className="kicker">Story Mode · {dayText(story.day)}{testing ? ' · test save' : ''}</p>
   return (
     <section className={`panel sl-sm${testing ? ' is-test' : ''}`} aria-labelledby="sl-sm-title" data-visit={v?.kind ?? 'none'} data-scene={v?.kind === 'scene' ? v.scene.id : v?.kind === 'today' ? v.last.scene : undefined} data-day={story.day}>
-      {story.status === 'failed' && !v ? <p className="sl-fine" role="status">Story Mode couldn’t be opened just now. It is tried again when you come back.</p> : v && <Body c={c} name={name} v={v} story={story} head={head} kicker={kicker} />}
+      {v ? <Body c={c} name={name} v={v} story={story} head={head} kicker={kicker} />
+        : <>{kicker}<p className="sl-fine" role="status" aria-busy={story.status === 'loading'}>{story.status === 'failed' ? 'Story Mode couldn’t be opened just now. It is tried again when you come back.' : 'Opening this story day…'}</p></>}
       {COZMLING_DEV && story.testing && <TestControls name={name} own={originalStage(c)} story={story} />}
     </section>
   )

@@ -51,7 +51,8 @@ export function useStoryMode(c: Companion): StoryModeState {
   const [today, setToday] = useState(() => localDay(Date.now(), playerTimeZone()))
   useEffect(() => { const t = setInterval(() => setToday(localDay(Date.now(), playerTimeZone())), 60_000); return () => clearInterval(t) }, [])
   const [test, setTest] = useState<testSave.TestSave | null>(null)
-  const [world, setWorld] = useState<World | null>(null)
+  // the world, and the story day and run it was worked out for: a new day's visit waits until its world has caught up
+  const [loaded, setLoaded] = useState<{ world: World; day: string; run: string } | null>(null)
   const [status, setStatus] = useState<StoryModeState['status']>('loading')
   const [busy, setBusy] = useState(false)
   const [tick, setTick] = useState(0)
@@ -82,12 +83,14 @@ export function useStoryMode(c: Companion): StoryModeState {
         for (const e of due) { const r = await save.keep(e); if (!r.ok) throw new Error(r.detail) }
         w = worldFrom(await save.events(), run)
       }
-      if (on) { setWorld(w); setStatus('ready') }
+      if (on) { setLoaded({ world: w, day, run }); setStatus('ready') }
     })().catch(() => { if (on) setStatus('failed') })
     return () => { on = false }
   }, [save, run, day, id, tick])
 
-  const visit = world && world.run === run ? nextVisit(world, { day, stage }, ARCS_HERE) : null
+  // never a visit from another day's world (a scene shown before a promise that fell due today is kept)
+  const world = loaded && loaded.day === day && loaded.run === run ? loaded.world : null
+  const visit = world ? nextVisit(world, { day, stage }, ARCS_HERE) : null
 
   const choose = useCallback(async (choiceId: string) => {
     if (!visit || visit.kind !== 'scene' || busy) return
@@ -105,5 +108,5 @@ export function useStoryMode(c: Companion): StoryModeState {
     setStage: (s: Stage | null) => act(() => testSave.setTestStage(id, s))(),
   } : undefined
 
-  return { status: visit ? status : status === 'failed' ? 'failed' : 'loading', day, stage, world, visit, busy, choose, test: COZMLING_DEV ? test : null, testing: testingTools }
+  return { status: visit ? 'ready' : status === 'failed' ? 'failed' : 'loading', day, stage, world, visit, busy, choose, test: COZMLING_DEV ? test : null, testing: testingTools }
 }
