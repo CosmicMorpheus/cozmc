@@ -21,7 +21,7 @@ const THEME: Record<PointId, string> = {
   jupiter: 'where it grows, and its sense of hope and generosity',
   saturn: 'patience, and the lessons that take time to learn',
   uranus: 'surprise, invention and its need to be itself',
-  neptune: 'dreams, imagination and quiet intuition',
+  neptune: 'dreams, imagination and quiet hunches',
   pluto: 'deep change, and the strength it finds when things are hard',
   ascendant: 'the way it first meets the world, and how others first see it',
   midheaven: 'what it reaches for in the long run',
@@ -34,25 +34,25 @@ export const SHORT: Record<PointId, string> = {
 export const TONE: Record<ZodiacSign, string> = {
   aries: 'bold, eager and quick to begin', taurus: 'steady, patient and fond of comfort', gemini: 'curious, lively and full of questions',
   cancer: 'tender, protective and close to home', leo: 'warm-hearted, playful and proud', virgo: 'careful, thoughtful and helpful',
-  libra: 'fair, graceful and drawn to harmony', scorpio: 'deep, private and fiercely loyal', sagittarius: 'adventurous, hopeful and free',
-  capricorn: 'determined, practical and quietly ambitious', aquarius: 'inventive, independent and friendly to all', pisces: 'dreamy, gentle and full of imagination',
+  libra: 'fair, graceful and drawn to harmony', scorpio: 'thoughtful, deeply curious and loyal', sagittarius: 'adventurous, hopeful and free',
+  capricorn: 'determined, practical and quietly ambitious', aquarius: 'inventive, independent and open to friendship', pisces: 'dreamy, gentle and full of imagination',
 }
 export const HOUSE: string[] = [
   'itself, and first impressions', 'comfort, keepsakes and what it values', 'curiosity, chatter and the places close by', 'home, roots and feeling safe',
-  'play, creativity and joy', 'daily routines, care and being useful', 'close friendships and partners', 'trust, secrets and deep bonds',
+  'play, creativity and joy', 'daily routines, care and small tasks', 'close friendships and partners', 'trust, sharing and meeting change together',
   'adventure, faraway places and big ideas', 'goals, purpose and being seen', 'friends, community and shared hopes', 'dreams, rest and quiet time alone',
 ]
 export const ASPECT_WORDS: Record<AspectKind, { word: string; phrase: string; mood: 'blend' | 'flow' | 'tension' }> = {
-  conjunction: { word: 'conjunct', phrase: 'blended together, so each colours the other', mood: 'blend' },
-  sextile: { word: 'sextile', phrase: 'an easy opening between them, there for the taking', mood: 'flow' },
-  square: { word: 'square', phrase: 'a creative tension that pushes it to grow', mood: 'tension' },
-  trine: { word: 'trine', phrase: 'a natural, flowing harmony', mood: 'flow' },
-  opposition: { word: 'opposite', phrase: 'a balancing act between two pulls', mood: 'tension' },
+  conjunction: { word: 'conjunct', phrase: 'a blend in which each theme can color the other', mood: 'blend' },
+  sextile: { word: 'sextile', phrase: 'a possible opening for the two themes to work together', mood: 'flow' },
+  square: { word: 'square', phrase: 'a tension that can invite a fresh approach', mood: 'tension' },
+  trine: { word: 'trine', phrase: 'a harmony that can feel easy to draw on', mood: 'flow' },
+  opposition: { word: 'opposite', phrase: 'two different pulls that can invite balance', mood: 'tension' },
 }
 const PHASE_MEANING: Record<MoonPhaseName, string> = {
-  'New Moon': 'a time of fresh beginnings', 'Waxing Crescent': 'a time of hopeful first steps', 'First Quarter': 'a time of courage and choosing',
-  'Waxing Gibbous': 'a time of practice and polish', 'Full Moon': 'a time of things coming into the light', 'Waning Gibbous': 'a time of sharing what has been learned',
-  'Last Quarter': 'a time of letting go and turning a corner', 'Waning Crescent': 'a time of rest and quiet dreaming',
+  'New Moon': 'a symbol of beginning something small', 'Waxing Crescent': 'a symbol of hopes taking shape', 'First Quarter': 'a symbol of choosing a next step',
+  'Waxing Gibbous': 'a symbol of trying and adjusting', 'Full Moon': 'a symbol of noticing a fuller picture', 'Waning Gibbous': 'a symbol of sharing what was learned',
+  'Last Quarter': 'a symbol of reviewing and making room', 'Waning Crescent': 'a symbol of resting before starting again',
 }
 const SLOW = new Set<PointId>(['uranus', 'neptune', 'pluto'])
 const signName = (s: ZodiacSign) => signInfo(s).name
@@ -70,9 +70,9 @@ export function placementReading(sky: CelestialBirthRecord, name: string, id: Po
     `${name}’s ${POINTS[id].name} symbolises ${THEME[id]}. In ${sign}, that may come across as ${TONE[p.sign]}.`,
   ]
   if (body?.house) lines.push(`It sits in the ${ORDINAL[body.house - 1]} house, the part of its sky linked with ${HOUSE[body.house - 1]}.`)
-  if (body?.retrograde) lines.push(`${POINTS[id].name} was retrograde when it was born: seen from Earth, it seemed to drift backwards. That is often read as energy turned inward, worked out slowly and in its own way.`)
-  else if (body?.stationary) lines.push(`${POINTS[id].name} was standing almost still, about to change direction, which is often read as a placement felt strongly.`)
-  if (SLOW.has(id)) lines.push(`${POINTS[id].name} moves so slowly that every Cozmling born within a few years shares this sign${body?.house ? '; its house is what makes it personal' : ''}.`)
+  if (body?.retrograde) lines.push(`At its birth, ${POINTS[id].name} appeared to move backward in the sky as seen from Earth. Astronomers call this retrograde motion. As a symbol, it can suggest looking back or trying again.`)
+  else if (body?.stationary) lines.push(`${POINTS[id].name} appeared nearly still in the sky as seen from Earth. It was near a reversal in its apparent motion. As a symbol, it can suggest a moment of pause.`)
+  if (SLOW.has(id)) lines.push(`${POINTS[id].name} can spend years in one sign, so many Cozmlings share this placement. ${body?.house ? 'Its house and connections to other points add detail to the birth chart.' : 'Its connections to other points add detail to the chart.'}`)
   if (id === 'sun' || id === 'moon' || id === 'ascendant') lines.push('As its experiences grow, this may become part of how it understands the world.')
   return { title, lines }
 }
@@ -92,10 +92,10 @@ export function aspectReading(a: Aspect): Reading {
 export function patternReading(p: Pattern): Reading {
   const list = p.points.map(x => POINTS[x].name)
   const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
-  if (p.kind === 'stellium') return { title: `A stellium in ${signName(p.sign!)}`, lines: [`${and(list)} gathered in ${signName(p.sign!)}. A crowd like this is often read as a theme that runs through the whole chart: here, something ${TONE[p.sign!]}.`] }
-  if (p.kind === 'grand-trine') return { title: `A grand trine${p.element ? ` in ${ELEMENTS[p.element].name.toLowerCase()}` : ''}`, lines: [`${and(list)} make a triangle of trines, often read as a gift that comes easily.`] }
-  if (p.kind === 'T-square') return { title: 'A T-square', lines: [`${list[0]} and ${list[1]} pull against each other while both lean on ${list[2]}: often read as a drive to grow through challenges.`] }
-  return { title: 'A grand cross', lines: [`${and(list)} form a cross of squares and oppositions, often read as great strength built through balance.`] }
+  if (p.kind === 'stellium') return { title: `A stellium in ${signName(p.sign!)}`, lines: [`${and(list)} gathered in ${signName(p.sign!)}. This group can bring one theme into focus. Here, it suggests something ${TONE[p.sign!]}.`] }
+  if (p.kind === 'grand-trine') return { title: `A grand trine${p.element ? ` in ${ELEMENTS[p.element].name.toLowerCase()}` : ''}`, lines: [`${and(list)} make a triangle of trines, often read as themes that may work together with ease.`] }
+  if (p.kind === 'T-square') return { title: 'A T-square', lines: [`${list[0]} and ${list[1]} face each other across the chart and both form squares with ${list[2]}. This can suggest a tension worth looking at from different sides.`] }
+  return { title: 'A grand cross', lines: [`${and(list)} form a cross of squares and oppositions, often read as several pulls that may invite balance.`] }
 }
 
 export function moonPhaseReading(sky: CelestialBirthRecord, name: string): Reading {
@@ -110,7 +110,7 @@ export function bigThree(sky: CelestialBirthRecord): string {
   return parts.join(', ')
 }
 
-export const DISCLAIMER = 'Astrology here is a way of telling stories, not a prediction. Its sky offers symbols to play with; who it becomes is decided by the life you share.'
+export const DISCLAIMER = 'These sky readings offer symbols for a Cozmling’s voice. Its story unfolds through shared experiences and the choices you make together.'
 
 /* ---------------- today's sky ---------------- */
 
@@ -122,9 +122,11 @@ const TODAY: Record<BodyId, string> = {
   moon: 'today’s mood', sun: 'today’s light', mercury: 'today’s ideas and conversations', venus: 'today’s warmth and fondness', mars: 'today’s energy and courage',
   jupiter: 'this season’s growth', saturn: 'this season’s lessons', uranus: 'these years’ surprises', neptune: 'these years’ dreams', pluto: 'these years’ deep changes',
 }
-const TOWARD: Record<AspectKind, string> = { conjunction: 'meets', sextile: 'opens a door to', square: 'presses on', trine: 'flows with', opposition: 'stands opposite' }
-const TOWARD_PAST: Record<AspectKind, string> = { conjunction: 'met', sextile: 'opened a door to', square: 'pressed on', trine: 'flowed with', opposition: 'stood opposite' }
+const TOWARD: Record<AspectKind, string> = { conjunction: 'meets', sextile: 'forms a sextile with', square: 'forms a square with', trine: 'flows with', opposition: 'stands opposite' }
+const TOWARD_PAST: Record<AspectKind, string> = { conjunction: 'met', sextile: 'formed a sextile with', square: 'formed a square with', trine: 'flowed with', opposition: 'stood opposite' }
 const thatDay = (s: string) => s.replace('today’s', 'that day’s')
+/** One of today's planets as story symbolism, never a cause: “This sky symbol can bring today’s mood to mind”. */
+const symbol = (today: string) => `This sky symbol can bring ${today} to mind`
 const natalName = (name: string, p: PointId) => `${name}’s ${p === 'ascendant' ? 'Rising sign' : p === 'midheaven' ? 'Midheaven' : POINTS[p].name}`
 
 export const transitTitle = (t: TransitAspect, name: string) => `${Cap(theBody(t.a))} ${ASPECT_WORDS[t.kind].word} ${natalName(name, t.b)}`
@@ -138,8 +140,8 @@ export function transitReading(t: TransitAspect, name: string, timeZone: string,
   return {
     title: transitTitle(t, name),
     lines: [
-      on ? `On ${on}, ${theBody(t.a)} ${TOWARD_PAST[t.kind]} ${natalName(name, t.b)}: ${ASPECT_WORDS[t.kind].phrase}, between ${thatDay(TODAY[t.a])} and ${SHORT[t.b]}.`
-        : `Today ${theBody(t.a)} ${TOWARD[t.kind]} ${natalName(name, t.b)}: ${ASPECT_WORDS[t.kind].phrase}, between ${TODAY[t.a]} and ${SHORT[t.b]}.`,
+      on ? `On ${on}, ${theBody(t.a)} ${TOWARD_PAST[t.kind]} ${natalName(name, t.b)}. ${symbol(thatDay(TODAY[t.a]))}, alongside ${SHORT[t.b]}: ${ASPECT_WORDS[t.kind].phrase}.`
+        : `Today ${theBody(t.a)} ${TOWARD[t.kind]} ${natalName(name, t.b)}. ${symbol(TODAY[t.a])}, alongside ${SHORT[t.b]}: ${ASPECT_WORDS[t.kind].phrase}.`,
       when,
       'A theme to play with, if it feels right. It doesn’t decide anything.',
     ],
@@ -174,8 +176,8 @@ export function skyNotes(r: DailyCelestialReport, name: string, o: { moonNow?: {
 /** Where one of today's planets is, and which part of this Cozmling's own sky it is passing through. `on`: an earlier day's (at its midday, told in the past). */
 export function todayPlacementReading(b: BodyId, p: { sign: ZodiacSign; degree: number; retrograde: boolean }, house: number | null, name: string, on?: string): Reading {
   const lines = on
-    ? [`At midday on ${on}, ${theBody(b)} was in ${signName(p.sign)}, at ${dms(p.degree)}${p.retrograde ? ', seeming to move backwards (retrograde)' : ''}. It coloured ${thatDay(TODAY[b])}, which may have felt ${TONE[p.sign]}.`]
-    : [`Today ${theBody(b)} is in ${signName(p.sign)}, at ${dms(p.degree)}${p.retrograde ? ', seeming to move backwards (retrograde)' : ''}. It colours ${TODAY[b]}, which may feel ${TONE[p.sign]}.`]
+    ? [`At midday on ${on}, ${theBody(b)} was in ${signName(p.sign)}, at ${dms(p.degree)}${p.retrograde ? ', seeming to move backwards (retrograde)' : ''}. ${symbol(thatDay(TODAY[b]))}. In ${signName(p.sign)}, that may have come across as ${TONE[p.sign]}.`]
+    : [`Today ${theBody(b)} is in ${signName(p.sign)}, at ${dms(p.degree)}${p.retrograde ? ', seeming to move backwards (retrograde)' : ''}. ${symbol(TODAY[b])}. In ${signName(p.sign)}, that may come across as ${TONE[p.sign]}.`]
   if (house) lines.push(`It ${on ? 'was' : 'is'} passing through ${name}’s ${ORDINAL[house - 1]} house, the part of its sky linked with ${HOUSE[house - 1]}.`)
   return { title: `${Cap(theBody(b))} in ${signName(p.sign)} ${on ? `on ${on}` : 'today'}`, lines }
 }

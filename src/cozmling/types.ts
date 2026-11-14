@@ -107,7 +107,7 @@ export interface SourceRecord {
 export interface JourneyEvent {
   eventId: string
   companionId: string
-  type: 'migrated' | 'adopted' | 'hatched' | 'care' | 'arcade-run' | 'customized' | 'wallet-linked' | 'imported' | 'sky-read' | 'story'
+  type: 'migrated' | 'adopted' | 'hatched' | 'care' | 'arcade-run' | 'customized' | 'wallet-linked' | 'imported' | 'sky-read' | 'story' | 'choice-story'
   at: number
   data?: Record<string, unknown>
 }

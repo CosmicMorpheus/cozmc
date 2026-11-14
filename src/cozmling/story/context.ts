@@ -1,7 +1,9 @@
 /* ============================================================
    THE NARRATIVE CONTEXT: everything a day's story draws on, gathered from the real game state.
 
-   - Celestial DNA: its birth chart (Sun, Moon, Rising) and, for an adventurer, its Starprint.
+   - Its voice: the archetype it speaks in (its Starprint's), with its birth chart, for the sky reading
+     beside the story. Neither chooses anything: the story comes from the day, its growth stage and
+     its story so far (`seed`, `recentKinds`), the same for every Starprint and chart.
    - Today's sky: the day's report (celestial/daily.ts): the strongest transit, the Moon.
    - Its condition: Food (sustenance), Fun (happiness), Energy, asleep or awake, mood and need,
      by the same care rules as its meters; its home and life stage in the original scene.
@@ -19,6 +21,8 @@ import type { CelestialBirthRecord, MoonPhaseName } from '../celestial/types'
 import { nameOf, petOf } from '../domain/care'
 import { originalHome, originalProgress, originalStage } from '../integrations/originalScene'
 import type { Companion, Element, JourneyEvent, ZodiacSign } from '../types'
+import type { DayKind } from './themes'
+import { voiceOf, type Archetype } from './voices'
 
 export interface Counters { fed: number; played: number; pets: number; arcade: number }
 export interface NarrativeContext {
@@ -33,6 +37,12 @@ export interface NarrativeContext {
   stage: Stage
   natal: CelestialBirthRecord
   personality: { sun: ZodiacSign; moon: ZodiacSign; rising: ZodiacSign | null; archetype: string | null; element: Element | null }
+  /** the archetype it speaks in (its Starprint's; a first-version Cozmling's Sun sign's), or null */
+  voice: Archetype | null
+  /** the kinds of its last two stories before today, most recent last: part of its story history */
+  recentKinds: DayKind[]
+  /** what steadies every choice of words: the day, its growth stage and its story history (never its id, sign or chart) */
+  seed: string
   condition: { food: number; fun: number; energy: number; asleep: boolean; mood: Mood; need: Need | null }
   counters: Counters
   relationship: {
@@ -66,13 +76,16 @@ export function narrativeContext(c: Companion, report: DailyCelestialReport, eve
   const hatchedAt = c.hatch.status === 'hatched' ? c.hatch.hatchedAt : null
   const careDays = [...new Set(events.filter(e => e.type === 'care' && e.at < start).map(e => localDay(e.at, tz)))].sort()
   const lastCareDay = careDays[careDays.length - 1] ?? null
-  const lastStory = events.filter(e => e.type === 'story' && e.at < start && typeof e.data?.snapshot === 'object').sort((a, b) => a.at - b.at).pop()
+  const earlier = events.filter(e => e.type === 'story' && e.at < start && typeof e.data?.snapshot === 'object').sort((a, b) => a.at - b.at)
+  const lastStory = earlier[earlier.length - 1]
+  const recentKinds = earlier.slice(-2).map(e => e.data!.kind).filter((k): k is DayKind => typeof k === 'string')
   const before = lastStory ? (lastStory.data!.snapshot as { counters?: Counters }).counters : null
   const progress = originalProgress(c)
 
   return {
     companionId: c.companionId, name: nameOf(c), kind: c.kind, day, timeZone: tz, hour: Math.floor(hourOf(now, tz)),
     home: originalHome(c), stage: originalStage(c), natal,
+    voice: voiceOf(c), recentKinds, seed: `${day}|${originalStage(c)}|${recentKinds.join(',')}`,
     personality: {
       sun: natal.bodies.sun.sign, moon: natal.bodies.moon.sign, rising: natal.angles?.ascendant.sign ?? null,
       archetype: c.kind === 'adventurer' ? c.starprint.archetype : null, element: c.kind === 'adventurer' ? c.starprint.element : null,

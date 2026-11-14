@@ -10,6 +10,7 @@ const WHAT: Record<JourneyEvent['type'], (name: string, e: JourneyEvent) => stri
   'arcade-run': n => `You played the arcade with ${n}`, customized: n => `${n} got a new look`, 'wallet-linked': n => `${n} was linked to a wallet`, imported: n => `${n} arrived from a save file`,
   'sky-read': n => `You read the sky over ${n}`,
   story: (n, e) => `${n}’s story: ${typeof e.data?.title === 'string' ? e.data.title : 'a day under the stars'}`,
+  'choice-story': (n, e) => { const end = (e.data?.ending as { title?: unknown } | undefined)?.title; return `You and ${n} read “${typeof e.data?.title === 'string' ? e.data.title : 'a story'}”${typeof end === 'string' ? `: ${end}` : ''}${e.data?.replayOf ? ' (again)' : ''}` },
 }
 const FIRST = 5
 const day = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
@@ -23,10 +24,10 @@ function spot(id: string): [number, number] {
 /** A four-point sparkle centred on (x, y). */
 const sparkle = (x: number, y: number, r: number) => { const k = r * 0.22; return `M${x} ${y - r}L${x + k} ${y - k}L${x + r} ${y}L${x + k} ${y + k}L${x} ${y + r}L${x - k} ${y + k}L${x - r} ${y}L${x - k} ${y - k}Z` }
 
-export function MemoriesPanel({ companionId, name, revision }: { companionId: string; name: string; revision: number }) {
+export function MemoriesPanel({ companionId, name, revision, refresh = 0 }: { companionId: string; name: string; revision: number; /** bumped when a memory is kept without changing the Cozmling (a story read) */ refresh?: number }) {
   const [events, setEvents] = useState<JourneyEvent[] | null>(null)
   const [all, setAll] = useState(false)
-  useEffect(() => { let on = true; cozmlingStore()?.events(companionId).then(e => { if (on) setEvents(e) }, () => { if (on) setEvents([]) }); return () => { on = false } }, [companionId, revision])
+  useEffect(() => { let on = true; cozmlingStore()?.events(companionId).then(e => { if (on) setEvents(e) }, () => { if (on) setEvents([]) }); return () => { on = false } }, [companionId, revision, refresh])
   if (!events) return <p className="sl-fine">Opening the memory book…</p>
   return (
     <div className="sl-memories">

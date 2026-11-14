@@ -1,28 +1,34 @@
 /* ============================================================
    CozmlingDailyStoryEngine: a Cozmling's story for one day.
 
-   In:  the narrative context (context.ts: today's sky against its birth chart, its home, stage,
-        Food, Fun, Energy, sleep, what you have done together, milestones) and the day's theme
-        (source.ts: the first-party sky reading by default).
-   Out: a title, the day's theme in three words, today's strongest transit and what it might mean,
-        a short original story, an invitation, a reflection, and where it all came from.
+   In:  the narrative context (context.ts: the day, its home, growth stage, Food, Fun, Energy, sleep,
+        what you have done together, milestones, its story so far, its voice and its birth chart)
+        and the day's theme (source.ts).
+   Out: a title, the day's theme in three words, a short original story with one line in the
+        Cozmling's own voice, an invitation, a reflection, today's sky reading beside it, and where it
+        all came from.
 
-   Deterministic templates (themes.ts): the same Cozmling, day and state always give the same story,
-   and two Cozmlings under the same sky get their own. No AI service, no paid feed, nothing sent
-   anywhere. A story is written once a day and kept (useDailyStory.ts), so a refresh never changes it.
-   The sky suggests; it never decides. A story never changes needs, rewards, scores or tokens.
+   The story, its invitation and its reflection come from the day, its growth stage, its story so far
+   and how it is doing: the same for every Starprint and every chart. Its Starprint gives it its
+   voice (voices.ts), and its chart gives the sky reading shown beside the story; neither chooses
+   anything. Deterministic templates (themes.ts), no AI service, no paid feed, nothing sent anywhere.
+   A story is written once a day and kept (useDailyStory.ts), so a refresh never changes it.
+   A story never changes needs, rewards, scores or tokens.
    ============================================================ */
 import { STAGE_NAME, type Stage } from '../../companion/look'
-import { TONE, skyNotes, transitReading, transitTitle } from '../celestial/interpret'
+import { skyNotes, transitReading, transitTitle } from '../celestial/interpret'
 import { signInfo } from '../domain/starprint'
 import type { Counters, NarrativeContext } from './context'
 import type { DailyTheme, SourceInfo } from './source'
-import { AS_THE_SKY_SAYS, CLOSINGS, CONDITION, HOME_NAME, INVITATION_TEXT, OPENINGS, PHASE_PHRASE, PROPS, THEMES, type DayKind, type InvitationAction } from './themes'
+import { AS_THE_SKY_SAYS, ASLEEP_SETUP, CLOSINGS, CONDITION, HOME_NAME, INVITATION_TEXT, MOMENT_BY_KIND, MOMENT_SETUP, OPENINGS, PHASE_PHRASE, PROPS, THEMES, type DayKind, type InvitationAction } from './themes'
+import { voiceLine, type VoiceMoment } from './voices'
 
-export const STORY_ENGINE = { name: 'cozmc-story', version: 1 } as const
+/** 2: the story is chosen from the day, growth stage and story history, never the sign or chart; the Starprint gives one line of voice. */
+export const STORY_ENGINE = { name: 'cozmc-story', version: 2 } as const
 
 export interface DailyStory {
-  schema: 1
+  /** 1: written before November 2026, when the day's sky chose the story; still shown as it was written */
+  schema: 1 | 2
   companionId: string
   day: string
   timeZone: string
@@ -31,7 +37,11 @@ export interface DailyStory {
   kind: DayKind
   /** today's strongest transit (or, on a quiet day, the Moon), and what it might mean */
   influence: { title: string; lines: string[] }
+  /** the story itself: the same for every Starprint and chart on the same day, at the same stage, with the same story history */
   story: string[]
+  /** schema 2: the moment the story pauses on, and the Cozmling's own line for it (its Starprint's voice), shown after the first paragraph */
+  moment?: VoiceMoment
+  voice?: { archetype: string; line: string } | null
   invitation: { action: InvitationAction; text: string }
   reflection: string
   /** how it was doing when the story was written (and what had been done together by then) */
@@ -44,11 +54,18 @@ export interface DailyStory {
 /** The one event a day's story is kept under: a refresh, a second tab or a second try finds it instead of writing another. */
 export const storyEventId = (companionId: string, day: string) => `story:${companionId}:${day}`
 
-/** A steady choice: the same Cozmling, day and purpose always pick the same line. */
+/** A steady choice: the same day, growth stage, story history and purpose always pick the same line, for every Cozmling. */
 function pick<T>(list: readonly T[], ctx: NarrativeContext, salt: string): T {
   let h = 2166136261
-  for (const ch of `${ctx.companionId}|${ctx.day}|${salt}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+  for (const ch of `${ctx.seed}|${salt}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
   return list[h % list.length]
+}
+
+/** The moment the day pauses on: asleep it is resting; just hatched, everything is new; otherwise the day's kind decides. */
+export function momentFor(ctx: Pick<NarrativeContext, 'condition' | 'relationship'>, kind: DayKind): VoiceMoment {
+  if (ctx.condition.asleep) return 'resting'
+  if (ctx.relationship.hatchedToday) return 'noticing'
+  return MOMENT_BY_KIND[kind]
 }
 const fill = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '')
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
@@ -99,14 +116,10 @@ export function writeDailyStory(ctx: NarrativeContext, theme: DailyTheme, now: n
   let tendency = fill(pick(bank.tendencies, ctx, 'tend'), v)
   if (cond.asleep && kind !== 'quiet') tendency = `In its dreams, ${tendency[0].toLowerCase()}${tendency.slice(1)}`
 
-  // its character, from its birth sky: its Starprint's archetype, or its Sun or Moon (a different one on different days)
-  const p = ctx.personality, sun = signInfo(p.sun).name, moon = signInfo(p.moon).name
-  const character = pick([
-    p.archetype ? `There’s something of the ${p.archetype} in it today: ${TONE[p.sun]}.` : `There’s something of its ${sun} Sun in it today: ${TONE[p.sun]}.`,
-    `Its ${sun} Sun shows today: ${TONE[p.sun]}.`,
-    `Its ${moon} Moon shows in how it feels today: ${TONE[p.moon]}.`,
-  ], ctx, 'character')
-  const feel = theme.mood ? pick(AS_THE_SKY_SAYS[theme.mood], ctx, 'feel') : null
+  // the moment the day pauses on (the same for everyone), then the Cozmling's own line for it (its Starprint's voice)
+  const moment = momentFor(ctx, kind)
+  const setup = cond.asleep ? ASLEEP_SETUP : MOMENT_SETUP[moment]
+  const line = voiceLine(ctx.voice, moment)
 
   // how it is doing: its happiness and sustenance every day, by the same numbers as its meters
   const stats = `Its happiness is at ${cond.fun}%, and its sustenance is at ${cond.food}%.`
@@ -116,23 +129,25 @@ export function writeDailyStory(ctx: NarrativeContext, theme: DailyTheme, now: n
     : [stats, cond.need ? CONDITION[cond.need][cond.mood === 'low' ? 'low' : 'good'] : pick(CONDITION.great, ctx, 'great')]
 
   const action = chooseInvitation(ctx, kind)
+  // today's sky reading, beside the story: its chart's strongest transit, and one way it might read (never the story's choice)
   const t = theme.transit, tz = ctx.timeZone
   const influence = t
-    ? { title: transitTitle(t, name), lines: transitReading(t, name, tz).lines.slice(0, 2) }
+    ? { title: transitTitle(t, name), lines: [theme.mood ? pick(AS_THE_SKY_SAYS[theme.mood], ctx, 'feel') : null, transitReading(t, name, tz).lines[1]].filter((x): x is string => !!x) }
     : { title: `The Moon in ${signInfo(ctx.sky.moonSign).name}`, lines: [skyNotes(ctx.sky.report, name)[0]] }
 
   return {
-    schema: 1, companionId: ctx.companionId, day: ctx.day, timeZone: tz,
+    schema: 2, companionId: ctx.companionId, day: ctx.day, timeZone: tz,
     title: theme.title ?? pick(bank.titles, ctx, 'title'),
     theme: theme.words ?? bank.words,
     kind,
     influence,
     story: [
-      `${opening} ${tendency}`,
-      [feel, character].filter(Boolean).join(' '),
+      `${opening} ${tendency} ${setup}`,
       condition.filter(Boolean).join(' '),
       [...together(ctx), pick(CLOSINGS, ctx, 'close')].join(' '),
     ],
+    moment,
+    voice: line && ctx.voice ? { archetype: ctx.voice, line } : null,
     invitation: { action, text: INVITATION_TEXT[action](name) },
     reflection: pick(bank.reflections, ctx, 'reflect'),
     snapshot: { at: now, food: cond.food, fun: cond.fun, energy: cond.energy, asleep: cond.asleep, stage: ctx.stage, counters: ctx.counters },
@@ -158,5 +173,5 @@ export function invitationDone(s: DailyStory, now: { counters: Counters; energy:
 /** A saved story, if it is one this engine can show. */
 export function asStory(data: unknown): DailyStory | null {
   const s = data as DailyStory | null
-  return s && s.schema === 1 && typeof s.title === 'string' && Array.isArray(s.story) && !!s.invitation && !!s.snapshot ? s : null
+  return s && (s.schema === 1 || s.schema === 2) && typeof s.title === 'string' && Array.isArray(s.story) && !!s.invitation && !!s.snapshot ? s : null
 }

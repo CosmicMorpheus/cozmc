@@ -30,11 +30,12 @@ It is part of the rebuilt Cozmling (`src/cozmling/`), so it sits behind the same
 
 - **A daily story for every Cozmling**, on its own page in the Star Loft, under the care buttons:
   - a title and the day's theme in three words;
-  - the celestial influence: today's strongest transit to its birth chart, and what it might mean;
-  - a short original story;
+  - a short original story, with one line in the Cozmling's own voice (its Starprint's);
   - today's cosmic invitation;
-  - a COZMC reflection.
-- **Written from the real day.** It draws on today's sky against its birth chart, its home, its life stage and its character. It also uses its happiness (Fun), sustenance (Food) and energy, whether it is asleep, how long since you last looked after it, what you have done together since its last story, its birthday and how close it is to its next stage.
+  - a COZMC reflection;
+  - beside it, today's sky reading: the strongest transit to its birth chart, and one way it might read.
+- **Chosen without the zodiac.** The story, its invitation and its reflection come from the day, its growth stage, its story so far and how it is doing: its home, its happiness (Fun), sustenance (Food) and energy, whether it is asleep, how long since you last looked after it, what you have done together since its last story, its birthday and how close it is to its next stage. Its sign and chart only change its voice line and its sky reading (since November 14, 2026; see "The zodiac writing review").
+- **A first choice story, The Bridge After the Rain** (a draft, shown only on the preview site and in local work): three equally good first steps, six routes, four safe endings, and the same choices for every Cozmling.
 - **Written once a day, without anyone asking**, when its page is first opened that day (or at the player's midnight with the page open). It is kept, so a refresh or a second tab never changes it, and it joins its Memories.
 - **No paid feed and no AI service.** The words are original COZMC templates. A slot is ready for a licensed feed later.
 
@@ -151,17 +152,39 @@ How it stays permanent:
 
 ## The daily story: how it works
 
-- **Where the theme comes from** (`story/source.ts`, `DailyAstrologySource`). Sources are asked in turn: a COZMC editorial theme for a date (a table, empty for now), then a slot reserved for a licensed feed (off; nothing is fetched, copied or scraped from anyone without a licence), then the first-party reading, which always answers. A source that fails is skipped, so a story is always written.
-- **The first-party reading.** The day's strongest transit gives the day its kind, from the point of the Cozmling's own sky it touches: its Venus or Rising sign means connection, its Sun play, its Moon comfort, its Mercury curiosity, its Mars courage, Jupiter or its Midheaven growth, Saturn reflection, Uranus creativity, Neptune dreams and Pluto change. The aspect's feel (flowing, tense, blended) colours the words. On a day with no close transit, the day is open.
-- **The story** (`story/engine.ts`, `CozmlingDailyStoryEngine`) is built from templates (`story/themes.ts`, original COZMC writing). It has four short paragraphs:
-  1. Where it is and what it seems drawn to, in its own home: "Orbi the Sprout wakes beneath a waxing crescent Moon in the Cosmic Grove…" A sleeping Cozmling dreams it instead.
-  2. The day's feel and something of its character, from its Starprint archetype or its Sun or Moon.
-  3. Its happiness and sustenance, as numbers, and what it needs, by the same rules as its care meters.
-  4. You and it, and a closing line: days away, what you have shared since its last story, its birthday, a stage that is close.
+- **Where the theme comes from** (`story/source.ts`, `DailyAstrologySource`). Sources are asked in turn: a COZMC editorial theme for a date (a table, empty for now; the same for every Cozmling), then a slot reserved for a licensed feed (off; nothing is fetched, copied or scraped from anyone without a licence), then the first-party theme, which always answers. A source that fails is skipped, so a story is always written.
+- **The day's kind** (play, comfort, curiosity, connection, courage, reflection, creativity, growth, dreams, change, quiet) comes from `storyKind(day, stage, recentKinds)`: a steady rotation by the day and its growth stage that skips the kinds of its last two stories. Never from its sign, birthplace or chart. Every Cozmling at the same stage with the same story history gets the same story on the same day, in its own voice.
+- **Today's sky reading** is separate: the strongest transit to its birth chart, with one line of how it might read (`AS_THE_SKY_SAYS`) and when it is exact. It is shown beside the story, under "Its sky today", and never chooses anything.
+- **The story** (`story/engine.ts`, `CozmlingDailyStoryEngine`) is built from templates (`story/themes.ts`, original COZMC writing). It has three short paragraphs:
+  1. Where it is, what it seems drawn to in its own home, and a moment the day pauses on ("Then something new catches its eye."), followed by its own line for that moment, in its Starprint's voice (`story/voices.ts`). A sleeping Cozmling dreams it instead, and rests.
+  2. Its happiness and sustenance, as numbers, and what it needs, by the same rules as its care meters.
+  3. You and it, and a closing line: days away, what you have shared since its last story, its birthday, a stage that is close.
 - **Everything in it is a tendency**, never a rule ("it seems", "as if", "perhaps"). It never says what will happen, and a test checks every story for "will", "always", "never" and "destined".
 - **The invitation** is what it needs most (a meal, a game, rest), or something in keeping with the day: a pat, a game, looking at today's sky together, or an arcade game for a first-version Cozmling. It shows "Done" once it has been taken up, judged from what happened (the care counters, its energy, a visit to today's sky). Nothing is rewarded: an invitation never changes needs, rewards, scores, tickets or tokens.
-- **Kept once a day.** Each story is one event, `story:<companionId>:<day>`. The store keeps an event id only once, in any tab, so the same day never gets two stories. It records the moment it was written (its numbers and counters then), its source, the transit it is built on, and the engine version.
-- **The same input, the same story.** Choices between lines come from the Cozmling's id and the day, so a story can be written again identically, and two Cozmlings under the same sky get their own.
+- **Kept once a day.** Each story is one event, `story:<companionId>:<day>`. The store keeps an event id only once, in any tab, so the same day never gets two stories. It records the moment it was written (its numbers and counters then), its source, the transit its sky reading was built on, and the engine version (`cozmc-story` 2). Stories kept before this change (schema 1) are shown exactly as they were written.
+- **The same input, the same story.** Choices between lines come from the day, its growth stage and its story history (`seed`), never its id, sign or chart, so a story can be written again identically.
+
+## Starprint voices
+
+`story/voices.ts`: 72 original lines, twelve archetypes across six moments (a setback, noticing something, asking for help, helping a friend, resting, a small win), each 20 words or fewer. A Cozmling speaks in its Starprint's archetype; a first-version Cozmling with a sky speaks in its Sun sign's. A story decides the moment; the voice only says how that Cozmling meets it. The line is shown in color, so a player can see it is its own.
+
+## Choice stories
+
+`story/choice.ts` (the engine), `story/bridge.ts` (the first story) and `story/ChoiceStoryPanel.tsx` (on the Star Loft page).
+
+- **The Bridge After the Rain.** Rain has loosened two planks of the bridge the Cozmling built. After its friend arrives, it has a line of its own (one per archetype, from the zodiac writing review), and then the player chooses: look closely, ask a friend to help make a new plan, or rest together. Each leads to a second choice and one of four safe endings, with a friend nearby, an invitation and a reflection. Where three routes meet in "A new plan", its first line says which way you came.
+- **The same for everyone.** Scenes, choices and endings are identical for every Starprint and stage; only the voice lines differ (the opening, and its line for noticing, asking for help, resting and a small win). Nothing is rewarded or lost.
+- **Kept as it was read.** A finished reading is one `choice-story` event, `choice:<companionId>:<storyId>@<version>:<random>`, with the scenes passed, both choices and their wording, the ending, every paragraph as shown and the choices offered. Reading it again is a new event that points to the first.
+- **A draft for now.** It shows only on the preview site and in local work. A reading left halfway isn't kept; it starts again from the beginning. There is no notes box yet.
+
+## The zodiac writing review (November 13, 2026)
+
+A zodiac writing pass returned 72 voice lines, 12 bridge openings and a verdict on each of the 204 sky words. Applied on November 14, 2026:
+
+- **Sky words:** 113 kept, 69 changed exactly as proposed (sign tones for Scorpio and Aquarius, Neptune, the 6th and 8th houses, every aspect phrase, every Moon phase, the chart patterns, the retrograde, stationary and slow-planet notes, the disclaimer, two transit verbs, and the daily story's titles, tendencies and reflections). Placeholders and ids are unchanged; `tests/celestial-words.test.ts` reads every reading as complete sentences.
+- **The ten "today" fragments** (`today’s mood`, `this season’s lessons`…) keep their words in a new frame, "This sky symbol can bring today’s mood to mind.", both in a planet's place today and in a transit ("…to mind, alongside its feelings: a tension that can invite a fresh approach.").
+- **The twelve old mappings** (`KIND_BY_POINT`: a transit to its Sun meant play, its Moon comfort, its Mercury curiosity, Venus or the Rising sign connection, Mars courage, Jupiter or the Midheaven growth, Saturn reflection, Uranus creativity, Neptune dreams, Pluto change) chose every daily story's kind until this change, through `firstParty` in `story/source.ts`. They are removed; the rotation above replaced them.
+- **Two open points** for the team: the new disclaimer no longer says "not a prediction" (the story card still does), and one opening still mentions the Cozmling's antenna while its creature design is open.
 - **Offline.** If today's sky can't be read, today's story is shown if it was already written. Otherwise the last story is shown, labelled with its own day, never as today's.
 
 ## First-version Cozmlings
@@ -203,14 +226,17 @@ The first version's own saves (`cozmc-cozmling-v1…`) are never touched by any 
   - The words: about this Cozmling, in the player's clock, never a forecast; the Moon told where it is now; an earlier day told in the past.
   - A report takes well under 60 ms.
 - **`npm test` → `tests/cozmling-story.test.ts`.**
-  - Every part of a story, built on the day's strongest transit, with its real numbers and life stage.
-  - The same input gives the same story; two Cozmlings under one sky get their own.
+  - Every part of a story, with its real numbers, life stage, moment and voice; its sky reading built on the day's strongest transit.
+  - The same day, growth stage and story history give all twelve signs, each read three ways (two hatch times and another birthplace), the same story and invitation for 21 days running, in twelve different voices; the sky reading still differs by chart.
+  - The kind of day follows the day, the stage and the last two stories, and never the Cozmling's id.
   - Happiness, sustenance and energy change the story and its invitation; asleep, it dreams.
   - Days away, what you shared since its last story, hatching day, birthday and a close stage.
   - A new story at the player's midnight; the store keeps a day's story only once.
   - Invitations are seen to be taken up from what happens, with no reward.
   - Sources: an editorial theme for a date, the licensed slot off, a failing source skipped.
   - 126 stories (21 days, three states, two Cozmlings) checked for forecasting words and template slips.
+- **`npm test` → `tests/cozmling-choice-story.test.ts`.** The bridge: six routes and four endings with no dead ends; three first choices with openings that start none of them; the same scenes, choices and endings for all twelve archetypes, only the voice lines differing; the three routes into "A new plan" kept as three different records; a reading kept exactly as shown; the 72 voice lines.
+- **`npm test` → `tests/celestial-words.test.ts`.** Every sky reading, for 40 charts, every sign, house, kind of aspect and pattern, read as complete sentences with nothing unfilled and no forecast; the ten "today" fragments in both frames; the review's wording as shown.
 - **`tests/celestial-sky.mjs`**, in a real browser:
   - hatch → sky → reload;
   - the observatory at 360 px and on a desktop, by tap and by keyboard;
@@ -272,6 +298,7 @@ The references (Mark's videos and stills) were used for direction only; it is dr
 - **A day follows the device.** Its clock and time zone are trusted. Changing time zone mid-day starts a new day's report for the new zone.
 - **Each device reads its own report.** There is no server, so two devices work the same report out separately. They agree, because nothing is random.
 - **No arcade or journal links yet.** That is MVP 4.
+- **Two Cozmlings at the same stage with the same story history share the day's story.** Their voice lines and sky readings differ. Before November 14, 2026, each Cozmling's id also varied the lines.
 - **Placidus houses are not offered.** Whole-sign only for now. Another house system would be a new `houseSystem` value, and saved charts would keep theirs.
 - **A town not in the atlas** can't be chosen; the nearest bigger town gives nearly the same chart (the Rising sign moves about 1° for every 4 minutes of longitude).
 - **No birth time of the player's own.** The time of day is the hatch minute; the place only changes the clock and the angles.
@@ -285,7 +312,9 @@ These follow the brief's own order.
 
 1. ~~**MVP 2, Living Sky.**~~ Built: see above.
 2. ~~**MVP 3, Living Story.**~~ Built: see above.
-3. **MVP 4, Shared Journey.** Arcade, care and milestones in a Star Journal.
+3. **MVP 4, Shared Journey.** Arcade, care and milestones in a Star Journal, with each story read and every choice made.
+
+**Stories ahead (direction, not built).** As Cozmlings grow older, their choices can carry consequences into later stories: a friend remembers a promise, a place shows how it changed, two friends revisit a decision. Cozmlings at the same stage with the same story history always get the same options, across every Starprint; the player can see what a choice changed and has room to reconsider; resting and setting a boundary stay worthwhile answers. The bridge is the gentle first step, where every route is equally good. Any cost, survival rule or saved consequence needs its own design first; none is in the care system.
 4. **MVP 5.** "Then × now" overlays, and a slot for a licensed horoscope feed through a `DailyAstrologySource`. Nothing is copied or scraped.
 
 Rewards tied to the sky stay switched off until they are reviewed. Nothing here ever changes prizes, scores, tickets or token amounts.

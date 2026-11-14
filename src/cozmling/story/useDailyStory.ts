@@ -53,7 +53,8 @@ export function useDailyStory(c: Companion): DailyStoryState {
       if (!story) {
         const cur = now.current, at = Date.now()
         if (!cur.celestial) return
-        const fresh = writeDailyStory(narrativeContext(cur, report, events, at), themeFor({ report, natal: cur.celestial }), at)
+        const ctx = narrativeContext(cur, report, events, at)
+        const fresh = writeDailyStory(ctx, themeFor({ report, natal: cur.celestial, stage: ctx.stage, recentKinds: ctx.recentKinds }), at)
         const res = await store.keepEvent({ eventId, companionId: id, type: 'story', at, data: fresh as unknown as Record<string, unknown> })
         if (res.ok && res.kept) story = fresh
         else story = asStory((await store.events(id)).find(e => e.eventId === eventId)?.data)       // another tab wrote it first: show that one

@@ -347,28 +347,40 @@
 }
 
 /* ---------- today's story (on the Star Loft): the day's title, its sky, the story, an invitation and a reflection ---------- */
-.sl-story { margin-top: 16px; padding: clamp(16px, 2.4vw, 22px); border-color: var(--sl-id-line); background: linear-gradient(165deg, #04202b, var(--bg-1) 55%); box-shadow: 0 0 40px -22px var(--nebula) }
-.sl-story.panel::before { border-color: var(--nebula) }
-.sl-story .kicker { color: var(--nebula); margin-bottom: 8px }
-.sl-story__head h2 { font: 800 clamp(1.35rem, 2.6vw, 1.75rem)/1.05 var(--sans); font-stretch: 75%; text-transform: uppercase; letter-spacing: -.005em; color: var(--text); text-wrap: balance }
-.sl-story__theme { margin-top: 8px; font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula-ink) }
+.sl-story, .sl-cs { margin-top: 16px; padding: clamp(16px, 2.4vw, 22px); border-color: var(--sl-id-line); background: linear-gradient(165deg, #04202b, var(--bg-1) 55%); box-shadow: 0 0 40px -22px var(--nebula) }
+.sl-story.panel::before, .sl-cs.panel::before { border-color: var(--nebula) }
+.sl-story .kicker, .sl-cs .kicker { color: var(--nebula); margin-bottom: 8px }
+.sl-story__head h2, .sl-cs h2 { font: 800 clamp(1.35rem, 2.6vw, 1.75rem)/1.05 var(--sans); font-stretch: 75%; text-transform: uppercase; letter-spacing: -.005em; color: var(--text); text-wrap: balance }
+.sl-story__theme, .sl-cs__theme { margin-top: 8px; font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula-ink) }
 .sl-story__note { margin-top: 12px; padding: 9px 12px; border: 1px dashed var(--sl-coral-deep); background: rgba(21, 9, 8, .9); color: var(--mist); font-size: 14px; line-height: 1.5 }
 .sl-story__influence { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--sl-id-line); background: rgba(0, 191, 254, .05) }
 .sl-story__influence b { color: var(--nebula-ink); font-weight: 600 }
 .sl-story__influence .sl-inlink { display: inline-block; margin-top: 8px; font-size: 13.5px }
 .sl-story__why { margin-top: 6px; color: var(--mist); font-size: 14px; line-height: 1.5; text-wrap: pretty }
-.sl-story__label { display: inline-block; margin-right: 6px; font: 700 10px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula) }
-.sl-story__body { margin-top: 14px }
-.sl-story__body p { margin-top: 10px; color: var(--text); font-size: 15.5px; line-height: 1.62; text-wrap: pretty }
-.sl-story__body p:first-child { margin-top: 0 }
-.sl-story__invite, .sl-story__reflect { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--nebula); background: rgba(2, 10, 14, .7) }
-.sl-story__reflect { border-left-color: var(--line-3) }
-.sl-story__quote { margin-top: 4px; color: var(--nebula-ink); font-size: 16px; line-height: 1.45; text-wrap: pretty }
-.sl-story__reflect .sl-story__quote { color: var(--mist) }
-.sl-story__status { margin-top: 6px; color: var(--dim); font-size: 13.5px }
+.sl-story__label, .sl-cs__label { display: inline-block; margin-right: 6px; font: 700 10px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula) }
+.sl-story__body, .sl-cs__body { margin-top: 14px }
+.sl-story__body p, .sl-cs__body p { margin-top: 10px; color: var(--text); font-size: 15.5px; line-height: 1.62; text-wrap: pretty }
+.sl-story__body p:first-child, .sl-cs__body p:first-child { margin-top: 0 }
+.sl-story__invite, .sl-story__reflect, .sl-cs__invite, .sl-cs__reflect { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--nebula); background: rgba(2, 10, 14, .7) }
+.sl-story__reflect, .sl-cs__reflect { border-left-color: var(--line-3) }
+.sl-story__quote, .sl-cs__quote { margin-top: 4px; color: var(--nebula-ink); font-size: 16px; line-height: 1.45; text-wrap: pretty }
+.sl-story__reflect .sl-story__quote, .sl-cs__reflect .sl-cs__quote { color: var(--mist) }
+.sl-story__status, .sl-cs__status { margin-top: 6px; color: var(--dim); font-size: 13.5px }
 .sl-story__invite.is-done { border-left-color: var(--phos) }
 .sl-story__invite.is-done .sl-story__status { color: var(--phos) }
 .sl-story--waiting { display: grid; gap: 4px }
+/* the Cozmling's own voice (its Starprint's): the only words that differ between Starprints */
+.sl-story__voice, .sl-cs__voice { color: var(--nebula-ink); font-style: italic }
+/* a choice story: one scene at a time, every choice on screen */
+.sl-cs__choices { margin: 16px 0 0; padding: 0; border: 0; display: grid; gap: 8px; min-width: 0 }
+.sl-cs__choices legend { padding: 0; margin-bottom: 4px; font: 700 11px/1.4 var(--pixel); text-transform: uppercase; letter-spacing: .05em; color: var(--nebula) }
+.sl-cs__choice { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; width: 100%; padding: 11px 12px; border: 1px solid var(--sl-id-line); background: rgba(0, 191, 254, .04); color: var(--text); font: inherit; font-size: 15px; line-height: 1.45; text-align: left; cursor: pointer }
+.sl-cs__choice b { min-width: 1.6em; padding: 1px 0; border: 1px solid var(--nebula); color: var(--nebula); font: 700 11px/1.5 var(--pixel); text-align: center }
+.sl-cs__choice:hover { border-color: var(--nebula); background: rgba(0, 191, 254, .09) }
+.sl-cs__choice:focus-visible { outline: 2px solid var(--nebula); outline-offset: 2px }
+.sl-cs__kept { margin-top: 12px; color: var(--phos); font-size: 14px }
+.sl-cs__go { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
+.sl-cs h2:focus { outline: none }
 
 /* ---------- where it was born (adoption): three options, a search, a surprise, and the place shown ---------- */
 .sl-bp { margin-top: 18px; padding-top: 16px; border: 0; border-top: 1px dashed var(--line-2); min-width: 0 }

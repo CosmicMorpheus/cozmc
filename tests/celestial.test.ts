@@ -357,5 +357,5 @@ test('readings speak in symbols and possibilities, never certainties', () => {
   assert.match(placementReading(c, 'Orbi', 'moon').lines.join(' '), /symbolises .* may /)
   assert.equal(placementReading(c, 'Orbi', 'ascendant').title, 'Virgo rising')
   assert.equal(bigThree(c), 'Sun in Taurus, Moon in Capricorn, Virgo rising')
-  assert.match(DISCLAIMER, /not a prediction/)
+  assert.match(DISCLAIMER, /symbols for a Cozmling’s voice\. Its story unfolds through shared experiences and the choices you make together\./)
 })

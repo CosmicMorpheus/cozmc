@@ -161,7 +161,7 @@ test('the Moon is told where it is now when that is known; an earlier day is tol
   }
   const moon = todayPlacementReading('moon', r.sky.moon, r.sky.moon.house, 'Orbi', on)
   assert.match(moon.title, /^The Moon in \w+ on Friday, November 13$/)
-  assert.match(moon.lines.join(' '), /^At midday on Friday, November 13, the Moon was in \w+, at \d+°\d\d′\. It coloured that day’s mood, which may have felt /)
+  assert.match(moon.lines.join(' '), /^At midday on Friday, November 13, the Moon was in (\w+), at \d+°\d\d′\. This sky symbol can bring that day’s mood to mind\. In \1, that may have come across as /)
   assert.match(todayPlacementReading('moon', late.bodies.moon, 3, 'Orbi').lines[0], /^Today the Moon is in /)
 })
 

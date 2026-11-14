@@ -352,6 +352,7 @@ async function hatched(p, birthday = '2026-05-05') {
   return page
 }
 const dayName = day => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${day}T12:00:00Z`))
+const innerHeightOf = v => v.height
 const dayBefore = day => new Date(Date.parse(`${day}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
 await scenario('today’s sky: the Star Loft reads it by itself; the observatory shows the day’s reading and the sky now, with when it was worked out', async () => {
@@ -508,17 +509,18 @@ async function takeUp(page, action) {
   } else throw new Error(`unexpected invitation: ${action}`)
 }
 
-await scenario('today’s story: written on the Cozmling’s page from its sky and its day, the same after a reload, kept once, and its invitation seen to be taken up', async () => {
+await scenario('today’s story: written on the Cozmling’s page from its day, in its own voice, with its sky reading apart; the same after a reload, kept once, and its invitation seen to be taken up', async () => {
   const p = await profile({ viewport: SMALL, timezoneId: 'America/New_York' }), page = await hatched(p)
   const id = (await mine(page)).companionId
   await page.locator('.sl-story h2').waitFor({ timeout: 15000 })
   const text = await page.locator('.sl-story').innerText(), day = await page.locator('.sl-story').getAttribute('data-day')
-  assert.match(text, new RegExp(`^TODAY’S SKY · ${dayName(day)}`, 'i'))
-  assert.match(text, /CELESTIAL INFLUENCE[\s\S]*Orbi’s/i)
+  assert.match(text, new RegExp(`^TODAY’S STORY · ${dayName(day)}`, 'i'))
   assert.match(text, /Orbi the Sprout/)
+  assert.equal(await page.locator('.sl-story__voice').getAttribute('data-voice'), 'Keeper', 'a Taurus: its own line, in the Keeper’s voice')
   assert.match(text, /Its happiness is at \d+%, and its sustenance is at \d+%\./)
-  assert.match(text, /TODAY’S COSMIC INVITATION\s+“[^”]*Orbi[^”]*”/i)
-  assert.match(text, /COZMC REFLECTION\s+“[^”]+”/i)
+  assert.match(text, /TODAY’S COSMIC INVITATION\s+[^“\n]*Orbi/i, 'COZMC writing, without quotation marks')
+  assert.match(text, /COZMC REFLECTION\s+[^“\s]/i)
+  assert.match(text, /ITS SKY TODAY\s+(\S.*Orbi’s|The Moon in)[\s\S]*It doesn’t choose the story\./i, 'the sky reading, apart from the story')
   assert.match(text, /A story to play with, not a prediction\. An invitation never changes rewards, scores or tokens\./)
   assert.deepEqual(await storiesKept(page, id), [{ eventId: `story:${id}:${day}`, day }])
   assert.deepEqual(await sticksOut(page), [])
@@ -548,7 +550,7 @@ await scenario('a new story at the player’s midnight, with the page open; yest
   await page.locator('.sl-story[data-day="2026-11-12"] h2').waitFor({ timeout: 15000 })
   await page.clock.fastForward('06:00')
   await page.locator('.sl-story[data-day="2026-11-13"] h2').waitFor({ timeout: 10000 })
-  assert.match(await page.locator('.sl-story').innerText(), /^TODAY’S SKY · FRIDAY, NOVEMBER 13/i)
+  assert.match(await page.locator('.sl-story').innerText(), /^TODAY’S STORY · FRIDAY, NOVEMBER 13/i)
   assert.deepEqual((await storiesKept(page, id)).map(s => s.day), ['2026-11-12', '2026-11-13'])
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
@@ -666,6 +668,117 @@ await scenario('birthplace on a 360 px phone; and with the atlas unreachable, it
   assert.equal((await mine(off)).celestial.birthplace.id, 'origin-observatory')
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
+})
+
+/* ---------------- the bridge, and stories that don't depend on the zodiac ---------------- */
+
+/** What a story says once its Cozmling's own voice is taken out. */
+const storyCore = page => page.evaluate(() => {
+  const el = document.querySelector('.sl-story'), body = el.querySelector('.sl-story__body').cloneNode(true)
+  body.querySelectorAll('.sl-story__voice').forEach(v => v.remove())
+  return { title: el.querySelector('h2').textContent, theme: el.querySelector('.sl-story__theme').textContent, story: body.innerText.replace(/\s+/g, ' ').trim(), invitation: el.querySelector('.sl-story__invite .sl-story__quote').textContent, reflection: el.querySelector('.sl-story__reflect .sl-story__quote').textContent }
+})
+const bridgeScene = page => page.evaluate(() => {
+  const el = document.querySelector('.sl-cs')
+  return { scene: el.dataset.scene, text: [...el.querySelectorAll('.sl-cs__body p:not(.sl-cs__voice)')].map(p => p.textContent), voice: el.querySelector('.sl-cs__voice')?.textContent ?? null, prompt: el.querySelector('legend')?.textContent ?? null, choices: [...el.querySelectorAll('.sl-cs__choice')].map(b => b.dataset.choice + ' ' + b.innerText.replace(/^\S+\s+/, '').trim()) }
+})
+
+await scenario('the bridge: all three first choices on screen, each route to a safe ending, kept as read, and nothing rewarded', async () => {
+  const p = await profile({ viewport: PHONE, timezoneId: 'America/New_York' })
+  await p.ctx.clock.setFixedTime(new Date('2026-11-13T17:00:00Z'))
+  const page = await hatched(p)
+  const id = (await mine(page)).companionId
+  await page.locator('.sl-story h2').waitFor({ timeout: 15000 })
+  const card = page.locator('.sl-cs')
+  assert.match(await card.innerText(), /A STORY FOR ORBI · DRAFT[\s\S]*THE BRIDGE AFTER THE RAIN[\s\S]*ABOUT 3 MINUTES/i)
+  const fetches = []
+  page.on('request', r => { if (['fetch', 'xhr'].includes(r.resourceType())) fetches.push(r.url()) })
+  await button(page, 'Begin').click()
+  await page.locator('.sl-cs[data-scene="S0"]').waitFor()
+  const s0 = await bridgeScene(page)
+  assert.deepEqual(s0.choices, ['A Look closely at what happened.', 'B Ask a friend to help make a new plan.', 'C Rest together and return later.'])
+  assert.equal(s0.prompt, 'What would you like to do first?')
+  assert.equal(s0.voice, 'It misses the bridge the way it misses a familiar voice.', 'the Keeper’s opening (a Taurus)')
+  assert.match(s0.text[0], /^Yesterday, Orbi built a small bridge/)
+  // every choice is on screen together, within the card, on a phone
+  await card.locator('.sl-cs__choice').last().scrollIntoViewIfNeeded()
+  const boxes = await card.locator('.sl-cs__choice').evaluateAll(bs => bs.map(b => { const r = b.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right } }))
+  assert.equal(boxes.length, 3)
+  assert.ok(boxes.every(b => b.top >= 0 && b.bottom <= innerHeightOf(PHONE) && b.left >= 0 && b.right <= PHONE.width), JSON.stringify(boxes))
+  assert.deepEqual(await sticksOut(page), [])
+  await card.screenshot({ path: SHOTS ? `${SHOTS}/bridge-three-choices-390.png` : '/dev/null' }).catch(() => {})
+  // rest together, then leave a safe-path note
+  const before = await mine(page)
+  await card.locator('[data-choice="C"]').click()
+  await page.locator('.sl-cs[data-scene="S1C"]').waitFor()
+  const s1c = await bridgeScene(page)
+  assert.deepEqual(s1c.choices, ['C1 Return later and make a plan together.', 'C2 Leave a safe-path note for visitors and stop for today.'])
+  assert.equal(s1c.voice, 'The quiet settles around it like a favorite blanket.', 'its own line for resting')
+  await card.locator('[data-choice="C2"]').click()
+  await page.locator('.sl-cs[data-scene="E4"]').waitFor()
+  await page.locator('.sl-cs__kept', { hasText: 'Kept in Orbi’s memories.' }).waitFor()
+  assert.match(await card.innerText(), /ENOUGH FOR TODAY[\s\S]*TODAY’S COSMIC INVITATION\s+If you need a pause, let yourself take one\. You can come back later\.[\s\S]*COZMC REFLECTION\s+Rest and care can belong to the same day\./i)
+  await card.screenshot({ path: SHOTS ? `${SHOTS}/bridge-ending-390.png` : '/dev/null' }).catch(() => {})
+  const runs = () => page.evaluate(id => window.__cozmling.events(id).then(es => es.filter(e => e.type === 'choice-story').map(e => ({ eventId: e.eventId, ...e.data }))), id)
+  const [first] = await runs()
+  assert.deepEqual(first.path, ['S0', 'S1C', 'E4']); assert.deepEqual(first.choices.map(c => c.id), ['C', 'C2']); assert.equal(first.replayOf, null)
+  assert.equal(first.shown.scenes[0].paragraphs[3], s0.voice); assert.deepEqual(first.shown.scenes[0].offered, s0.choices.map(c => c.slice(2)))
+  assert.match(await page.locator('.sl-memories__list').innerText(), /You and Orbi read “The Bridge After the Rain”: Enough for today/)
+  // nothing about the Cozmling changed: no reward, no score, the same care
+  const after = await mine(page)
+  assert.equal(after.revision, before.revision); assert.deepEqual(after.care, before.care); assert.deepEqual(after.progress, before.progress)
+  // read again another way: look closely, then share the sketch
+  await button(page, 'Read it again').click()
+  await card.locator('[data-choice="A"]').click(); await card.locator('[data-choice="A1"]').click()
+  await page.locator('.sl-cs[data-scene="E1"]').waitFor()
+  assert.match((await bridgeScene(page)).text[0], /^You spread the sketch on a flat rock/, 'the ending says how you got there')
+  await page.locator('.sl-cs__kept', { hasText: 'Kept' }).waitFor()
+  const both = await runs()
+  assert.equal(both.length, 2); assert.equal(both.find(r => r.eventId !== first.eventId).replayOf, first.eventId)
+  assert.deepEqual(fetches, [], 'nothing is sent anywhere')
+  assert.deepEqual(p.errors, [])
+  await p.ctx.close()
+})
+
+await scenario('the same day, stage and story history: other Starprints and charts get the same daily story and the same bridge, each in its own voice', async () => {
+  const seen = []
+  for (const v of [{ birthday: '2026-04-05', sign: 'aries' }, { birthday: '2026-07-05', sign: 'cancer' }, { birthday: '2026-09-05', sign: 'virgo' }, { birthday: '2026-12-05', sign: 'sagittarius' }, { birthday: '2026-05-05', sign: 'taurus' }, { birthday: '2026-05-05', sign: 'taurus', place: 'reykjav' }]) {
+    const p = await profile({ viewport: PHONE, timezoneId: 'America/New_York' })
+    await p.ctx.clock.setFixedTime(new Date('2026-11-13T17:00:00Z'))                     // the same moment for every one of them
+    const page = await p.open()
+    await page.getByRole('heading', { name: 'Adopt a Cozmling' }).waitFor({ timeout: 15000 })
+    await page.locator('#sl-bday').fill(v.birthday)
+    if (v.place) {
+      await page.getByRole('radio', { name: /Choose a Place/ }).check()
+      await page.locator('#sl-bp-q').fill(v.place)
+      await page.getByRole('button', { name: /^Reykjavík, Iceland/ }).click()
+    }
+    await button(page, 'Next').click(); await button(page, 'Next').click()
+    await page.locator('#sl-name').fill('Orbi')
+    await button(page, 'Create the Star Egg').click()
+    await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
+    await page.waitForFunction(() => !!window.__cozmling.getState().companions[0].celestial)
+    await page.locator('.sl-story h2').waitFor({ timeout: 15000 })
+    const c = await mine(page)
+    const core = await storyCore(page), voice = await page.locator('.sl-story__voice').innerText(), sky = await page.locator('.sl-story__influence b').innerText()
+    await button(page, 'Begin').click(); await page.locator('.sl-cs[data-scene="S0"]').waitFor()
+    const bridge = await bridgeScene(page)
+    seen.push({ ...v, archetype: c.starprint.archetype, chart: `${c.celestial.bodies.moon.sign}/${c.celestial.angles.ascendant.sign}/${c.celestial.birthplace.name}`, stage: c.kind, core, voice, sky, bridge })
+    if (v.sign === 'aries' || v.place) await shot(page, `same-story-${v.sign}${v.place ? '-reykjavik' : ''}-390`, true)
+    assert.deepEqual(p.errors, [])
+    await p.ctx.close()
+  }
+  assert.equal(new Set(seen.map(x => x.sign)).size, 5); assert.equal(new Set(seen.map(x => x.chart)).size, 6, 'six different charts')
+  for (const x of seen) {
+    assert.deepEqual(x.core, seen[0].core, `${x.sign}${x.place ? ' in Reykjavík' : ''}: a different daily story`)
+    assert.deepEqual({ text: x.bridge.text, prompt: x.bridge.prompt, choices: x.bridge.choices }, { text: seen[0].bridge.text, prompt: seen[0].bridge.prompt, choices: seen[0].bridge.choices }, `${x.sign}: a different bridge`)
+  }
+  // each archetype speaks in its own voice; the same Starprint born elsewhere keeps its voice
+  const taurus = seen.filter(x => x.sign === 'taurus')
+  assert.equal(new Set(seen.filter(x => !x.place).map(x => x.voice)).size, 5); assert.equal(new Set(seen.filter(x => !x.place).map(x => x.bridge.voice)).size, 5)
+  assert.equal(taurus[0].voice, taurus[1].voice); assert.equal(taurus[0].bridge.voice, taurus[1].bridge.voice)
+  assert.notEqual(taurus[0].chart, taurus[1].chart, 'the chart did change')
+  console.log(`     (the same story for ${seen.length} Cozmlings: ${seen.map(x => `${x.archetype}${x.place ? ' in Reykjavík' : ''}`).join(', ')})`)
 })
 
 await browser.close()
