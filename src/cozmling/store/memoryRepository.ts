@@ -1,7 +1,7 @@
 /* A repository that lives in memory: for tests, and for a browser that won't store anything
    (some private modes). Progress kept here lasts for the visit, and the page says so. */
 import type { Companion, JourneyEvent, SourceRecord } from '../types'
-import { refusal, type Repository, type Write, type WriteResult } from './repository'
+import { guardedWriteRefusal, refusal, type Repository, type Write, type WriteResult } from './repository'
 
 const copy = <T,>(v: T): T => structuredClone(v)
 
@@ -11,7 +11,9 @@ export function memoryRepository(): Repository {
     durable: false,
     async load() { return copy({ companions: [...companions.values()], sources: [...sources.values()], meta: Object.fromEntries(meta) }) },
     async write(w: Write): Promise<WriteResult> {
-      const no = refusal(w, id => companions.get(id)?.revision ?? null, id => events.has(id))
+      const checked = w.check?.events ? [...events.values()].filter(e => e.companionId === w.check?.events?.companionId).map(e => e.eventId) : []
+      const no = guardedWriteRefusal(w, w.check?.meta ? meta.get(w.check.meta.key) : undefined, checked)
+        ?? refusal(w, id => companions.get(id)?.revision ?? null, id => events.has(id))
       if (no) return no
       for (const c of w.companions ?? []) companions.set(c.record.companionId, copy(c.record))
       for (const s of w.sources ?? []) sources.set(s.sourceKey, copy(s))

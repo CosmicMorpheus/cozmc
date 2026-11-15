@@ -15,13 +15,21 @@ import { newId } from '../store/util'
 import { Glyph, Orb } from '../components/Glyph'
 import { StarSky } from '../components/StarSky'
 import { LookPicker } from './LookPicker'
-import { ADVENTURER_SCENE } from '../integrations/originalScene'
+import { ADVENTURER_SCENE, adventurerLook } from '../integrations/originalScene'
+import { OriginalPortrait } from '../components/OriginalPortrait'
+import { COMMUNITY_HATCH_LOOKS, type CommunityHatchReceipt } from '../community/communityHatch'
+import type { AdventurerCompanion } from '../types'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
 
-export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
+export function AdoptionScreen({ onCancel, communityEgg, onAccountAdopt }: {
+  onCancel?: () => void
+  communityEgg?: CommunityHatchReceipt
+  onAccountAdopt?: (record: AdventurerCompanion) => Promise<void>
+}) {
+  const assignedLook = communityEgg ? COMMUNITY_HATCH_LOOKS[communityEgg.lookId] : undefined
   const [step, setStep] = useState(1)
   const form = useRef<HTMLFormElement>(null)
   const first = useRef(true)
@@ -55,22 +63,37 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
-    const choices = { name, birthday, look, skin, birthplace }, why = adoptProblem(choices)
+    if (busy) return
+    const choices = { name, birthday, look: assignedLook?.look ?? look, skin: assignedLook?.skin ?? skin, birthplace }
+    const why = adoptProblem(choices)
     if (why) { setProblem(why); return }
     const store = cozmlingStore()
     if (!store) { setProblem('The Star Loft isn’t ready yet. Give it a moment and try again.'); return }
     setBusy(true); setProblem('')
     const now = Date.now(), starprint = engine?.provisionalStarprint(birthday, now, birthplace) ?? undefined
-    const res = await store.adopt(newAdventurer(choices, { companionId: newId(), now, starprint }))
-    setBusy(false)
-    if (!res.ok) setProblem('That didn’t save. Nothing was lost: try again in a moment.')
+    try {
+      const companionId = communityEgg?.companionId ?? (onAccountAdopt ? crypto.randomUUID() : newId())
+      const record = newAdventurer(choices, { companionId, now, starprint })
+      if (onAccountAdopt) await onAccountAdopt(record)
+      else {
+        if (communityEgg) throw new Error('Verify your Algorand wallet to adopt the event egg.')
+        const result = await store.adopt(record)
+        if (!result.ok) throw new Error(result.detail)
+      }
+    } catch (error) {
+      setProblem(onAccountAdopt && error instanceof Error ? error.message : 'That didn’t save. Try again in a moment.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
     <>
       <header className="page-head">
-        <h1>Adopt a Cozmling</h1>
-        <p>A little adventurer who lives on COZMC and comes along to the arcade. It’s free, and you don’t need a wallet.</p>
+        <h1>{communityEgg ? 'Adopt your Community Hatch Cozmling' : 'Adopt a Cozmling'}</h1>
+        <p>{communityEgg ? 'Choose a birthday and a name for the Cozmling in your mystery egg.' : onAccountAdopt
+          ? 'A little adventurer who lives on COZMC. Adoption is free with your verified Algorand wallet.'
+          : 'A little adventurer who lives on COZMC and comes along to the arcade. It’s free, and you don’t need a wallet.'}</p>
       </header>
 
       <form className="sl-adopt panel" ref={form} onSubmit={create} noValidate>
@@ -119,9 +142,20 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
           <section aria-labelledby="sl-s2">
             <h2 id="sl-s2" tabIndex={-1}>Its Starprint</h2>
             <p>Born on {birthdayText(birthday)}, your Cozmling is a <b>{sign.name}</b>: {ELEMENTS[sign.element].name.toLowerCase()} element, the {sign.archetype}. The Starprint is where its character begins. What the two of you do together decides the rest.</p>
-            {cusp && <p className="sl-fine">On a cusp day the look you choose carries over if it hatches the other side of {clockText(cusp.at, birthplace.timeZone)} {clockName(birthplace)} time: it keeps Look {look.toUpperCase()}, in the other sign’s style.</p>}
-            <LookPicker sign={sign.sign} look={look} skin={skin} onLook={setLook} onSkin={setSkin} idBase="sl-adopt" />
-            <p className="sl-fine">Both looks are the same {sign.name}: same sign, same element, same everything else. You can change look and colour later.</p>
+            {assignedLook ? (
+              <>
+                <p>Your mystery egg drew <strong>{assignedLook.label}</strong>.</p>
+                <div className="sl-look__art sl-look__art--pixel">
+                  <OriginalPortrait look={adventurerLook({ look: assignedLook.look, skin: assignedLook.skin, element: sign.element })} />
+                </div>
+              </>
+            ) : (
+              <>
+                {cusp && <p className="sl-fine">On a cusp day the look you choose carries over if it hatches the other side of {clockText(cusp.at, birthplace.timeZone)} {clockName(birthplace)} time: it keeps Look {look.toUpperCase()}, in the other sign’s style.</p>}
+                <LookPicker sign={sign.sign} look={look} skin={skin} onLook={setLook} onSkin={setSkin} idBase="sl-adopt" />
+                <p className="sl-fine">Both looks are the same {sign.name}: same sign, same element, same everything else. You can change look and colour later.</p>
+              </>
+            )}
             <div className="sl-nav">
               <button type="button" className="btn btn--ghost" onClick={() => setStep(1)}>Back</button>
               <button type="button" className="btn btn--phos" onClick={() => setStep(3)}>Next</button>
@@ -137,14 +171,14 @@ export function AdoptionScreen({ onCancel }: { onCancel?: () => void }) {
               <input id="sl-name" type="text" value={name} maxLength={14} autoComplete="off" spellCheck={false} onChange={e => setName(cleanName(e.target.value))} placeholder="Up to 14 letters" />
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => setName(pick(NAMES.filter(n => n !== name)))}>Suggest one</button>
             </div>
-            <p className="sl-summary"><Glyph sign={sign.sign} size={18} /> {name.trim() || 'Your Cozmling'} · {sign.name} · {ELEMENTS[sign.element].name} · born {birthdayText(birthday)} in {isDefaultPlace(birthplace) ? 'the Origin Observatory, Mauna Kea' : birthplace.place} · Look {look.toUpperCase()}</p>
+            <p className="sl-summary"><Glyph sign={sign.sign} size={18} /> {name.trim() || 'Your Cozmling'} · {sign.name} · {ELEMENTS[sign.element].name} · born {birthdayText(birthday)} in {isDefaultPlace(birthplace) ? 'the Origin Observatory, Mauna Kea' : birthplace.place} · {assignedLook?.label ?? `Look ${look.toUpperCase()}`}</p>
             <p>It starts as a Star Egg. Keep it warm and it hatches.</p>
             {problem && <p className="state state--err" role="alert">{problem}</p>}
             <div className="sl-nav">
               <button type="button" className="btn btn--ghost" onClick={() => setStep(2)} disabled={busy}>Back</button>
               <button type="submit" className="btn btn--phos" disabled={busy || !name.trim()}>{busy ? 'Making the egg…' : 'Create the Star Egg'}</button>
             </div>
-            <p className="sl-fine">Your Cozmling is saved in this browser. Nothing is sent anywhere, and there’s nothing to pay.</p>
+            <p className="sl-fine">{onAccountAdopt ? 'Your Cozmling and its progress are saved privately to your COZMC wallet account.' : 'Your Cozmling is saved in this browser. Nothing is sent anywhere, and there’s nothing to pay.'}</p>
           </section>
         )}
       </form>

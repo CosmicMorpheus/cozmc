@@ -19,6 +19,7 @@ import { GAMES } from './arcade/games'
 import { unlock } from './lib/profile'
 import { sfx } from './arcade/sfx'
 import { COZMLING_DEV, COZMLING_V2, CozmlingProvider } from './cozmling'
+import { COZMLING_WALLET_ACCOUNT } from './cozmling/flags'
 
 const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a']
 
@@ -38,7 +39,7 @@ const About = lazy(() => import('./tabs/About').then(m => ({ default: m.About })
 // the rebuilt Cozmling page: only when it is switched on (otherwise none of it is even in the build)
 const CozmlingV2 = COZMLING_V2 ? lazy(() => import('./cozmling/screens/CozmlingApp').then(m => ({ default: m.CozmlingApp }))) : null
 // only in local work and on the preview site, and only when the rebuilt Cozmling is switched on
-const CozmlingDev = COZMLING_DEV ? lazy(() => import('./cozmling/dev/DevPanel').then(m => ({ default: m.DevPanel }))) : null
+const CozmlingDev = COZMLING_DEV && !COZMLING_WALLET_ACCOUNT ? lazy(() => import('./cozmling/dev/DevPanel').then(m => ({ default: m.DevPanel }))) : null
 
 export type TabId = 'home' | 'cozmling' | 'arcade' | 'community' | 'about'
 type IconName = keyof typeof ICONS
@@ -189,7 +190,10 @@ export function App() {
         <SubNav tab={route.tab} active={pageOf(route.tab, route.sub)} />
         <div className="page" key={`${route.tab}/${pageOf(route.tab, route.sub)}`}>
         {route.tab === 'home' && <Home go={go} onBurn={openBurn} />}
-        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev /> : CozmlingV2 ? <CozmlingV2 sub={route.sub} extra={route.extra} /> : <Companion />)}
+        {route.tab === 'cozmling' && (CozmlingDev && route.sub === 'dev' ? <CozmlingDev />
+          : CozmlingV2 ? <CozmlingV2 sub={route.sub} extra={route.extra} />
+            : COZMLING_WALLET_ACCOUNT ? <p role="status">The Cozmling wallet-account preview needs the rebuilt Star Loft.</p>
+              : <Companion />)}
         {route.tab === 'arcade' && (
           route.sub === 'boards' ? <Leaderboard go={go} onBurn={openBurn} />
           : route.sub === 'giveaway' ? <Giveaway go={go} />

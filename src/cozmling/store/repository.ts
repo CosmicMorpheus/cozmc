@@ -12,6 +12,11 @@ export interface Write {
   /** New events. If any of their ids is already stored, nothing in this write is applied. */
   events?: JourneyEvent[]
   meta?: Record<string, unknown>
+  /** Cloud bookkeeping and the local story history must still match before a replacement. */
+  check?: {
+    meta?: { key: string; stamp: string | null }
+    events?: { companionId: string; ids: string[] }
+  }
 }
 export type WriteResult = { ok: true } | { ok: false; reason: 'stale' | 'duplicate' | 'failed'; detail: string }
 
@@ -29,6 +34,22 @@ export function refusal(w: Write, storedRevision: (id: string) => number | null,
   for (const c of w.companions ?? []) {
     const have = storedRevision(c.record.companionId)
     if (have !== c.expect) return { ok: false, reason: 'stale', detail: `${c.record.companionId}: stored revision ${have}, expected ${c.expect}` }
+  }
+  return null
+}
+
+export function guardedWriteRefusal(
+  write: Write, metadata: unknown, eventIds: readonly string[],
+): Exclude<WriteResult, { ok: true }> | null {
+  const stamp = metadata && typeof metadata === 'object' && 'stamp' in metadata ? metadata.stamp : null
+  if (write.check?.meta && stamp !== write.check.meta.stamp) {
+    return { ok: false, reason: 'stale', detail: 'account metadata changed' }
+  }
+  if (write.check?.events) {
+    const expected = new Set(write.check.events.ids)
+    if (expected.size !== eventIds.length || eventIds.some(id => !expected.has(id))) {
+      return { ok: false, reason: 'stale', detail: 'companion history changed' }
+    }
   }
   return null
 }

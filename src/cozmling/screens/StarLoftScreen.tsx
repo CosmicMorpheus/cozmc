@@ -38,13 +38,18 @@ import { isDefaultPlace, placePhrase } from '../celestial/birthplace'
 import { ORIGIN_OBSERVATORY } from '../celestial/observatory'
 import { drawnOriginal, originalProgress, originalStage } from '../integrations/originalScene'
 import type { Stage } from '../../companion/look'
+import { COMMUNITY_HATCH_LANTERN } from '../community/communityHatch'
 
 type AdvStage = NonNullable<AdventurerCompanion['progress']['visualStage']>
 const ADV_STAGE: Record<AdvStage, string> = { hatchling: 'Hatchling', adolescent: 'Adolescent', ascended: 'Ascended' }
 const ADV_STAGES = Object.keys(ADV_STAGE) as AdvStage[]
 const ARCADE: [string, string][] = [['moon-bounce', 'Moon Bounce'], ['brick-by-brick', 'Brick by Brick'], ['moonshot', 'Moonshot']]
 const NOT_SAVED = 'That didn’t save. Try again in a moment.'
-export function StarLoftScreen({ companion: c, arrived }: { companion: Companion; /** just adopted, or just switched to: start at the top of its page, keyboard included */ arrived?: boolean }) {
+const GROVE_LANTERN = {
+  rows: ['...ww...', '..w..w..', '..wwww..', '.wyyyyw.', '.wyffyw.', '.wyffyw.', '.wyyyyw.', '..wwww..'],
+  palette: { w: '#7c542c', y: '#ec9b41', f: '#fff2ab' },
+}
+export function StarLoftScreen({ companion: c, arrived, accountBacked }: { companion: Companion; /** just adopted, or just switched to: start at the top of its page, keyboard included */ arrived?: boolean; accountBacked?: boolean }) {
   const scene = useRef<RendererHandle>(null)
   const title = useRef<HTMLHeadingElement>(null)
   const hatchedHere = useRef(false)
@@ -147,6 +152,15 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
         <div className="sl__main">
           <div className={`sl__screen${asleep ? ' is-night' : ''}`}>
             <CompanionRenderer ref={scene} companion={c} mode="loft" crack={crack} previewStage={preview} onTap={!hatched ? warm : asleep ? undefined : () => void care({ do: 'pat' })} />
+            {c.kind === 'adventurer' && c.appearance.decor.includes(COMMUNITY_HATCH_LANTERN) && (
+              <span
+                role="img"
+                aria-label="Community Hatch lantern"
+                style={{ position: 'absolute', right: '9%', bottom: '22%', pointerEvents: 'none', filter: 'drop-shadow(0 0 8px #ffb35d)' }}
+              >
+                <PixelArt rows={GROVE_LANTERN.rows} palette={GROVE_LANTERN.palette} size={32} />
+              </span>
+            )}
             <p className="sl__say" aria-live="polite">{say}</p>
           </div>
 
@@ -205,7 +219,7 @@ export function StarLoftScreen({ companion: c, arrived }: { companion: Companion
           <GrowingUp c={c} pet={pet} name={name} hatched={hatched} />
 
           <div className="panel sl-savepanel">
-            <SaveStatus name={name} />
+            <SaveStatus name={name} companionId={id} accountBacked={accountBacked} />
           </div>
 
         </aside>
@@ -418,4 +432,3 @@ function GrowingUp({ c, pet, name, hatched }: { c: Companion; pet: Pet; name: st
     </div>
   )
 }
-

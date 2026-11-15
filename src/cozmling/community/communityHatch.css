@@ -1,0 +1,57 @@
+.community-hatch {
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-block: 1rem;
+}
+
+.community-hatch h2,
+.community-hatch p {
+  margin: 0 0 .75rem;
+}
+
+.community-hatch button {
+  margin: 0 .5rem .5rem 0;
+  min-height: 44px;
+  padding: .5rem .75rem;
+}
+
+.community-hatch progress {
+  width: 100%;
+  accent-color: #61dfa8;
+}
+
+.community-hatch__grove {
+  align-items: end;
+  background: #0d1c26;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  min-height: 4rem;
+  padding: .75rem;
+}
+
+.community-hatch__grove span {
+  background: #3e5360;
+  border-radius: 35%;
+  block-size: .75rem;
+  inline-size: .5rem;
+  justify-self: center;
+}
+
+.community-hatch__grove span:nth-child(3n + 2) {
+  transform: translateY(-1rem);
+}
+
+.community-hatch__grove span:nth-child(3n + 3) {
+  transform: translateY(-.5rem);
+}
+
+.community-hatch__grove span[data-lit='true'] {
+  background: #ffd790;
+  box-shadow: 0 0 .75rem #ffd790a6;
+}
+
+.community-hatch .community-hatch__status {
+  margin-bottom: 0;
+}

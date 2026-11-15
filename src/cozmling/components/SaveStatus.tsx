@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { cozmlingStore, useCozmling } from '../index'
 import { applyImport, exportAll, planImport, type ImportPlan } from '../store/exportImport'
+import { COZMLING_WALLET_ACCOUNT } from '../flags'
 
 type Kept = 'saved' | 'problem' | 'visit'
 const keptOf = (st: { durable: boolean | null; saveProblem: string | null }): Kept => (st.durable === false ? 'visit' : st.saveProblem ? 'problem' : 'saved')
@@ -17,21 +18,33 @@ export function SaveChip() {
   )
 }
 
-export function SaveStatus({ name }: { name: string }) {
+export async function downloadCozmlingCopy(companionId?: string) {
+  const store = cozmlingStore()
+  if (!store) throw new Error('The Star Loft is still opening.')
+  const file = await exportAll(store.repo, Date.now(), companionId)
+  const blob = new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `cozmlings-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(link.href), 2000)
+}
+
+export function SaveStatus({ name, companionId, accountBacked = false }: { name: string; companionId: string; accountBacked?: boolean }) {
   const st = useCozmling()
   const [note, setNote] = useState('')
   const [plan, setPlan] = useState<ImportPlan | null>(null)
   const file = useRef<HTMLInputElement>(null)
 
   const exportFile = async () => {
-    const s = cozmlingStore()
-    if (!s) return
-    const blob = new Blob([JSON.stringify(await exportAll(s.repo, Date.now()), null, 1)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob); a.download = `cozmlings-${new Date().toISOString().slice(0, 10)}.json`
-    document.body.appendChild(a); a.click(); a.remove()
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000)
-    setNote('A copy was downloaded. Keep the file somewhere safe.')
+    try {
+      await downloadCozmlingCopy(COZMLING_WALLET_ACCOUNT ? companionId : undefined)
+      setNote('A copy was downloaded. Keep the file somewhere safe.')
+    } catch {
+      setNote('The copy could not be downloaded. Try again.')
+    }
   }
   const chooseFile = async (f: File | undefined) => {
     const s = cozmlingStore()
@@ -59,11 +72,11 @@ export function SaveStatus({ name }: { name: string }) {
       <p className="sl-save__line" data-save={state}>
         {state === 'saved' && <><span className="sl-save__tick" aria-hidden="true">✓</span> Saved on this device</>}
         {state === 'problem' && <>Not saved: the last change didn’t go through. Try again in a moment.</>}
-        {state === 'visit' && <>This visit only: this browser isn’t storing anything, so {name} won’t be here next time.</>}
+        {state === 'visit' && (accountBacked ? <>This browser keeps changes for this visit. Confirm the wallet account save before leaving.</> : <>This visit only: this browser isn’t storing anything, so {name} won’t be here next time.</>)}
       </p>
       {state === 'saved' && (
         <p className="sl-fine">
-          {name} lives in this browser. No wallet and no account are needed.
+          {accountBacked ? <>{name} has a device copy. Check the wallet account status for the latest backup.</> : <>{name} lives in this browser.</>}
           {st.persisted === false && <> Your browser may clear saved data if it runs short of space, so it’s worth keeping a copy.</>}
         </p>
       )}

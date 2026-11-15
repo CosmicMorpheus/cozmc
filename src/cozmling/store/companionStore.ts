@@ -9,6 +9,7 @@ import { applyMirror, planSync, type Env, type SyncReport } from './migrations'
 import type { Repository, WriteResult } from './repository'
 import { INITIAL, type CozState } from './state'
 import { companionProblem } from './validators'
+import { accountOwners } from '../account/localAccount'
 
 export { INITIAL, type CozState } from './state'
 
@@ -52,6 +53,7 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     const selected = active(good).find(c => c.companionId === wanted) ?? active(good)[0] ?? null
     set({
       status: 'ready', companions: good, unreadable, selectedId: selected?.companionId ?? null, lastSync: report ?? state.lastSync,
+      accountOwners: accountOwners(snap.meta),
       quarantined: report ? report.quarantined : state.quarantined,
     })
     return selected?.companionId ?? null
@@ -211,7 +213,13 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
         has kept it already, nothing is written and `kept` is false. */
     keepEvent: (e: JourneyEvent) => inTurn(async (): Promise<{ ok: true; kept: boolean } | { ok: false; detail: string }> => {
       const res = await repo.write({ events: [e] })
-      return res.ok ? { ok: true, kept: true } : res.reason === 'duplicate' ? { ok: true, kept: false } : { ok: false, detail: res.detail }
+      if (res.ok) {
+        // Story Mode writes events without updating the companion record; cloud observers still need to see it.
+        set({ savedAt: env.now() })
+        channel?.post({ type: 'changed' })
+        return { ok: true, kept: true }
+      }
+      return res.reason === 'duplicate' ? { ok: true, kept: false } : { ok: false, detail: res.detail }
     }),
     /** For the pieces built on top of this (adoption, the arcade bridge, import). */
     commit,

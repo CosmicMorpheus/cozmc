@@ -6,14 +6,16 @@
    ============================================================ */
 import { ASA_ID, SITE_URL } from '../config'
 import { BADGE_COLOR, FLAME, FLAME_PAL } from '../components/Pixel'
+import { BODIES, drawCozmling, type Look, type Stage } from '../companion/look'
 
 export type ShareCard =
   | { kind: 'score'; kicker: string; score: number; game: string; cta: string; byline?: string; verified?: boolean; shot?: CanvasImageSource | null }
   | { kind: 'burn'; kicker: string; amount: string; wish?: string; byline?: string }
   | { kind: 'quote'; t: string; a: string; src?: string; ctx?: string }
   | { kind: 'player'; name: string; tier: { name: string; color: string; art: string[]; palette: [string, string, string] }; tierNo: number; stats: [string, string][]; badges: number; total: number; kinds: string[] }
+  | { kind: 'cozmling'; name: string; look: Look; stage: Stage; starprint?: string; stageLabel?: string }
 
-export interface SharePayload { card: ShareCard; text: string; file: string }
+export interface SharePayload { card: ShareCard; text: string; file: string; destination?: 'discord' }
 
 const W = 1200, H = 675
 const C = { phos: '#8dff6a', phosDim: '#4aa83a', crt: '#b6ff9c', bone: '#f1efe6', mist: '#a3a199', dim: '#6c6b65', ember: '#ffb020', fire: '#ff5a1f', line: '#2c2c2c' }
@@ -222,6 +224,33 @@ export async function renderCard(card: ShareCard): Promise<Blob> {
     })
     y += Math.ceil(Math.min(card.stats.length, 6) / 2) * 74 + 6
     text(ctx, 'GET YOURS AT COZMC.US', x, Math.min(y + 20, H - 92), `700 22px ${PIXEL}`, C.ember, 12, '2px')
+  }
+
+  if (card.kind === 'cozmling') {
+    frame(ctx, mark, 'COZMLING')
+    const color = BODIES[card.look.body] ?? C.phos
+    const glow = ctx.createRadialGradient(870, 335, 25, 870, 335, 265)
+    glow.addColorStop(0, color + '55')
+    glow.addColorStop(1, '#080d12')
+    ctx.fillStyle = glow
+    ctx.fillRect(650, 134, 485, 412)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2
+    ctx.strokeRect(650, 134, 485, 412)
+    const portrait = document.createElement('canvas')
+    portrait.width = 58
+    portrait.height = 55
+    const pixels = portrait.getContext('2d')
+    if (!pixels) throw new Error('Could not draw the Cozmling')
+    drawCozmling(pixels, 29, 47, card.look, card.stage, 'happy', 0)
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(portrait, 689, 141, 406, 385)
+    ctx.imageSmoothingEnabled = true
+    text(ctx, 'MEET MY COZMLING', 58, 242, `700 24px ${PIXEL}`, color, 0, '2px')
+    const name = fit(ctx, card.name, px => `800 ${px}px ${SANS}`, 540, 1, 108, 32)
+    text(ctx, name.lines[0], 54, 335, `800 ${name.px}px ${SANS}`, C.bone)
+    const details = [card.starprint, card.stageLabel].filter(Boolean).join(' · ')
+    if (details) text(ctx, details, 58, 402, `500 26px ${MONO}`, C.mist)
   }
 
   scanlines(ctx, 0, 0, W, H, 0.12)

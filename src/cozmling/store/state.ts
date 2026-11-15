@@ -16,6 +16,7 @@ export interface CozState {
   saveProblem: string | null
   companions: Companion[]
   selectedId: string | null
+  accountOwners: Record<string, string>
   /** v1 saves that could not be read. They are kept as they are, never repaired or deleted. */
   quarantined: { sourceKey: string; reason: string }[]
   /** Records in the store that don't pass the v2 checks. Kept, not shown as companions. */
@@ -24,4 +25,4 @@ export interface CozState {
   lastSync: SyncReport | null
 }
 
-export const INITIAL: CozState = { status: 'loading', durable: null, persisted: null, savedAt: null, saveProblem: null, companions: [], selectedId: null, quarantined: [], unreadable: [], lastSync: null }
+export const INITIAL: CozState = { status: 'loading', durable: null, persisted: null, savedAt: null, saveProblem: null, companions: [], selectedId: null, accountOwners: {}, quarantined: [], unreadable: [], lastSync: null }

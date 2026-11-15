@@ -1,7 +1,7 @@
 /* The durable repository: IndexedDB, one all-or-nothing transaction per change.
    No library: the four calls it needs are wrapped below. */
 import type { Companion, JourneyEvent, SourceRecord } from '../types'
-import { refusal, type Repository, type Write, type WriteResult } from './repository'
+import { guardedWriteRefusal, refusal, type Repository, type Write, type WriteResult } from './repository'
 
 export const DB_NAME = 'cozmc-cozmling-v2'
 const STORES = ['companions', 'sources', 'events', 'meta'] as const
@@ -48,13 +48,16 @@ export async function indexedDbRepository(name = DB_NAME): Promise<Repository | 
         const tx = db.transaction(STORES, 'readwrite'), finished = done(tx)
         finished.catch(() => { /* reported below */ })
         // read what the checks need, all in this same transaction
-        const [have, seen] = await Promise.all([
+        const [have, seen, metadata, eventKeys] = await Promise.all([
           Promise.all((w.companions ?? []).map(c => req(tx.objectStore('companions').get(c.record.companionId) as IDBRequest<Companion | undefined>))),
           Promise.all((w.events ?? []).map(e => req(tx.objectStore('events').getKey(e.eventId)))),
+          w.check?.meta ? req(tx.objectStore('meta').get(w.check.meta.key)) : undefined,
+          w.check?.events ? req(tx.objectStore('events').index('companionId').getAllKeys(w.check.events.companionId)) : [],
         ])
         const revs = new Map((w.companions ?? []).map((c, i) => [c.record.companionId, have[i]?.revision ?? null]))
         const dupes = new Set((w.events ?? []).filter((_, i) => seen[i] !== undefined).map(e => e.eventId))
-        const no = refusal(w, id => revs.get(id) ?? null, id => dupes.has(id))
+        const no = guardedWriteRefusal(w, metadata, eventKeys.map(String))
+          ?? refusal(w, id => revs.get(id) ?? null, id => dupes.has(id))
         if (no) { tx.abort(); return no }
         for (const c of w.companions ?? []) tx.objectStore('companions').put(c.record)
         for (const s of w.sources ?? []) tx.objectStore('sources').put(s)

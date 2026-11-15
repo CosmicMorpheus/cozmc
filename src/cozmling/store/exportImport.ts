@@ -7,12 +7,18 @@
 import type { Companion, JourneyEvent, Snapshot, SourceRecord } from '../types'
 import type { Repository, WriteResult } from './repository'
 import { companionProblem } from './validators'
+import { accountOwners } from '../account/localAccount'
 
 export interface ExportFile { format: 'cozmc-cozmling'; version: 1; exportedAt: number; companions: Companion[]; sources: SourceRecord[]; events: JourneyEvent[] }
 
-export async function exportAll(repo: Repository, now: number): Promise<ExportFile> {
+export async function exportAll(repo: Repository, now: number, companionId?: string): Promise<ExportFile> {
   const snap = await repo.load()
-  return { format: 'cozmc-cozmling', version: 1, exportedAt: now, companions: snap.companions, sources: snap.sources, events: await repo.events() }
+  return {
+    format: 'cozmc-cozmling', version: 1, exportedAt: now,
+    companions: companionId ? snap.companions.filter(c => c.companionId === companionId) : snap.companions,
+    sources: companionId ? snap.sources.filter(s => s.companionId === companionId) : snap.sources,
+    events: await repo.events(companionId),
+  }
 }
 
 export interface ImportPlan {
@@ -32,6 +38,7 @@ export function planImport(file: unknown, snap: Snapshot, haveEvents: Set<string
   if (f.version !== 1) return { ok: false, reason: 'This save file is from a newer version of the site.' }
   if (!Array.isArray(f.companions)) return { ok: false, reason: 'This save file has no companions in it.' }
   const here = new Map(snap.companions.map(c => [c.companionId, c]))
+  const protectedIds = accountOwners(snap.meta)
   const plan: ImportPlan = { add: [], same: [], newer: [], rejected: [], events: [] }
   const seen = new Set<string>()
   for (const raw of f.companions) {
@@ -42,6 +49,7 @@ export function planImport(file: unknown, snap: Snapshot, haveEvents: Set<string
     let c = raw as Companion
     if (c.kind === 'legacy') c = { ...c, legacy: { ...c.legacy, sourceKey: '' } }       // see the note at the top
     const existing = here.get(id)
+    if (Object.hasOwn(protectedIds, id)) { plan.rejected.push({ id, reason: 'This companion is recovered from its verified wallet account.' }); continue }
     if (!existing) plan.add.push(c)
     else if (c.revision > existing.revision) plan.newer.push({ incoming: c, existing })
     else plan.same.push(id)
