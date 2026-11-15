@@ -17,9 +17,10 @@ type Props = {
 
 type Work = 'refresh' | 'initial' | 'place' | CommunityHatchAction
 
+// a date and time that never break apart mid-way ("Nov 17, 12:00 AM UTC")
 const eventDate = (value: string) => new Date(value).toLocaleString(undefined, {
   month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-})
+}).replace(/(\d) (?=[AP]M)/, '$1\u00a0').replace(/ (?=[A-Z]{2,5}$|GMT|UTC)/g, '\u00a0')
 
 async function fetchHatch(signal: AbortSignal, address: string | null, action?: CommunityHatchAction) {
   const headers = new Headers()

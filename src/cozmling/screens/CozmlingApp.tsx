@@ -140,13 +140,14 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
     />
   ) : null
   const accountStatus = account?.address ? <AccountStatus account={account} ownedCompanionId={isOwned ? selected?.companionId : undefined} companions={st.companions} /> : null
+  // the wallet panel and its sync status read as one panel
+  const walletPanel = account ? <div className="sl-account">{account.access}{accountStatus}</div> : null
   const mayAdoptOrdinary = !!account?.address && account.loaded && !st.companions.some(c =>
     st.accountOwners[c.companionId] === account.address && !c.companionId.startsWith('hatch-'))
 
   if (!selected || adopting) return (
     <>
-      {account?.access}
-      {accountStatus}
+      {walletPanel}
       {!adopting && communityPanel}
       {(!account || (account.address && account.loaded)) && (
         <>
@@ -186,8 +187,7 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
   return (
     <>
       <StarLoftScreen key={selected.companionId} companion={selected} arrived={moved} accountBacked={isOwned} />
-      {account?.access}
-      {accountStatus}
+      {walletPanel}
       {mayAdoptOrdinary && <button className="btn btn--phos" type="button" onClick={() => setAdopting(true)}>Adopt a wallet-backed Cozmling</button>}
       {isOwned && selected.kind === 'adventurer' && selected.hatch.status === 'hatched'
         && <CozmlingShare companion={selected} />}

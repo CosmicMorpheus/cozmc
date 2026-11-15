@@ -438,3 +438,10 @@
 .sl-share__opts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 14px }
 .sl-share__opts label { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; color: var(--mist) }
 .sl-share__opts input { width: 18px; height: 18px; accent-color: var(--phos) }
+
+/* the wallet account: its panel and its sync status as one block, set apart like every other panel */
+.sl-account { margin-top: 16px }
+.sl-account > .panel { margin: 0 }
+.sl-account > .sl-fine { margin: 0; padding: 0 clamp(18px, 2.4vw, 26px) clamp(16px, 2.2vw, 22px); border: 1px solid var(--line-2); border-top: 0; background: var(--bg-1) }
+.sl-account > .sl-fine p { margin: 0 }
+.sl-account > .sl-fine .btn { margin-top: 10px }
