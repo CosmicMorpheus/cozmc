@@ -8,7 +8,7 @@ export const config: Config = { path: '/api/community-hatch' }
 
 export default async function communityHatch(request: Request, context: Context) {
   try {
-    const accountConfig = readConfig(context.deploy.context)
+    const accountConfig = readConfig(context.deploy.context, process.env, context.site?.id)
     if (!accountConfig) return response({ error: 'disabled' }, 404)
     const badRequest = validateRequest(request, accountConfig.origin)
     if (badRequest) return badRequest

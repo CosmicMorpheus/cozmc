@@ -18,7 +18,7 @@ import { StarLoftScreen } from './StarLoftScreen'
 import { CommunityHatchPanel } from '../community/CommunityHatchPanel'
 import { COMMUNITY_HATCH_LANTERN, communityHatchEnabled, type CommunityHatchReceipt } from '../community/communityHatch'
 import { CozmlingShare } from '../community/CozmlingShare'
-import { walletAccountEnabled } from '../account/accountClient'
+import { COZMLING_WALLET_ACCOUNT } from '../flags'
 import { WalletAccess, useWalletVerification } from '../account/walletSession'
 import { useCloudAccount } from '../account/useCloudAccount'
 import { downloadCozmlingCopy } from '../components/SaveStatus'
@@ -35,7 +35,7 @@ type Route = {
 
 export function CozmlingApp(route: Route) {
   const { activeAddress, activeWallet, isReady } = useWallet()
-  if (!walletAccountEnabled) return <CozmlingView {...route} />
+  if (!COZMLING_WALLET_ACCOUNT) return <CozmlingView {...route} />
   const address = isReady && activeWallet ? activeAddress : null
   return <WalletCozmlingView key={address ? `${activeWallet?.walletKey}:${address}` : 'visitor'} address={address} route={route} />
 }
@@ -53,7 +53,9 @@ function WalletCozmlingView({ address, route }: { address: string | null; route:
   return <CozmlingView key={verifiedAddress ?? 'unverified'} {...route} account={{ ...cloud, address: verifiedAddress, access }} />
 }
 
-function CozmlingView({ sub = null, extra = null, account }: Route & { account?: Account }) {
+function CozmlingView({ sub = null, extra = null, account: given }: Route & { account?: Account }) {
+  // statically nothing unless wallet-account mode is built in, so a build without it leaves its screens out
+  const account = COZMLING_WALLET_ACCOUNT ? given : undefined
   const st = useCozmling()
   const [adopting, setAdopting] = useState(false)
   const [communityEgg, setCommunityEgg] = useState<CommunityHatchReceipt | null>(null)
@@ -137,7 +139,7 @@ function CozmlingView({ sub = null, extra = null, account }: Route & { account?:
         : undefined}
     />
   ) : null
-  const accountStatus = account?.address ? <AccountStatus account={account} ownedCompanionId={isOwned ? selected?.companionId : undefined} /> : null
+  const accountStatus = account?.address ? <AccountStatus account={account} ownedCompanionId={isOwned ? selected?.companionId : undefined} companions={st.companions} /> : null
   const mayAdoptOrdinary = !!account?.address && account.loaded && !st.companions.some(c =>
     st.accountOwners[c.companionId] === account.address && !c.companionId.startsWith('hatch-'))
 
@@ -163,6 +165,15 @@ function CozmlingView({ sub = null, extra = null, account }: Route & { account?:
         </>
       )}
       {st.quarantined.length > 0 && !selected && <p className="sl-fine sl-quarantine">A Cozmling save from before was found on this device, but it couldn’t be read. It hasn’t been changed or deleted.</p>}
+    </>
+  )
+
+  // A wallet-owned Cozmling opens once the account has been checked: an older copy here would otherwise
+  // start today's story and care from out-of-date progress. If the account can't be reached, it opens anyway.
+  if (isOwned && account && !account.loaded && account.state === 'loading') return (
+    <>
+      {account.access}
+      <p className="state state--load" role="status">Opening {nameOf(selected)}’s saved progress…</p>
     </>
   )
 
@@ -203,20 +214,43 @@ function CozmlingView({ sub = null, extra = null, account }: Route & { account?:
   )
 }
 
-function AccountStatus({ account, ownedCompanionId }: { account: Account; ownedCompanionId?: string }) {
+function AccountStatus({ account, ownedCompanionId, companions }: { account: Account; ownedCompanionId?: string; companions: Companion[] }) {
   const [exportNote, setExportNote] = useState('')
+  const [resolving, setResolving] = useState<string | null>(null)
+  const nameFor = (id: string) => { const c = companions.find(item => item.companionId === id); return c ? nameOf(c) : 'A Cozmling' }
+  const download = (id: string) => void downloadCozmlingCopy(id).then(
+    () => setExportNote('The device copy was downloaded.'),
+    () => setExportNote('The device copy could not be downloaded. Try again.'),
+  )
+  const useAccountCopy = (id: string) => {
+    setResolving(id)
+    setExportNote('')
+    account.resolve(id).then(
+      () => setExportNote(`${nameFor(id)} now uses the wallet account’s copy on this device.`),
+      (error: unknown) => setExportNote(error instanceof Error ? error.message : 'That didn’t work. Try again.'),
+    ).finally(() => setResolving(null))
+  }
   const text = {
     loading: 'Opening your saved Cozmlings…',
     saving: 'Updating your wallet account save…',
     synced: 'Wallet account is up to date.',
     offline: 'The account save is unavailable. Device changes are kept here when browser storage is available.',
-    conflict: 'This device and the wallet account have different saves. Both copies are kept.',
+    conflict: 'A copy on this device needs your choice before it can sync. Nothing has been replaced.',
     'too-large': 'This save exceeds the preview’s cloud limit. Your device copy is still available.',
   }[account.state]
   return <div className="sl-fine">
     <p role="status">{text}</p>
     {account.state === 'offline' && <button className="btn btn--ghost btn--sm" onClick={account.retry}>Retry account save</button>}
-    {(account.state === 'conflict' || account.state === 'too-large') && ownedCompanionId && (
+    {account.conflicts.map(id => (
+      <div key={id} className="sl-conflict">
+        <p>{nameFor(id)}: this device’s copy and the wallet account’s copy differ. Download this device’s copy if you want to keep it, then use the account’s copy here so the two stay in step.</p>
+        <p className="sl-cs__go">
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => download(id)}>Download this device’s copy</button>
+          <button type="button" className="btn btn--phos btn--sm" disabled={resolving !== null} onClick={() => useAccountCopy(id)}>{resolving === id ? 'Updating…' : 'Use the wallet account’s copy here'}</button>
+        </p>
+      </div>
+    ))}
+    {account.state === 'too-large' && ownedCompanionId && (
       <button className="btn btn--ghost btn--sm" onClick={() => {
         void downloadCozmlingCopy(ownedCompanionId).then(
           () => setExportNote('The device copy was downloaded.'),

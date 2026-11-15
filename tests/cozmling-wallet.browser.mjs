@@ -55,6 +55,7 @@ const contributions = new Set()
 const claims = new Set()
 let phase = 'open'
 let denyOneLogout = false
+let accountDelay = 0           // ms before the account list answers: shows a device waiting for its first sync
 const errors = []
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {})
 const records = address => savedAccounts.get(address) ?? []
@@ -69,9 +70,11 @@ async function makeBrowser(legacyFixture) {
     }, legacyFixture)
   }
   let verified = null
+  let offline = false            // this browser can't reach the account (its other requests still work)
   await context.route('**/*', async route => {
     const request = route.request()
     const url = new URL(request.url())
+    if (offline && url.pathname.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } })
     if (url.origin !== origin) return route.abort()
     if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: html })
     if (files.has(url.pathname)) {
@@ -120,6 +123,7 @@ async function makeBrowser(legacyFixture) {
     }
     if (url.pathname === '/api/cozmling-account') {
       if (!address) return route.fulfill({ status: 401, json: { error: 'wallet_required' } })
+      if (!body && accountDelay) await sleep(accountDelay)
       if (!body) return route.fulfill({ json: { companions: records(address) } })
       const companions = records(address)
       const snapshot = body.snapshot
@@ -145,6 +149,7 @@ async function makeBrowser(legacyFixture) {
   const page = await context.newPage()
   page.setDefaultTimeout(10000)
   page.on('pageerror', error => errors.push(error.message))
+  page.setOffline = value => { offline = value }
   await page.goto(origin + '/#/cozmling')
   return page
 }
@@ -254,6 +259,81 @@ try {
   await until(() => records(third).length === 1, 'ordinary adoption from an existing local save')
   const kept = await c.evaluate(() => window.__cozmling.getState().companions)
   assert.ok(kept.some(item => item.kind === 'legacy' && item.legacy.pet.name === JSON.parse(legacy.raw).name))
+
+  // Two devices play at once: neither stops, and each change is kept (a pat here, a meal there).
+  const accountCopy = () => records(one).find(item => item.snapshot.record.companionId === original.companionId)
+  const e = await makeBrowser()
+  await select(e, one)
+  await verify(e).click()
+  // this wallet now has two Cozmlings: choose Original, as a player would
+  await e.getByRole('button', { name: /^Original ·/ }).click()
+  await heading(e, 'Original').waitFor()
+  await button(a, 'Pat').waitFor()
+  a.setOffline(true)
+  await button(a, 'Pat').click()
+  await a.getByText(/account save is unavailable/i).waitFor()
+  const before = accountCopy().revision
+  await button(e, 'Feed').click()
+  await e.getByRole('menuitem', { name: /Comet cookie/ }).click()
+  await until(() => accountCopy().revision > before, 'the other device’s save')
+  const fromE = accountCopy().snapshot.record
+  a.setOffline(false)
+  await button(a, 'Retry account save').click()
+  await a.getByText('Wallet account is up to date.').waitFor()
+  await until(() => accountCopy().snapshot.record.progress.counters.pets > fromE.progress.counters.pets, 'the merged save')
+  const merged = accountCopy().snapshot.record
+  assert.equal(merged.progress.counters.fed, fromE.progress.counters.fed, 'the meal from the other device is kept')
+  assert.equal(await a.getByText(/copy and the wallet account’s copy differ/).count(), 0, 'no conflict to resolve')
+
+  // A device holding an older copy waits for the account before opening it.
+  accountDelay = 1500
+  await a.reload()
+  await a.waitForFunction(() => Boolean(window.__walletReview))
+  await select(a, one)
+  await a.getByText('Opening Original’s saved progress…').waitFor()
+  assert.equal(await heading(a, 'Original').count(), 0)
+  await heading(a, 'Original').waitFor()
+  accountDelay = 0
+
+  // The share card: name and art always; Starprint and growth stage only when chosen; nothing private in the post.
+  await a.getByText('Share Cozmling', { exact: true }).click()
+  const options = a.locator('details:has(> summary:text-is("Share Cozmling")) input[type=checkbox]')
+  assert.deepEqual(await options.evaluateAll(boxes => boxes.map(box => box.checked)), [false, false], 'Starprint and stage are off until chosen')
+  async function card() {
+    await button(a, 'Preview Discord card').click()
+    const img = a.getByRole('img', { name: 'Your COZMC share graphic' })
+    await img.waitFor()
+    const bytes = await a.evaluate(async src => (await (await fetch(src)).arrayBuffer()).byteLength, await img.getAttribute('src'))
+    const text = await a.locator('.modal textarea').inputValue()
+    await a.screenshot({ path: process.env.SHARE_SHOT ? `${process.env.SHARE_SHOT}-${bytes}.png` : undefined })
+    await a.keyboard.press('Escape')
+    return { bytes, text }
+  }
+  const plain = await card()
+  await options.nth(0).check()
+  await options.nth(1).check()
+  const labelled = await card()
+  assert.notEqual(plain.bytes, labelled.bytes, 'the chosen labels change the card')
+  for (const { text } of [plain, labelled]) {
+    assert.equal(text, 'Meet Original, my Cozmling!')
+    assert.ok(!text.includes(one) && !/2026-11-05|birth/i.test(text), 'no address or birthday in the post')
+  }
+
+  // A copy brought in from a save file is never replaced on its own: the player chooses the account's copy.
+  const [download] = await Promise.all([a.waitForEvent('download'), button(a, 'Keep a copy').click()])
+  const d = await makeBrowser(legacy)
+  await heading(d, JSON.parse(legacy.raw).name).waitFor()
+  await d.locator('input[type=file]').setInputFiles(await download.path())
+  await button(d, 'Add the new one').click()
+  await d.waitForFunction(id => window.__cozmling.getState().companions.some(item => item.companionId === id), original.companionId)
+  await select(d, one)
+  await verify(d).click()
+  await d.getByText(/Original: this device’s copy and the wallet account’s copy differ/).waitFor()
+  assert.equal((await d.evaluate(() => window.__cozmling.getState().accountOwners))[original.companionId], undefined, 'not replaced, not claimed')
+  await button(d, 'Use the wallet account’s copy here').click()
+  await d.getByText('Original now uses the wallet account’s copy on this device.').waitFor()
+  assert.equal((await d.evaluate(() => window.__cozmling.getState().accountOwners))[original.companionId], one)
+  await d.getByText('Wallet account is up to date.').waitFor()
   assert.deepEqual(errors, [])
   console.log('Wallet-backed Cozmling browser smoke passed.')
 } finally {

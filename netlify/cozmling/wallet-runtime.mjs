@@ -61,16 +61,30 @@ async function startSession(request, config, db, proof) {
       sessionHash(token), proof.address, SESSION_AGE_SECONDS],
   )
   if (!result.rowCount) throw new WalletError('challenge_used', 409)
+  await pruneExpired(db)
   return token
 }
 
-async function endSession(request, config, db, address) {
-  if (!isWalletAddress(address)) throw new WalletError('invalid_wallet', 400)
+/** Best effort: drop sessions that have ended and challenges a day past their expiry (a challenge
+    cookie that old is refused on its own MAC-protected expiry, so its row no longer guards anything). */
+async function pruneExpired(db) {
+  try {
+    await db.query("DELETE FROM cozmc_wallet_challenge_use WHERE expires_at < clock_timestamp() - interval '1 day'")
+    await db.query('DELETE FROM cozmc_wallet_session WHERE expires_at < clock_timestamp()')
+  } catch {
+    // A missed clean-up is harmless: expired rows never grant access.
+  }
+}
+
+/* Sign-out ends whatever session this browser's cookie holds, whichever wallet the page thinks is
+   active (after a switch in the wallet app the two can differ). Holding the cookie is what proves
+   the right to end it, so no address is needed. */
+async function endSession(request, config, db) {
   const token = sessionToken(request, config)
   if (!token) return false
   const result = await db.query(
-    'DELETE FROM cozmc_wallet_session WHERE origin_scope = $1 AND token_digest = $2 AND wallet_address = $3',
-    [walletScope(config), sessionHash(token), address],
+    'DELETE FROM cozmc_wallet_session WHERE origin_scope = $1 AND token_digest = $2',
+    [walletScope(config), sessionHash(token)],
   )
   return Boolean(result.rowCount)
 }
@@ -127,8 +141,8 @@ export function createWalletHandler(config, db, options = {}) {
         return walletResponse({ address: verified.address }, 200, { 'Set-Cookie': sessionCookie(config, token) })
       }
       if (body.action === 'logout') {
-        const revoked = await endSession(request, config, db, body.address)
-        return walletResponse({ address: null }, 200, revoked ? { 'Set-Cookie': sessionCookie(config, null) } : {})
+        const revoked = await endSession(request, config, db)
+        return walletResponse({ address: null, revoked }, 200, { 'Set-Cookie': sessionCookie(config, null) })
       }
       return walletResponse({ error: 'invalid_request' }, 400)
     } catch (error) {

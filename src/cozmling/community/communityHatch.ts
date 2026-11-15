@@ -1,6 +1,6 @@
 export const COMMUNITY_HATCH_PATH = '/api/community-hatch'
 export const COMMUNITY_HATCH_LANTERN = 'community-hatch-lantern'
-export const communityHatchEnabled = import.meta.env?.VITE_COZMC_COMMUNITY_HATCH === '1'
+export const communityHatchEnabled: boolean = import.meta.env.VITE_COZMC_COMMUNITY_HATCH === '1'
 
 export const COMMUNITY_HATCH_LOOKS = {
   'grove-green': { look: 'a', skin: 'moss', label: 'Grove Green' },

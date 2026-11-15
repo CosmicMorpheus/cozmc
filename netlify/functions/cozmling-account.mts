@@ -9,7 +9,7 @@ export const config: Config = { path: '/api/cozmling-account' }
 
 export default async function cozmlingAccount(request: Request, context: Context) {
   try {
-    const accountConfig = readConfig(context.deploy.context)
+    const accountConfig = readConfig(context.deploy.context, process.env, context.site?.id)
     if (!accountConfig) return response({ error: 'disabled' }, 404)
     const badRequest = validateRequest(request, accountConfig.origin)
     if (badRequest) return badRequest

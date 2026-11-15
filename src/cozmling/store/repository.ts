@@ -12,6 +12,10 @@ export interface Write {
   /** New events. If any of their ids is already stored, nothing in this write is applied. */
   events?: JourneyEvent[]
   meta?: Record<string, unknown>
+  /** Events that take the place of stored ones with the same ids: the wallet account's copy of something
+      both devices recorded (a day's first care, a hatch, a Story Mode promise kept). Only with `check.events`,
+      only for that companion, and only ids already in its history. */
+  replaceEvents?: JourneyEvent[]
   /** Cloud bookkeeping and the local story history must still match before a replacement. */
   check?: {
     meta?: { key: string; stamp: string | null }
@@ -49,6 +53,12 @@ export function guardedWriteRefusal(
     const expected = new Set(write.check.events.ids)
     if (expected.size !== eventIds.length || eventIds.some(id => !expected.has(id))) {
       return { ok: false, reason: 'stale', detail: 'companion history changed' }
+    }
+  }
+  if (write.replaceEvents?.length) {
+    const scope = write.check?.events, known = new Set(eventIds)
+    if (!scope || write.replaceEvents.some(e => e.companionId !== scope.companionId || !known.has(e.eventId))) {
+      return { ok: false, reason: 'failed', detail: 'events can only be replaced within a checked history' }
     }
   }
   return null

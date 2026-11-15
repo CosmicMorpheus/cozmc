@@ -3,7 +3,7 @@
    tests/celestial-sky.mjs.) */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { along, diskFor, diskHeight, DISK, dprFor, ORIGIN_PALETTE, ringFade, ringPhase, rng, streakAt, twinkle } from '../src/cozmling/render/cosmicVortex'
 
 test('the same seed always gives the same sky, and a different seed a different one', () => {
@@ -76,5 +76,12 @@ test('the palette is crimson, gold and midnight, as in the references', () => {
 
 test('no new library was added for it', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  assert.deepEqual(Object.keys(pkg.dependencies).sort(), ['@galaxypay/use-wallet-lute', '@phosphor-icons/react', '@txnlab/use-wallet-defly', '@txnlab/use-wallet-exodus', '@txnlab/use-wallet-pera', '@txnlab/use-wallet-react', 'algosdk', 'astronomy-engine', 'react', 'react-dom'])
+  // The wallet account preview's server functions (netlify/) use these three. The site itself gained none.
+  const serverOnly = ['@netlify/database', '@noble/curves', 'pg']
+  assert.deepEqual(Object.keys(pkg.dependencies).filter(name => !serverOnly.includes(name)).sort(), ['@galaxypay/use-wallet-lute', '@phosphor-icons/react', '@txnlab/use-wallet-defly', '@txnlab/use-wallet-exodus', '@txnlab/use-wallet-pera', '@txnlab/use-wallet-react', 'algosdk', 'astronomy-engine', 'react', 'react-dom'])
+  const imports = (dir: URL): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(entry => entry.isDirectory()
+    ? imports(new URL(`${entry.name}/`, dir)) : /\.(ts|tsx)$/.test(entry.name) ? [readFileSync(new URL(entry.name, dir), 'utf8')] : [])
+  for (const source of imports(new URL('../src/', import.meta.url))) {
+    for (const name of serverOnly) assert.ok(!source.includes(`from '${name}`), `${name} is for the server functions only`)
+  }
 })

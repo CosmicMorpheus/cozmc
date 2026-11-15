@@ -233,6 +233,33 @@ The Cozmling is being rebuilt in `src/cozmling/`: zodiac "Starprint" adventurers
 - **Never pay out on companion data.** Everything about a companion is written by the player's own browser and can be forged. It must never decide prizes, tickets, token amounts or leaderboard places.
 - **Tests.** `npm test` includes the save-system tests (`tests/cozmling-migration.test.ts`), built on real-shape first-version saves in `tests/fixtures/`. `tests/cozmling-store.mjs` checks the same things in a real browser (it needs Playwright; the instructions are at the top of the file). `tests/cozmling-adventurer.test.ts` covers Starprints, adoption and care for adventurers. `tests/cozmling-loft.mjs` walks the new page in a real browser: adopt, hatch, care and reload with no wallet; the keyboard alone; reduced motion; art that fails to load; a first-version Cozmling in the new page; a browser that stores nothing; two tabs; a 360 px phone. `tests/journey.mjs` is the check that the site is unchanged with the switch off.
 
+## Wallet-backed Cozmlings (preview only)
+
+Every new Cozmling is owned by a verified Algorand wallet, in regular adoption and in the Community Hatch. The player signs a message in their wallet: it costs nothing and sends no transaction. The same wallet on another device opens the same companion, with its id, care and story. Cozmlings that already live in a browser keep playing there, as before. Sharing a card to Discord is optional and up to the player. NFTs are a separate decision: nothing here mints anything.
+
+- **Switches.** `VITE_COZMLING_V2=1` and `VITE_COZMLING_WALLET_ACCOUNT=1`, plus `VITE_COZMC_COMMUNITY_HATCH=1` to show the event. All off in a normal build, and the live build contains none of it.
+- **The server.** Three Netlify Functions in `netlify/functions/` (code in `netlify/cozmling/`): `/api/cozmling-wallet` (sign-in), `/api/cozmling-account` (adoption and saves) and `/api/community-hatch`. They answer only in deploy previews, branch deploys and local Netlify dev, or on the separate preview site named by its id. They never answer for cozmc.us, whatever is configured.
+- **Sign-in.** The server issues a five-minute challenge tied to the site, the network, the address and this browser, and the wallet signs it (ARC-60). The server checks the signature against the account's current signer on Algorand MainNet (a read-only lookup; for a rekeyed account, its `auth-addr`). Each challenge works once. The session is a 24-hour HttpOnly `__Host-` cookie, and signing out ends whatever session the cookie holds.
+- **Storage.** PostgreSQL: the preview site's own Netlify Database (`@netlify/database`), or `DATABASE_URL` if set. The tables are created on first use (`netlify/cozmling/schema.mjs`), and the first preview origin binds the database.
+- **What the server enforces.**
+  - Adoption: a verified wallet, a fresh egg, one ordinary Cozmling per wallet, and one event egg per wallet per event, from its own claim with the look it drew.
+  - Saves: only to that wallet's companions; a write based on an older revision is refused; history can only grow; a retried save is applied once.
+  - The event: one lantern per wallet per UTC day, and a claim draws its look once (a retry, or a second device, gets the same egg).
+- **Two devices.** Each device keeps its own copy, and syncs when something changes, when the page gets focus and every 20 seconds.
+  - A device holding an older copy waits for the account before opening the Cozmling.
+  - When both devices changed it, the changes are merged from the last copy both had. The history keeps everything either recorded, with the account's version of anything both did (a day's first care, a hatch, a promise kept). A hatch is never undone, care keeps the most recent, and progress keeps the larger figures.
+  - A copy brought in from a save file is never replaced on its own: the page offers to download it, then to use the account's copy.
+- **Preview settings (the preview site only).** `COZMC_ACCOUNT_ENABLED=1`; `COZMC_ACCOUNT_ORIGIN` = the exact preview origin (`https://cozmc-preview.netlify.app`); `COZMC_ACCOUNT_SITE_ID` = that site's id; optional `COZMC_COMMUNITY_HATCH_EVENT` (JSON: `eventId`, `title`, `opensAt`, `endsAt`, `claimUntil`, `goal`, in UTC). `COZMC_ACCOUNT_SESSION_SECRET` is optional: without it, the database makes and keeps its own key.
+- **Tests.**
+  - `npm test` includes the sync and merge rules (`tests/cozmling-wallet-sync.test.ts`) and the server domain (`tests/cozmling-wallet-server-domain.test.ts`).
+  - `node --test tests/cozmling-wallet.test.mjs tests/cozmling-account-server.test.mjs` covers sign-in, sessions, the account and the event.
+  - With `COZMLING_TEST_DATABASE_URL` set to a disposable database, those tests and `tests/cozmling-wallet-postgres.test.ts` also run end to end on real PostgreSQL with real signatures.
+  - `tests/cozmling-wallet.browser.mjs` walks the real screens with simulated wallets.
+- **Still to decide or test.**
+  - Bringing an existing browser Cozmling into a wallet, moving to another wallet, and recovery after losing a wallet.
+  - Whether a wallet may hold more than one ordinary Cozmling (the server allows one).
+  - Sign-in with the real Pera and Lute apps.
+
 ## Add a Cozmling room
 
 Painted rooms are images with animation drawn on top.

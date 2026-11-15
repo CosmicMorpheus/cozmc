@@ -45,6 +45,8 @@ function fixture(resolveSigner = async (address) => address) {
   const sessions = new Map()
   const db = {
     query: async (sql, values) => {
+      // the best-effort clean-up after a sign-in: nothing here has expired
+      if (/^DELETE FROM cozmc_wallet_(challenge_use|session) WHERE expires_at/.test(sql)) return { rowCount: 0, rows: [] }
       const [scope, key] = values
       const id = `${scope}/${key}`
       if (sql.startsWith('WITH consumed AS')) {
@@ -62,8 +64,8 @@ function fixture(resolveSigner = async (address) => address) {
         return { rowCount: Number(found), rows: found ? [session] : [] }
       }
       if (sql.startsWith('DELETE FROM cozmc_wallet_session')) {
-        const removed = session?.wallet_address === owner && sessions.delete(id)
-        return { rowCount: Number(removed), rows: [] }
+        // sign-out: the session this cookie holds, whichever wallet it belongs to
+        return { rowCount: Number(sessions.delete(id)), rows: [] }
       }
       throw new Error('Unexpected wallet store query')
     },
@@ -135,6 +137,24 @@ test('one challenge creates one session; rotated and logged-out sessions stop gr
   assert.equal(loggedOut.status, 200)
   assert.match(loggedOut.headers.get('set-cookie'), /Max-Age=0/)
   assert.equal(await accountWallet(userRequest({ cookie: current, address: owner.address }), config, db), null)
+})
+
+test('sign-out ends the cookie’s session even after the wallet app switched accounts, and always clears the cookie', async () => {
+  const owner = wallet(), other = wallet()
+  const { request, db } = fixture()
+  const { challenge, cookie } = await challengeFor(request, owner.address)
+  const session = cookieValue(await request(userRequest({ body: signProof(challenge, owner.key), cookie })))
+  assert.equal(await accountWallet(userRequest({ cookie: session, address: owner.address }), config, db), owner.address)
+  // the page now thinks another account is active: signing out still ends the session this browser holds
+  const out = await request(userRequest({ body: { action: 'logout', address: other.address }, cookie: session }))
+  assert.equal(out.status, 200)
+  assert.deepEqual(await out.json(), { address: null, revoked: true })
+  assert.match(out.headers.get('set-cookie'), /Max-Age=0/)
+  assert.equal(await accountWallet(userRequest({ cookie: session, address: owner.address }), config, db), null)
+  // and again, with nothing left to end: still a clean sign-out
+  const again = await request(userRequest({ body: { action: 'logout' }, cookie: session }))
+  assert.deepEqual([again.status, (await again.json()).revoked], [200, false])
+  assert.match(again.headers.get('set-cookie'), /Max-Age=0/)
 })
 
 test('rekeyed wallet proof must use its current authorized signing key', async () => {

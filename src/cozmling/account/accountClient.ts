@@ -1,6 +1,5 @@
 import type { AdventurerCompanion, JourneyEvent } from '../types'
 import { companionProblem } from '../store/validators'
-export { COZMLING_WALLET_ACCOUNT as walletAccountEnabled } from '../flags'
 
 const WALLET_ENDPOINT = '/api/cozmling-wallet'
 const ACCOUNT_ENDPOINT = '/api/cozmling-account'

@@ -18,6 +18,7 @@ export function memoryRepository(): Repository {
       for (const c of w.companions ?? []) companions.set(c.record.companionId, copy(c.record))
       for (const s of w.sources ?? []) sources.set(s.sourceKey, copy(s))
       for (const e of w.events ?? []) events.set(e.eventId, copy(e))
+      for (const e of w.replaceEvents ?? []) events.set(e.eventId, copy(e))
       for (const [k, v] of Object.entries(w.meta ?? {})) meta.set(k, copy(v))
       return { ok: true }
     },

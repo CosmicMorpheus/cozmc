@@ -62,6 +62,7 @@ export async function indexedDbRepository(name = DB_NAME): Promise<Repository | 
         for (const c of w.companions ?? []) tx.objectStore('companions').put(c.record)
         for (const s of w.sources ?? []) tx.objectStore('sources').put(s)
         for (const e of w.events ?? []) tx.objectStore('events').add(e)
+        for (const e of w.replaceEvents ?? []) tx.objectStore('events').put(e)
         for (const [k, v] of Object.entries(w.meta ?? {})) tx.objectStore('meta').put(v, k)
         await finished
         return { ok: true }

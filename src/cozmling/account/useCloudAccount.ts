@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { cozmlingStore } from '../index'
 import type { AdventurerCompanion } from '../types'
 import { AccountRequestError } from './accountClient'
-import { adoptWithWallet, syncWalletAccount } from './localAccount'
+import { adoptWithWallet, resolveWithAccount, syncWalletAccount } from './localAccount'
 
 type CloudState = 'loading' | 'synced' | 'saving' | 'offline' | 'conflict' | 'too-large'
 
 export function useCloudAccount(wallet: string | null, signal: AbortSignal | null, ready: boolean, onUnauthorized: () => void) {
   const [state, setState] = useState<CloudState>('loading')
+  // companions this device couldn't sync on its own: the player chooses (see resolveWithAccount)
+  const [conflicts, setConflicts] = useState<string[]>([])
   const wake = useRef<() => void>(() => {})
   const invalid = useRef(onUnauthorized)
   invalid.current = onUnauthorized
@@ -43,6 +45,7 @@ export function useCloudAccount(wallet: string | null, signal: AbortSignal | nul
         if (next.changed) await store.reload()
         if (stopped()) return
         loaded.current = true
+        setConflicts(next.conflicts)
         setState(next.hasConflict ? 'conflict' : next.retry ? 'saving' : 'synced')
         if (next.retry) queued = true
       } catch (error) {
@@ -89,5 +92,23 @@ export function useCloudAccount(wallet: string | null, signal: AbortSignal | nul
     }
   }
 
-  return { state: whileVerified ? state : 'loading', loaded: whileVerified && loaded.current, adopt, retry: () => wake.current() }
+  async function resolve(companionId: string) {
+    const store = cozmlingStore()
+    if (!whileVerified || !store || !wallet || !signal) throw new Error('Verify your Algorand wallet first.')
+    try {
+      await resolveWithAccount(store.repo, wallet, companionId, signal)
+      signal.throwIfAborted()
+      await store.reload()
+      signal.throwIfAborted()
+      wake.current()
+    } catch (error) {
+      if (!signal.aborted && error instanceof AccountRequestError && error.status === 401) invalid.current()
+      throw error
+    }
+  }
+
+  return {
+    state: whileVerified ? state : 'loading', loaded: whileVerified && loaded.current,
+    conflicts: whileVerified ? conflicts : [], adopt, resolve, retry: () => wake.current(),
+  }
 }

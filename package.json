@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@galaxypay/use-wallet-lute": "^1.0.0",
+    "@netlify/database": "2.0.3",
+    "@noble/curves": "2.4.0",
     "@phosphor-icons/react": "^2.1.10",
     "@txnlab/use-wallet-defly": "^5.0.1",
     "@txnlab/use-wallet-exodus": "^5.0.1",
@@ -18,11 +20,12 @@
     "@txnlab/use-wallet-react": "^5.0.1",
     "algosdk": "^3.9.0",
     "astronomy-engine": "2.1.19",
+    "pg": "8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@noble/curves": "2.4.0",
+    "@netlify/functions": "6.1.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",

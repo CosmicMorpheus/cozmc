@@ -44,7 +44,8 @@ export async function readBody(request) {
 
 export function requestError(error) {
   if (error instanceof CozmlingRequestError) return response({ error: error.message, ...error.fields }, error.status)
-  console.error('Cozmling wallet preview could not serve the request. Check preview configuration and storage.')
+  // The error's name and code only (never its message, which can carry connection details).
+  console.error('Cozmling wallet preview could not serve the request. Check preview configuration and storage.', error?.name ?? 'Error', error?.code ?? '')
   return response({ error: 'temporarily_unavailable' }, 503)
 }
 

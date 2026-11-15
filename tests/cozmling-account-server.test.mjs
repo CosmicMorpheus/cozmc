@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createAccountService } from '../netlify/cozmling/account.mjs'
 import { createCommunityHatchService, readEventConfig } from '../netlify/cozmling/event.mjs'
 import { bindPreviewOrigin, readBody, validateRequest } from '../netlify/cozmling/http.mjs'
+import { readConfig } from '../netlify/cozmling/runtime.mjs'
+import { SCHEMA } from '../netlify/cozmling/schema.mjs'
 
 const wallet = 'A'.repeat(58)
 const otherWallet = 'B'.repeat(58)
@@ -158,7 +159,8 @@ test('PostgreSQL integration verifies account isolation, contention, history, an
   const db = new pg.Pool({ connectionString: testDb, options: `-c search_path=${namespace}` })
   try {
     await admin.query(`CREATE SCHEMA ${namespace}`)
-    await db.query(await readFile(new URL('../netlify/cozmling/002-companions.sql', import.meta.url), 'utf8'))
+    await db.query(SCHEMA)
+    await db.query(SCHEMA)          // applying it again changes nothing
     await bindPreviewOrigin(db, origin)
     await assert.rejects(bindPreviewOrigin(db, 'https://different.example'), hasError('preview_database_mismatch', 503))
     const account = createAccountService({ db, validateRecord: validatesRecord })
@@ -201,4 +203,19 @@ test('PostgreSQL integration verifies account isolation, contention, history, an
     await db.end()
     try { await admin.query(`DROP SCHEMA IF EXISTS ${namespace} CASCADE`) } finally { await admin.end() }
   }
+})
+
+test('the account runs only in previews: deploy previews and branch deploys, or the separate preview site by its id, never the live site', () => {
+  const env = { COZMC_ACCOUNT_ENABLED: '1', COZMC_ACCOUNT_ORIGIN: 'https://cozmc-preview.netlify.app' }
+  const site = 'f4ead5e2-a563-4527-b2e9-08a4d41c2874'
+  assert.equal(readConfig('production', env, site), null, 'production is off without a named preview site')
+  assert.equal(readConfig('production', { ...env, COZMC_ACCOUNT_SITE_ID: site }, 'e7ab8d5b-45c4-4182-8bcf-efc3ed4e3609'), null, 'another site’s production (the live site) stays off')
+  const preview = readConfig('production', { ...env, COZMC_ACCOUNT_SITE_ID: site }, site)
+  assert.deepEqual([preview.origin, preview.secure, preview.walletSecret], ['https://cozmc-preview.netlify.app', true, null], 'no secret: the preview database keeps its own')
+  assert.ok(readConfig('deploy-preview', env, 'any'))
+  assert.equal(readConfig('deploy-preview', { ...env, COZMC_ACCOUNT_ENABLED: '0' }, 'any'), null)
+  assert.throws(() => readConfig('deploy-preview', { ...env, COZMC_ACCOUNT_ORIGIN: 'https://cozmc.us' }), /never runs on the live site/)
+  assert.throws(() => readConfig('deploy-preview', { ...env, COZMC_ACCOUNT_ORIGIN: 'https://cozmc-preview.netlify.app/' }), /exact preview origin/)
+  assert.throws(() => readConfig('deploy-preview', { ...env, COZMC_ACCOUNT_SESSION_SECRET: 'short' }), /32-byte/)
+  assert.equal(readConfig('deploy-preview', { ...env, COZMC_ACCOUNT_SESSION_SECRET: Buffer.alloc(32, 9).toString('base64url') }).walletSecret.length, 32)
 })
