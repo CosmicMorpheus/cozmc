@@ -36,7 +36,7 @@ export function MemoriesPanel({ companionId, name, revision, refresh = 0 }: { co
         <rect x="1.5" y="1.5" width="97" height="97" rx="2" />
         {events.map((e, i) => { const [x, y] = spot(e.eventId); return <path key={e.eventId} d={sparkle(x, y, e.type === 'hatched' || e.type === 'adopted' ? 5.2 : 3.4)} style={{ animationDelay: `${(i % 7) * -0.6}s` }} /> })}
       </svg>
-      <div>
+      <div className="sl-memories__entries">
         <p className="sl-fine">A star for each memory so far. The finished constellation is still being designed.</p>
         {events.length === 0 ? <p className="sl-fine">No memories yet.</p> : (
           <ol className="sl-memories__list">

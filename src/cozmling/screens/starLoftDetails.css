@@ -1,0 +1,234 @@
+/* Star Loft details share the Grove's gold, violet and midnight surfaces. */
+.sl__side {
+  --sl-detail-gold: #ffda93;
+  --sl-detail-line: #8270b580;
+  --sl-detail-copy: #c5bfd1;
+  gap: 16px;
+}
+
+.sl__side > .panel {
+  padding: clamp(15px, 2vw, 22px);
+  border: 1px solid var(--sl-detail-line);
+  border-radius: 17px;
+  background: linear-gradient(155deg, #19162b, #0b0a17 76%);
+  box-shadow: inset 0 1px #e0beff10, 0 12px 28px #03030c80;
+}
+
+.sl__side > .panel::before {
+  inset: 0 8% auto;
+  width: auto;
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, #ffda9380, transparent);
+  pointer-events: none;
+}
+
+.sl__side .panel__head {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 14px;
+}
+
+.sl__side .panel__head h2 {
+  color: #fff3e1;
+  font: 750 clamp(18px, 2.25vw, 23px)/1.1 var(--sans);
+  font-stretch: 84%;
+  letter-spacing: .045em;
+  overflow-wrap: anywhere;
+}
+
+.sl__side .sl-fine,
+.sl__side .sl-skyask p { color: var(--sl-detail-copy) }
+
+.sl__side .sl-inlink,
+.sl__side .sl-print .panel__head .link { color: var(--sl-detail-gold) }
+
+.sl__side .sl-print .panel__head .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding-inline: 10px;
+  border: 1px solid #b4814d8c;
+  border-radius: 999px;
+  background: #20182b;
+  white-space: nowrap;
+}
+
+.sl__side .sl-print.panel {
+  background:
+    radial-gradient(ellipse at 14% 39%, #4d356c65, transparent 52%),
+    linear-gradient(155deg, #18223d, #0b0a17 71%);
+}
+
+.sl__side .sl-print__row {
+  align-items: start;
+  gap: clamp(9px, 1.4vw, 18px);
+}
+
+.sl__side .sl-medal {
+  position: relative;
+  width: clamp(51px, 22%, 76px);
+  margin: 4px 2px;
+  border: 1px solid #ffda93b3;
+  color: #fff3e1;
+  background: radial-gradient(ellipse at 38% 26%, #342744, #120d22 55%, #080817 90%);
+  box-shadow: 0 0 0 3px #9e765c33, 0 0 22px #d99a5752, 0 0 34px -14px var(--o1);
+  text-shadow: 0 0 10px var(--o1);
+}
+
+.sl__side .sl-medal::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid #ffda934a;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sl__side .sl-medal .sl-glyph { filter: drop-shadow(0 0 6px var(--o1)) }
+
+.sl__side .sl-facts { gap: 10px 12px }
+
+.sl__side .sl-facts dt,
+.sl__side .sl-stats dt {
+  margin-block-end: 2px;
+  color: #cabbe1;
+  line-height: 1.35;
+}
+
+.sl__side .sl-facts dd {
+  display: block;
+  color: #fff3e1;
+  font-size: 14px;
+}
+
+.sl__side .sl-pglyph {
+  min-width: auto;
+  margin-inline-end: .32em;
+  color: var(--sl-detail-gold);
+}
+
+.sl__side .sl-today {
+  column-gap: 8px;
+  margin-top: 14px;
+  padding: 8px 10px;
+  border: 1px solid #8270b561;
+  border-radius: 10px;
+  color: var(--sl-detail-copy);
+  background: #211a337d;
+}
+
+.sl__side .sl-today__k { color: var(--sl-detail-gold) }
+.sl__side .sl-skyask { border-top-color: var(--sl-detail-line) }
+
+.sl__side > .sl-wardrobepanel .panel__head { margin-bottom: 10px }
+
+.sl__side .btn {
+  min-height: 42px;
+  height: auto;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-width: 1px;
+  border-radius: 999px;
+  line-height: 1.35;
+  white-space: normal;
+  box-shadow: none;
+}
+
+.sl__side .btn--ghost {
+  color: var(--sl-detail-gold);
+  border-color: #a186a8a6;
+  background: #1b1629;
+}
+
+.sl__side .btn--ghost:hover:not(:disabled),
+.sl__side .btn--ghost[aria-expanded='true'] {
+  border-color: var(--sl-detail-gold);
+  background: #2d2032;
+}
+
+.sl__side .btn--phos {
+  border-color: #ffe1a4;
+  color: #281307;
+  background: linear-gradient(180deg, #ffcb79, #ff944d);
+}
+
+.sl__side .sl-journey { margin-bottom: 0 }
+.sl__side .sl-journey li {
+  color: #c1aecf;
+  font: 700 11px/1.2 var(--sans);
+  font-stretch: 74%;
+  letter-spacing: .025em;
+}
+
+.sl__side .sl-journey__name { text-wrap: balance; overflow-wrap: normal }
+.sl__side .sl-journey li::before { top: 12px; background: #66547e }
+.sl__side .sl-journey li.is-now { color: var(--sl-detail-gold) }
+.sl__side .sl-journey li.is-done { color: #e2d8ee }
+.sl__side .sl-journey li.is-done::before,
+.sl__side .sl-journey li.is-now::before { background: #cb9556 }
+
+.sl__side .sl-journey__dot {
+  width: 25px;
+  height: 25px;
+  border: 1px solid #8270a8;
+  border-radius: 50%;
+  background: #151025;
+}
+
+.sl__side .sl-journey li.is-done .sl-journey__dot {
+  border-color: #dda665;
+  color: #ffdfa7;
+  background: #442a2b;
+}
+
+.sl__side .sl-journey li.is-now .sl-journey__dot {
+  border-color: #ffd897;
+  color: #fff1ca;
+  background: #593529;
+  box-shadow: 0 0 14px #ffb56b66;
+}
+
+.sl__side .sl-grow__row { color: var(--sl-detail-copy) }
+.sl__side .sl-grow__row b { color: var(--sl-detail-gold) }
+
+.sl__side .sl-bar {
+  height: 13px;
+  padding: 2px;
+  overflow: hidden;
+  border-color: #8270b5b0;
+  border-radius: 999px;
+  background: #0c0a1a;
+}
+
+.sl__side .sl-bar i {
+  border-radius: inherit;
+  background: repeating-linear-gradient(90deg, #ffd67f 0 8px, #9b5839 8px 10px);
+  box-shadow: 0 0 9px #ffb0208c;
+}
+
+.sl__side .sl-stats {
+  grid-template-columns: repeat(auto-fit, minmax(min(54px, 100%), 1fr));
+  align-items: stretch;
+  gap: 6px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sl__side .sl-stats > div {
+  padding: 6px 5px 7px;
+  border: 1px solid #8270b552;
+  border-radius: 9px;
+  background: #211932;
+  text-align: center;
+}
+
+.sl__side .sl-stats dt { font-size: 9px }
+.sl__side .sl-stats dd { color: #fff3e1; font: 500 18px/1.25 var(--mono) }
+
+.sl__side .sl-save__line { color: #c1e8aa }
+.sl__side .sl-save--problem .sl-save__line,
+.sl__side .sl-save--visit .sl-save__line { color: var(--sl-detail-gold) }
+.sl__side .sl-save__actions { gap: 8px }
+.sl__side .sl-save__actions .btn--sm { font-size: 10px }
+.sl__side .sl-save__plan { border-color: var(--sl-detail-line); border-radius: 10px; color: var(--sl-detail-copy) }

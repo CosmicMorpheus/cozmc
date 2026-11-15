@@ -1,0 +1,175 @@
+.sl-page :is(.sl-story, .sl-cs, .sl-sm, .sl-mempanel).panel {
+  --story-gold: #ffda93;
+  --story-lilac: #d8cbe9;
+  --story-muted: #c2b8cc;
+  --story-line: #8270b580;
+  --story-glow: #3b2b664d;
+  border-color: var(--story-line);
+  border-radius: 18px;
+  padding: clamp(16px, 2.4vw, 26px);
+  background: radial-gradient(ellipse at 100% 0, var(--story-glow), transparent 65%), linear-gradient(150deg, #141127, #090917 58%);
+  box-shadow: inset 0 1px 0 #d2a7ff25, 0 12px 30px #03030c80;
+}
+
+.sl-page .sl-cs.panel { --story-glow: #9b5e302b }
+.sl-page .sl-sm.panel { --story-glow: #664a9f44 }
+
+.sl-page :is(.sl-story, .sl-cs, .sl-sm, .sl-mempanel).panel::before {
+  inset: 0 18px auto;
+  width: auto;
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, #f2c45c85 28%, #c394ff70 64%, transparent);
+  pointer-events: none;
+}
+
+.sl-page :is(.sl-story, .sl-cs, .sl-sm).panel .kicker,
+.sl-page .sl-mempanel .panel__head h2 {
+  color: var(--story-gold);
+  letter-spacing: .1em;
+  text-shadow: 0 0 12px #e3973e55;
+}
+
+.sl-page :is(.sl-story, .sl-cs, .sl-sm).panel h2 {
+  color: #fff3e1;
+  font: 750 clamp(1.5rem, 3vw, 2.05rem)/1.06 var(--sans);
+  font-stretch: 82%;
+  letter-spacing: .015em;
+  text-shadow: 0 0 16px #fa9b5f35;
+}
+
+.sl-page :is(.sl-story__theme, .sl-cs__theme, .sl-sm__visit) { color: var(--story-lilac) }
+.sl-page :is(.sl-story, .sl-cs, .sl-sm, .sl-mempanel).panel .sl-fine { color: var(--story-muted) }
+.sl-page :is(.sl-story, .sl-cs, .sl-sm).panel :is(.sl-story__voice, .sl-cs__voice) { color: #f1d8fb }
+
+.sl-page :is(.sl-story__invite, .sl-cs__invite, .sl-story__reflect, .sl-cs__reflect, .sl-story__influence) {
+  border: 1px solid #8270b553;
+  border-inline-start: 2px solid #b598cd;
+  border-radius: 10px;
+  background: linear-gradient(110deg, #251c3d9c, #100e20d9);
+}
+
+.sl-page :is(.sl-story__invite, .sl-cs__invite) {
+  border-inline-start-color: var(--story-gold);
+  background: linear-gradient(110deg, #392832bd, #141125ef 60%);
+}
+
+.sl-page .sl-story__invite.is-done { border-inline-start-color: var(--phos) }
+.sl-page :is(.sl-story__label, .sl-cs__label, .sl-cs__choices legend) { color: var(--story-gold) }
+.sl-page :is(.sl-story__quote, .sl-cs__quote, .sl-story__influence b) { color: #fff3e1 }
+.sl-page :is(.sl-story__reflect .sl-story__quote, .sl-cs__reflect .sl-cs__quote) { color: var(--story-lilac) }
+.sl-page :is(.sl-story__status, .sl-cs__status, .sl-story__why) { color: var(--story-muted) }
+.sl-page .sl-story .sl-inlink { color: var(--story-gold); text-underline-offset: 3px }
+.sl-page .sl-story .sl-inlink:hover { color: #fff3e1 }
+.sl-page .sl-story__note { border-radius: 10px }
+
+.sl-page .sl-cs__choice {
+  background: #211b35;
+  border-color: var(--story-line);
+  border-radius: 10px;
+}
+
+.sl-page .sl-cs__choice b {
+  color: var(--story-gold);
+  border-color: #f2c45c80;
+  border-radius: 4px;
+}
+
+.sl-page .sl-cs__choice:enabled:hover { border-color: var(--story-gold); background: #32243d }
+.sl-page :is(.sl-story, .sl-cs, .sl-sm, .sl-mempanel) :is(a, button):focus-visible { outline-color: var(--story-gold) }
+.sl-page :is(.sl-cs, .sl-sm) .btn {
+  min-height: 44px;
+  height: auto;
+  padding: 8px 16px;
+  border-radius: 999px;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.sl-page :is(.sl-cs, .sl-sm) .btn--phos {
+  --sh: #70301f;
+  border-color: #ffe1a4;
+  background: linear-gradient(180deg, #ffcb79, #ff944d);
+  color: #261007;
+  box-shadow: inset 0 0 12px #fceed189, 0 0 16px #ff752048, 0 2px 0 var(--sh);
+}
+
+.sl-page :is(.sl-cs, .sl-sm) .btn--phos:enabled:hover {
+  background: linear-gradient(180deg, #ffdd9d, #ffa965);
+  box-shadow: inset 0 0 12px #fceed189, 0 0 20px #ff75206b, 0 3px 0 var(--sh);
+}
+
+.sl-page :is(.sl-cs, .sl-sm) .btn--ghost {
+  --sh: #0a0713;
+  border-color: var(--story-line);
+  background: #171228;
+  color: #f1e6ff;
+}
+
+.sl-page :is(.sl-cs, .sl-sm) .btn--ghost:enabled:hover { border-color: var(--story-gold); color: var(--story-gold) }
+.sl-page .sl-sm__pic { border-color: var(--story-line); border-radius: 12px }
+.sl-page .sl-sm__test {
+  border-color: #c28d4980;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #3a2a214d, #171123 75%);
+}
+
+.sl-page .sl-sm__testhead,
+.sl-page .sl-sm.is-test .kicker { color: var(--story-gold) }
+.sl-page .sl-sm__test .chip { border-color: var(--story-line); border-radius: 999px; background: #171228; color: var(--story-lilac) }
+.sl-page .sl-sm__test .chip:enabled:hover { border-color: var(--story-gold); color: var(--story-gold) }
+.sl-page .sl-sm__test .chip.on { border-color: var(--story-gold); background: var(--story-gold); color: #261007 }
+
+.sl-page .sl-mempanel .panel__head { margin-bottom: 14px }
+.sl-page .sl-starmap {
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 120%, #f1b75e78, transparent 60%), radial-gradient(ellipse at 90% 20%, #4c347d8a, transparent 56%), #08091b;
+  box-shadow: 0 6px 18px #02020c80;
+}
+
+.sl-page .sl-starmap rect { stroke: var(--story-line) }
+.sl-page .sl-starmap path { fill: #ffe4a5; filter: drop-shadow(0 0 2px #ffcc76aa) }
+.sl-page .sl-memories__list li {
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 9px;
+  border-bottom-color: #8270b557;
+}
+
+.sl-page .sl-memories__list li::before {
+  content: '';
+  align-self: start;
+  margin-top: .65em;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--story-gold);
+  box-shadow: 0 0 6px #ffb96966;
+}
+
+.sl-page .sl-memories__list time { color: var(--story-muted) }
+.sl-page .sl-memories .link {
+  min-height: 38px;
+  margin-top: 6px;
+  color: var(--story-gold);
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .sl-page .sl-memories {
+    grid-template-columns: clamp(62px, 18vw, 86px) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .sl-page .sl-memories__entries { display: contents }
+  .sl-page .sl-memories__entries > :not(:first-child) { grid-column: 1 / -1 }
+  .sl-page .sl-memories__list { margin-top: 0 }
+  .sl-page .sl-memories .link { margin-top: -6px }
+}
+
+@media (max-width: 360px) {
+  .sl-page .sl-memories__list li { grid-template-columns: 5px minmax(0, 1fr) }
+  .sl-page .sl-memories__list time { grid-column: 2 }
+}

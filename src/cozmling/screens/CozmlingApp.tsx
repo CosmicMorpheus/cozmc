@@ -8,6 +8,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useWallet } from '@txnlab/use-wallet-react'
 import { useMe } from '../../components/Wallet'
 import '../cozmling.css'
+import './starLoftActions.css'
 import { COZMLING_DEV, cozmlingStore, startCozmling, useCozmling } from '../index'
 import { nameOf } from '../domain/care'
 import { signInfo } from '../domain/starprint'

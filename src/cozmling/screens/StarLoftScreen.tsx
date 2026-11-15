@@ -39,6 +39,7 @@ import { ORIGIN_OBSERVATORY } from '../celestial/observatory'
 import { drawnOriginal, originalProgress, originalStage } from '../integrations/originalScene'
 import type { Stage } from '../../companion/look'
 import { COMMUNITY_HATCH_LANTERN } from '../community/communityHatch'
+import './starLoftDetails.css'
 
 type AdvStage = NonNullable<AdventurerCompanion['progress']['visualStage']>
 const ADV_STAGE: Record<AdvStage, string> = { hatchling: 'Hatchling', adolescent: 'Adolescent', ascended: 'Ascended' }

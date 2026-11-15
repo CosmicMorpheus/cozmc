@@ -8,6 +8,7 @@ import { look, nameOf } from '../domain/care'
 import type { Companion } from '../types'
 import { invitationDone, type DailyStory } from './engine'
 import type { DailyStoryState } from './useDailyStory'
+import './storyGrove.css'
 
 export function StoryPanel({ c, today }: { c: Companion; today: DailyStoryState }) {
   if (today.status === 'none') return null
