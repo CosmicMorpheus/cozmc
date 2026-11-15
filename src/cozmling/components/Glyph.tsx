@@ -10,8 +10,9 @@ import { ZODIAC_PATHS } from './zodiacPaths'
    (All twelve are drawn in zodiacPaths.ts; the Grove's lanterns use the full set.) */
 const DRAWN: Partial<Record<ZodiacSign, string[]>> = { taurus: ZODIAC_PATHS.taurus, scorpio: ZODIAC_PATHS.scorpio }
 
-export function Glyph({ sign, size = 20, className = '' }: { sign: ZodiacSign; size?: number; className?: string }) {
-  const d = DRAWN[sign]
+/** A zodiac sign. `drawn` draws every sign as strokes, never as a font character. */
+export function Glyph({ sign, size = 20, className = '', drawn = false }: { sign: ZodiacSign; size?: number; className?: string; drawn?: boolean }) {
+  const d = drawn ? ZODIAC_PATHS[sign] : DRAWN[sign]
   if (d) return (
     <svg className={`sl-glyph ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {d.map(p => <path key={p} d={p} />)}

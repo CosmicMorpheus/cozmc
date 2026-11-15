@@ -40,7 +40,9 @@ const fixtures = await build({
 const contentTypes = { css: 'text/css', js: 'text/javascript', webp: 'image/webp' }
 const files = new Map(fixtures.outputFiles.map(file => ['/' + basename(file.path), file.contents]))
 const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64')
-const html = '<!doctype html><html><head><link rel="stylesheet" href="/wallet-review.css"></head><body><div id="root"></div><script type="module" src="/wallet-review.js"></script></body></html>'
+// the site's own rule for text meant only for screen readers (from src/styles.css)
+const srOnly = '.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}'
+const html = `<!doctype html><html><head><link rel="stylesheet" href="/wallet-review.css"><style>${srOnly}</style></head><body><div id="root"></div><script type="module" src="/wallet-review.js"></script></body></html>`
 
 function fixtureAddress(byte) {
   const key = Buffer.alloc(32, byte)
@@ -185,20 +187,18 @@ async function until(predicate, label) {
   }
   throw new Error('Timed out waiting for ' + label)
 }
-// The Grove's twelve lanterns as drawn in the layout on screen: [sign, lit], in order.
+// The Grove's twelve lanterns on screen: [sign, lit], in order, and what each tells a screen reader.
 const ZODIAC = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces']
 const NAMES = ZODIAC.map(sign => sign[0].toUpperCase() + sign.slice(1))
-const groveLabel = count => count === 0 ? 'The twelve zodiac lanterns, Aries to Pisces, are waiting to be lit.'
-  : count === 12 ? 'All twelve zodiac lanterns are lit, Aries to Pisces.'
-    : `${count} of 12 zodiac lanterns lit: ${NAMES.slice(0, count).join(', ')}.`
-const shownLanterns = page => page.evaluate(() => {
-  const svg = [...document.querySelectorAll('.community-hatch__grove svg')].find(item => getComputedStyle(item).display !== 'none')
-  return [...svg.querySelectorAll('.grove-lantern')].map(item => [item.dataset.sign, item.dataset.lit === 'true'])
-})
+const shownLanterns = page => page.evaluate(() => [...document.querySelectorAll('.community-hatch__lantern')]
+  .map(item => [item.dataset.sign, item.dataset.lit === 'true']))
 async function expectLit(page, count) {
-  await page.getByRole('region', { name: 'Light the Grove' }).getByRole('img', { name: groveLabel(count), exact: true }).waitFor()
+  const list = page.getByRole('region', { name: 'Light the Grove' }).getByRole('list', { name: 'Zodiac lanterns' })
+  await page.locator(`.community-hatch__lanterns[data-lit-count="${count}"]`).waitFor()
+  assert.equal(await list.getByRole('listitem').count(), 12)
   assert.deepEqual(await shownLanterns(page), ZODIAC.map((sign, index) => [sign, index < count]), `${count} lit, in zodiac order`)
-  await page.getByText(count === 12 ? 'All 12 signs aglow' : `${count} of 12 signs aglow`, { exact: true }).waitFor()
+  assert.deepEqual(await list.locator('.sr-only').evaluateAll(items => items.map(item => item.textContent)),
+    NAMES.map((name, index) => `${name} lantern: ${index < count ? 'lit' : 'unlit'}`))
 }
 // Tab from the top of the page until the named button has focus; the lanterns themselves take no stops.
 async function tabTo(page, name) {
@@ -441,35 +441,42 @@ try {
   total = 1                       // four lit, eight dark: both looks at once
   await other.reload()
   await expectLit(other, 4)
-  for (const [width, height, layout, minGlass, minSymbol] of [[1440, 1000, "wide", 80, 30], [390, 844, "narrow", 48, 17], [360, 780, "narrow", 44, 16], [320, 720, "narrow", 40, 14]]) {
+  for (const [width, height, rows, minLantern, minSymbol] of [[1440, 1000, 1, 66, 24], [390, 844, 2, 48, 18], [360, 780, 2, 44, 18], [320, 720, 2, 38, 18]]) {
     await other.setViewportSize({ width, height })
     const shown = await other.evaluate(() => {
-      const svg = [...document.querySelectorAll('.community-hatch__grove svg')].find(item => getComputedStyle(item).display !== 'none')
       const box = item => item.getBoundingClientRect().toJSON()
+      const list = document.querySelector('.community-hatch__lanterns')
       return {
-        layout: svg.dataset.layout, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, svg: box(svg),
-        lanterns: [...svg.querySelectorAll('.grove-lantern')].map(item => ({
-          sign: item.dataset.sign, glass: box(item.querySelector('.grove-lantern__rim')), glyph: box(item.querySelector('.grove-lantern__sign-off')),
+        width: innerWidth, scrollWidth: document.documentElement.scrollWidth, panel: box(document.querySelector('.community-hatch')),
+        lanterns: [...list.querySelectorAll('.community-hatch__lantern')].map(item => ({
+          sign: item.dataset.sign, lantern: box(item), glyph: box(item.querySelector('.community-hatch__sign')),
         })),
       }
     })
     const at = `${width} px`
-    assert.equal(shown.layout, layout, at)
     assert.ok(shown.scrollWidth <= shown.width, `${at}: no sideways scrolling`)
     assert.deepEqual(shown.lanterns.map(item => item.sign), ZODIAC, `${at}: all twelve, in order`)
-    for (const { sign, glass, glyph } of shown.lanterns) {
-      assert.ok(glass.width >= minGlass, `${at}: ${sign} is ${glass.width.toFixed(1)} px across`)
+    // one garland of twelve on a wide screen; on a phone, two rows of six, Aries to Virgo above Libra to Pisces
+    const lines = []
+    for (const item of shown.lanterns) {
+      const line = lines.find(group => Math.abs(group[0].lantern.top - item.lantern.top) < item.lantern.height / 2)
+      if (line) line.push(item)
+      else lines.push([item])
+    }
+    assert.deepEqual(lines.map(line => line.map(item => item.sign)), rows === 1 ? [ZODIAC] : [ZODIAC.slice(0, 6), ZODIAC.slice(6)], `${at}: rows`)
+    for (const { sign, lantern, glyph } of shown.lanterns) {
+      assert.ok(lantern.width >= minLantern, `${at}: ${sign} is ${lantern.width.toFixed(1)} px across`)
       assert.ok(Math.max(glyph.width, glyph.height) >= minSymbol, `${at}: ${sign}'s symbol is ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px`)
-      assert.ok(glass.left >= shown.svg.left - 0.5 && glass.right <= shown.svg.right + 0.5 && glass.left >= 0 && glass.right <= shown.width, `${at}: ${sign} is inside the Grove`)
-      assert.ok(glass.top >= shown.svg.top - 0.5 && glass.bottom <= shown.svg.bottom + 0.5, `${at}: ${sign} isn't cut off`)
+      assert.ok(lantern.left >= shown.panel.left && lantern.right <= shown.panel.right && lantern.left >= 0 && lantern.right <= shown.width, `${at}: ${sign} is inside the Grove`)
+      assert.ok(glyph.left >= lantern.left && glyph.right <= lantern.right && glyph.top >= lantern.top && glyph.bottom <= lantern.bottom, `${at}: ${sign}'s symbol sits on its lantern`)
     }
     // no lantern overlaps another
     shown.lanterns.forEach((first, i) => shown.lanterns.slice(i + 1).forEach(second => {
-      const apart = first.glass.right <= second.glass.left || second.glass.right <= first.glass.left
-        || first.glass.bottom <= second.glass.top || second.glass.bottom <= first.glass.top
+      const apart = first.lantern.right <= second.lantern.left + 0.5 || second.lantern.right <= first.lantern.left + 0.5
+        || first.lantern.bottom <= second.lantern.top + 0.5 || second.lantern.bottom <= first.lantern.top + 0.5
       assert.ok(apart, `${at}: ${first.sign} and ${second.sign} overlap`)
     }))
-    if (process.env.GROVE_REPORT) console.log(at, shown.layout, 'smallest glass', Math.min(...shown.lanterns.map(item => item.glass.width)).toFixed(1), 'symbols', shown.lanterns.map(item => `${item.sign} ${item.glyph.width.toFixed(1)}×${item.glyph.height.toFixed(1)}`).join(', '))
+    if (process.env.GROVE_REPORT) console.log(at, `${lines.length} row(s)`, 'smallest lantern', Math.min(...shown.lanterns.map(item => item.lantern.width)).toFixed(1), 'symbols', shown.lanterns.map(item => `${item.sign} ${item.glyph.width.toFixed(1)}×${item.glyph.height.toFixed(1)}`).join(', '))
   }
   assert.deepEqual(errors, [])
   console.log('Wallet-backed Cozmling browser smoke passed.')

@@ -171,15 +171,12 @@ function WalletHatchPanel({
         />
         <p className="community-hatch__kicker">Community Hatch</p>
         <h2 id={heading}>{status?.title ?? 'Light the Grove'}</h2>
+        <GroveLanterns lit={lit} />
       </header>
-      <GroveLanterns lit={lit} />
       <div className="community-hatch__console">
         {count && (
           <div className="community-hatch__progress">
-            <div>
-              <p><strong>{count.total.toLocaleString()} of {count.goal.toLocaleString()}</strong> lanterns lit</p>
-              <p className="community-hatch__signs" aria-hidden="true">{lit === 12 ? 'All 12 signs aglow' : `${lit} of 12 signs aglow`}</p>
-            </div>
+            <p><strong>{count.total.toLocaleString()} of {count.goal.toLocaleString()}</strong> lanterns lit</p>
             <progress value={Math.min(count.total, count.goal)} max={count.goal} aria-label="Lantern goal" />
           </div>
         )}

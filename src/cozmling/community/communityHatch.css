@@ -20,12 +20,12 @@
   aspect-ratio: 1923 / 818;
   background:
     linear-gradient(180deg, var(--grove-night), transparent 11%, transparent 90%, var(--grove-night)),
-    url('./grove-scenery.webp') center top / 100% auto no-repeat;
+    url('./grove-sky.webp') center top / 100% auto no-repeat;
   pointer-events: none;
 }
 
 .community-hatch__hero {
-  padding: clamp(14px, 1.65cqw, 23px) 12px 0;
+  padding: clamp(14px, 1.65cqw, 23px) 12px clamp(15px, 2.6cqw, 30px);
 }
 
 .community-hatch__wordmark {
@@ -65,6 +65,75 @@
   text-transform: uppercase;
   text-wrap: balance;
   text-shadow: 0 2px 8px #000, 0 0 24px #fa9b5f7d;
+}
+
+.community-hatch__lanterns {
+  --cord-rise: clamp(8px, 1.6cqw, 19px);
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(3px, .35cqw, 5px);
+  width: min(97%, 960px);
+  margin: clamp(12px, 1.8cqw, 21px) auto 0;
+  padding: 0 6px var(--cord-rise);
+  list-style: none;
+}
+
+.community-hatch__lanterns::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--cord-rise));
+  left: 0;
+  right: 0;
+  height: calc(2 * var(--cord-rise));
+  border-bottom: 1px solid #dca957;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  filter: drop-shadow(0 1px 4px #ffa74e);
+}
+
+.community-hatch__lantern {
+  --hung: 0px;
+  --glow: #ffce83;
+  position: relative;
+  aspect-ratio: 256 / 324;
+  translate: 0 var(--hung);
+}
+
+.community-hatch__lantern[data-element='earth'] { --glow: #a1ffd7 }
+.community-hatch__lantern[data-element='air'] { --glow: #d6b8ff }
+.community-hatch__lantern[data-element='water'] { --glow: #a5e7ff }
+.community-hatch__lantern:where(:nth-child(n + 2):nth-child(-n + 11)) { --hung: calc(var(--cord-rise) * .45) }
+.community-hatch__lantern:where(:nth-child(n + 3):nth-child(-n + 10)) { --hung: calc(var(--cord-rise) * .72) }
+.community-hatch__lantern:where(:nth-child(n + 4):nth-child(-n + 9)) { --hung: calc(var(--cord-rise) * .89) }
+.community-hatch__lantern:where(:nth-child(n + 5):nth-child(-n + 8)) { --hung: calc(var(--cord-rise) * .98) }
+
+.community-hatch__globe {
+  position: absolute;
+  inset: 0;
+  background: url('./zodiac-lantern.webp') center / contain no-repeat;
+  filter: brightness(.54) saturate(.34);
+}
+
+.community-hatch__sign {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  color: #c0bdd3;
+  font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', sans-serif;
+  line-height: 1;
+  translate: -50% -50%;
+}
+
+.community-hatch__lantern[data-lit='true'] .community-hatch__globe {
+  filter: brightness(1.12) drop-shadow(0 0 7px color-mix(in srgb, var(--glow) 55%, transparent));
+}
+
+.community-hatch__lantern[data-lit='true'] .community-hatch__sign {
+  color: color-mix(in srgb, var(--glow) 72%, white);
+  text-shadow: 0 0 7px var(--glow);
+  filter: drop-shadow(0 0 5px var(--glow));
 }
 
 .community-hatch__console {
@@ -205,53 +274,33 @@
 .community-hatch__status:empty { display: none }
 
 @container (max-width: 620px) {
-  /* on a phone the painting fills the panel behind both garlands */
-  .community-hatch__scenery { inset: 0; aspect-ratio: auto; background-size: auto, cover; background-position: center, center top }
-  .community-hatch__grove { margin-top: 6px }
+  .community-hatch__lanterns {
+    --cord-rise: 7px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 13px;
+    width: min(100%, 450px);
+  }
+  .community-hatch__lanterns::after {
+    content: '';
+    position: absolute;
+    top: calc(50% - var(--cord-rise));
+    left: 0;
+    right: 0;
+    height: calc(2 * var(--cord-rise));
+    border-bottom: 1px solid #dca957;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    filter: drop-shadow(0 1px 4px #ffa74e);
+  }
+  .community-hatch__lantern:nth-child(n) { --hung: 0px }
+  .community-hatch__lantern:nth-child(6n + 2),
+  .community-hatch__lantern:nth-child(6n + 5) { --hung: calc(var(--cord-rise) * .75) }
+  .community-hatch__lantern:nth-child(6n + 3),
+  .community-hatch__lantern:nth-child(6n + 4) { --hung: var(--cord-rise) }
+  .community-hatch__sign { scale: .76 }
+  .community-hatch__scenery { top: clamp(52px, 15cqw, 76px) }
   .community-hatch__console { width: calc(100% - 24px) }
   .community-hatch__progress { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-block: 11px }
   .community-hatch__rules { grid-template-columns: minmax(0, 1fr); padding: 4px 15px 0 }
   .community-hatch__rules li { gap: 12px; padding: 8px 0 }
   .community-hatch__rules li + li { border-inline-start: 0; border-top: 1px solid #8270b54d }
-}
-
-/* ---------- the twelve zodiac lanterns ---------- */
-.community-hatch__grove { position: relative; margin: clamp(2px, .6cqw, 8px) 0 clamp(6px, 1.4cqw, 16px) }
-.grove { display: block; width: 100%; height: auto; overflow: visible }
-.grove--narrow { display: none }
-.grove__wire { fill: none; stroke: #4a3716; stroke-width: 3; stroke-linecap: round }
-.grove__bulbs circle { fill: #ffd27a }
-.grove__bulbs .is-twinkle { animation: grove-twinkle 2.8s ease-in-out infinite }
-
-/* dark glass with its sign still legible; lit, the glow comes up, one after another in zodiac order */
-.grove-lantern > *, .grove-lantern g { transition: opacity .8s ease calc(var(--i) * 110ms), stroke .8s ease calc(var(--i) * 110ms) }
-.grove-lantern__halo, .grove-lantern__glow, .grove-lantern__sign-on { opacity: 0 }
-.grove-lantern__rim { fill: none; stroke: #3b4663 }
-.grove-lantern__sign-off { stroke: #7783a3 }
-.grove-lantern__metal, .grove-lantern__star { opacity: .6 }
-.grove-lantern[data-lit='true'] .grove-lantern__halo { opacity: 1; animation: grove-flicker 3.4s ease-in-out calc(var(--i) * -.37s) infinite }
-.grove-lantern[data-lit='true'] .grove-lantern__glow,
-.grove-lantern[data-lit='true'] .grove-lantern__sign-on,
-.grove-lantern[data-lit='true'] .grove-lantern__metal,
-.grove-lantern[data-lit='true'] .grove-lantern__star { opacity: 1 }
-.grove-lantern[data-lit='true'] .grove-lantern__sign-off { opacity: 0 }
-.grove-lantern[data-lit='true'] .grove-lantern__rim { stroke: var(--rim) }
-
-/* the flicker works on the halo's fill, so its opacity can still fade in with the lantern's turn */
-@keyframes grove-flicker { 0%, 100% { fill-opacity: 1 } 45% { fill-opacity: .78 } 62% { fill-opacity: .93 } }
-@keyframes grove-twinkle { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
-@media (prefers-reduced-motion: reduce) {
-  .grove-lantern > *, .grove-lantern g, .grove__bulbs circle { transition: none !important; animation: none !important }
-}
-
-/* the signs caption under the meter: the same count, in the lanterns' terms */
-.community-hatch__signs { margin: 3px 0 0; color: #d8b56f; font: 400 clamp(10px, 1cqw, 11px)/1.4 var(--pixel); letter-spacing: .1em; text-transform: uppercase; text-align: left }
-.grove-lantern__ring { fill: none; stroke: #ffffff; opacity: 0 }
-.grove-lantern[data-lit='true'] .grove-lantern__ring { opacity: .22 }
-
-/* one garland of twelve where there's room; two of six on a phone, so every sign stays readable */
-@container (max-width: 620px) {
-  .grove--wide { display: none }
-  .grove--narrow { display: block }
-  .community-hatch__signs { text-align: center }
 }
