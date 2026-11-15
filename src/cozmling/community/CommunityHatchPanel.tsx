@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { ArrowsClockwise, CalendarBlank, Egg, Wallet } from '@phosphor-icons/react'
 import { SOCIAL } from '../../config'
 import {
   COMMUNITY_HATCH_PATH, isCommunityHatchStatus,
@@ -6,8 +7,15 @@ import {
 } from './communityHatch'
 import './communityHatch.css'
 
+export type CommunityHatchWalletAction = {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}
+
 type Props = {
   walletAddress: string | null
+  walletAction?: CommunityHatchWalletAction
   canOpenEgg: (receipt: CommunityHatchReceipt) => boolean
   onOpenEgg: (receipt: CommunityHatchReceipt) => void
   onPlaceLantern?: () => Promise<void>
@@ -55,7 +63,7 @@ export function CommunityHatchPanel(props: Props) {
 }
 
 function WalletHatchPanel({
-  walletAddress, canOpenEgg, onOpenEgg, onPlaceLantern, lanternPlaced, showcaseCompanion,
+  walletAddress, walletAction, canOpenEgg, onOpenEgg, onPlaceLantern, lanternPlaced, showcaseCompanion,
 }: Props) {
   const heading = useId()
   const [status, setStatus] = useState<CommunityHatchStatus>()
@@ -127,7 +135,6 @@ function WalletHatchPanel({
   const verified = Boolean(walletAddress && status?.authenticatedWallet === walletAddress)
   const receipt = verified ? status?.receipt : null
   const showcaseName = receipt?.companionId === showcaseCompanion?.id ? showcaseCompanion?.name : undefined
-  const litLanterns = status?.total ? Math.max(1, Math.min(12, Math.floor(status.total / status.goal * 12))) : 0
 
   async function copyIntroduction(name: string) {
     try {
@@ -139,56 +146,86 @@ function WalletHatchPanel({
   }
 
   return (
-    <section className="community-hatch panel" aria-labelledby={heading}>
-      <p className="kicker">Community Hatch</p>
-      <h2 id={heading}>{status?.title ?? 'Light the Grove'}</h2>
-      {status ? <>
-        <div className="community-hatch__grove" aria-hidden="true">
-          {Array.from({ length: 12 }, (_, index) => (
-            <span key={index} data-lit={index < litLanterns} />
-          ))}
-        </div>
-        <progress value={Math.min(status.total, status.goal)} max={status.goal} aria-label="Lantern goal" />
-        <p>{status.total.toLocaleString()} of {status.goal.toLocaleString()} lanterns lit</p>
-        {status.phase === 'upcoming' && <p>The Grove opens {eventDate(status.opensAt)}.</p>}
-        {status.phase === 'open' && <>
-          <p>Light one lantern a day until {eventDate(status.endsAt)}. Your first contribution earns a mystery egg. Daily lanterns reset at midnight UTC.</p>
-          {verified && <button className="btn btn--phos" type="button" disabled={busy || status.contributedToday} onClick={() => void run('contribute')}>
-            {status.contributedToday ? 'Lantern lit today' : work === 'contribute' ? 'Lighting lantern…' : 'Light a lantern'}
-          </button>}
-        </>}
-        {!verified && (status.phase === 'open' || status.phase === 'claim') && (
-          <p>Connect and verify your Algorand wallet to contribute or claim an egg.</p>
-        )}
-        {status.phase === 'claim' && verified && status.eligible && !receipt && <>
-          <p>Claim your mystery egg by {eventDate(status.claimUntil)}.</p>
-          <button className="btn btn--phos" type="button" disabled={busy} onClick={() => void run('claim')}>
-            {work === 'claim' ? 'Claiming egg…' : 'Claim my mystery egg'}
-          </button>
-        </>}
-        {status.phase === 'claim' && verified && !status.eligible && <p>Wallets that contributed can now claim their eggs.</p>}
-        {status.phase === 'ended' && !receipt && <p>The egg claim window has closed.</p>}
-        {receipt && (canOpenEgg(receipt) ? (
-          <button className="btn btn--phos" type="button" disabled={busy} onClick={() => onOpenEgg(receipt)}>Adopt my mystery egg</button>
-        ) : <p>Your mystery egg has been added to your companions.</p>)}
-        {verified && status.lanternEligible && (
-          lanternPlaced ? <p>Your Grove lantern is in this Star Loft.</p> : onPlaceLantern ? (
-            <button className="btn btn--ghost" type="button" disabled={busy} onClick={() => void run('place', onPlaceLantern)}>Place Grove lantern</button>
-          ) : <p>Your Grove lantern is ready. Open a hatched Cozmling’s Star Loft to place it.</p>
-        )}
-        {verified && status.eligible && (status.phase === 'claim' || status.phase === 'ended') && SOCIAL.discord && (
-          <div>
-            <a href={SOCIAL.discord} target="_blank" rel="noreferrer">Join the hatchling showcase in Discord</a>
-            {' '}
-            {showcaseName && <button className="btn btn--ghost" type="button" onClick={() => void copyIntroduction(showcaseName)}>Copy hatchling introduction</button>}
+    <section className="community-hatch" aria-labelledby={heading}>
+      <div className="community-hatch__scenery" aria-hidden="true" />
+      <header className="community-hatch__hero">
+        <img
+          className="community-hatch__wordmark"
+          src="/assets/cozmc-logo-272.png"
+          srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w"
+          sizes="(max-width: 560px) 108px, 172px"
+          width={456}
+          height={120}
+          alt="COZMC"
+          decoding="async"
+        />
+        <p className="community-hatch__kicker">Community Hatch</p>
+        <h2 id={heading}>{status?.title ?? 'Light the Grove'}</h2>
+      </header>
+      <div className="community-hatch__console">
+        {status && (
+          <div className="community-hatch__progress">
+            <p><strong>{status.total.toLocaleString()} of {status.goal.toLocaleString()}</strong> lanterns lit</p>
+            <progress value={Math.min(status.total, status.goal)} max={status.goal} aria-label="Lantern goal" />
           </div>
         )}
-      </> : !error && <p>Checking the Grove…</p>}
-      {error && <>
-        <p role="alert">{error}</p>
-        <button className="btn btn--ghost" type="button" disabled={busy} onClick={() => void run('initial')}>Refresh the Grove</button>
-      </>}
-      <p className="community-hatch__status" role="status">{message}</p>
+        {status?.phase === 'open' && (
+          <ul className="community-hatch__rules">
+            <li><CalendarBlank aria-hidden="true" /><span>Light one lantern a day until <time dateTime={status.endsAt}>{eventDate(status.endsAt)}</time>.</span></li>
+            <li><Egg aria-hidden="true" /><span>Your first contribution earns a mystery egg.</span></li>
+            <li><ArrowsClockwise aria-hidden="true" /><span>Daily lanterns reset at midnight UTC.</span></li>
+          </ul>
+        )}
+        <div className="community-hatch__actions">
+          {status ? <>
+            {status.phase === 'upcoming' && <p>The Grove opens {eventDate(status.opensAt)}.</p>}
+            {status.phase === 'open' && verified && <button className="btn btn--phos" type="button" disabled={busy || status.contributedToday} onClick={() => void run('contribute')}>
+              {status.contributedToday ? 'Lantern lit today' : work === 'contribute' ? 'Lighting lantern…' : 'Light a lantern'}
+            </button>}
+            {!verified && (status.phase === 'open' || status.phase === 'claim') && (
+              <>
+                <p>Connect and verify your Algorand wallet to contribute or claim an egg.</p>
+                {walletAction && (
+                  <div className="community-hatch__wallet">
+                    <button className="btn community-hatch__cta" type="button" onClick={walletAction.onClick} disabled={walletAction.disabled}>
+                      <Wallet aria-hidden="true" />
+                      {walletAction.label}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+            {status.phase === 'claim' && verified && status.eligible && !receipt && <>
+              <p>Claim your mystery egg by {eventDate(status.claimUntil)}.</p>
+              <button className="btn btn--phos" type="button" disabled={busy} onClick={() => void run('claim')}>
+                {work === 'claim' ? 'Claiming egg…' : 'Claim my mystery egg'}
+              </button>
+            </>}
+            {status.phase === 'claim' && verified && !status.eligible && <p>Wallets that contributed can now claim their eggs.</p>}
+            {status.phase === 'ended' && !receipt && <p>The egg claim window has closed.</p>}
+            {receipt && (canOpenEgg(receipt) ? (
+              <button className="btn btn--phos" type="button" disabled={busy} onClick={() => onOpenEgg(receipt)}>Adopt my mystery egg</button>
+            ) : <p>Your mystery egg has been added to your companions.</p>)}
+            {verified && status.lanternEligible && (
+              lanternPlaced ? <p>Your Grove lantern is in this Star Loft.</p> : onPlaceLantern ? (
+                <button className="btn btn--ghost" type="button" disabled={busy} onClick={() => void run('place', onPlaceLantern)}>Place Grove lantern</button>
+              ) : <p>Your Grove lantern is ready. Open a hatched Cozmling’s Star Loft to place it.</p>
+            )}
+            {verified && status.eligible && (status.phase === 'claim' || status.phase === 'ended') && SOCIAL.discord && (
+              <div>
+                <a href={SOCIAL.discord} target="_blank" rel="noreferrer">Join the hatchling showcase in Discord</a>
+                {' '}
+                {showcaseName && <button className="btn btn--ghost" type="button" onClick={() => void copyIntroduction(showcaseName)}>Copy hatchling introduction</button>}
+              </div>
+            )}
+          </> : !error && <p>Checking the Grove…</p>}
+          {error && <>
+            <p role="alert">{error}</p>
+            <button className="btn btn--ghost" type="button" disabled={busy} onClick={() => void run('initial')}>Refresh the Grove</button>
+          </>}
+          <p className="community-hatch__status" role="status">{message}</p>
+        </div>
+      </div>
     </section>
   )
 }

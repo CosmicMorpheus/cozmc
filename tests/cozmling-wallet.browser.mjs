@@ -22,6 +22,7 @@ const fixtures = await build({
   format: 'esm',
   target: 'es2022',
   jsx: 'automatic',
+  loader: { '.webp': 'file' },
   define: {
     'import.meta.env.DEV': 'true',
     'import.meta.env.VITE_COZMLING_V2': '"1"',
@@ -36,6 +37,7 @@ const fixtures = await build({
     },
   }],
 })
+const contentTypes = { css: 'text/css', js: 'text/javascript', webp: 'image/webp' }
 const files = new Map(fixtures.outputFiles.map(file => ['/' + basename(file.path), file.contents]))
 const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64')
 const html = '<!doctype html><html><head><link rel="stylesheet" href="/wallet-review.css"></head><body><div id="root"></div><script type="module" src="/wallet-review.js"></script></body></html>'
@@ -78,9 +80,9 @@ async function makeBrowser(legacyFixture) {
     if (url.origin !== origin) return route.abort()
     if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: html })
     if (files.has(url.pathname)) {
-      return route.fulfill({ contentType: url.pathname.endsWith('.css') ? 'text/css' : 'text/javascript', body: Buffer.from(files.get(url.pathname)) })
+      return route.fulfill({ contentType: contentTypes[url.pathname.split('.').pop()], body: Buffer.from(files.get(url.pathname)) })
     }
-    if (url.pathname === '/assets/cozmc-wordmark.png' || url.pathname === '/assets/card-face.webp') {
+    if (url.pathname === '/assets/cozmc-wordmark.png' || url.pathname === '/assets/card-face.webp' || /^\/assets\/cozmc-logo-\d+\.png$/.test(url.pathname)) {
       return route.fulfill({ contentType: 'image/png', body: pixel })
     }
     const body = request.method() === 'POST' ? request.postDataJSON() : null
@@ -177,7 +179,10 @@ async function until(predicate, label) {
 
 try {
   const a = await makeBrowser()
-  await button(a, /connect.*wallet/i).first().waitFor()
+  const grove = a.getByRole('region', { name: 'Light the Grove' })
+  await button(grove, 'Connect wallet').click()
+  assert.equal(await a.evaluate(() => window.__walletReview.details.connections), 1)
+  assert.equal(await grove.getByRole('progressbar', { name: 'Lantern goal' }).getAttribute('value'), '0')
   assert.equal(await a.locator('#sl-bday').count(), 0)
   assert.equal(await button(a, 'Light a lantern').count(), 0)
   await select(a, one, false)
@@ -185,7 +190,7 @@ try {
   assert.equal(await a.locator('#sl-bday').count(), 0)
   await select(a, one)
   await a.evaluate(() => window.__walletReview.reject(true))
-  await verify(a).click()
+  await button(grove, 'Verify for the Grove').click()
   await a.waitForFunction(() => window.__walletReview.details.signatures.length === 1)
   assert.equal(await a.locator('#sl-bday').count(), 0)
   await a.evaluate(() => window.__walletReview.reject(false))
@@ -205,6 +210,7 @@ try {
   await a.keyboard.press('Escape')
   await button(a, 'Light a lantern').click()
   await button(a, 'Lantern lit today').waitFor()
+  assert.equal(await grove.getByRole('progressbar', { name: 'Lantern goal' }).getAttribute('value'), '1')
 
   const b = await makeBrowser()
   await select(b, one)

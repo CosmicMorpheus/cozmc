@@ -6,6 +6,7 @@
    A first-version Cozmling remains playable. Wallet-account mode applies to new adoptions. */
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
+import { useMe } from '../../components/Wallet'
 import '../cozmling.css'
 import { COZMLING_DEV, cozmlingStore, startCozmling, useCozmling } from '../index'
 import { nameOf } from '../domain/care'
@@ -15,7 +16,7 @@ import { STAGE_NAME } from '../../companion/look'
 import type { Companion } from '../types'
 import { AdoptionScreen } from './AdoptionScreen'
 import { StarLoftScreen } from './StarLoftScreen'
-import { CommunityHatchPanel } from '../community/CommunityHatchPanel'
+import { CommunityHatchPanel, type CommunityHatchWalletAction } from '../community/CommunityHatchPanel'
 import { COMMUNITY_HATCH_LANTERN, communityHatchEnabled, type CommunityHatchReceipt } from '../community/communityHatch'
 import { CozmlingShare } from '../community/CozmlingShare'
 import { COZMLING_WALLET_ACCOUNT } from '../flags'
@@ -40,17 +41,32 @@ export function CozmlingApp(route: Route) {
   return <WalletCozmlingView key={address ? `${activeWallet?.walletKey}:${address}` : 'visitor'} address={address} route={route} />
 }
 
-type Account = ReturnType<typeof useCloudAccount> & { address: string | null; access: ReactNode }
+type Account = ReturnType<typeof useCloudAccount> & {
+  address: string | null
+  access: ReactNode
+  hatchWalletAction?: CommunityHatchWalletAction
+}
 
 function WalletCozmlingView({ address, route }: { address: string | null; route: Route }) {
   const { activeWallet, signData } = useWallet()
+  const { openConnect } = useMe()
   const st = useCozmling()
   const canSign = !!activeWallet?.canSignData
   const session = useWalletVerification(address, canSign ? signData : undefined)
   const verifiedAddress = session.verified ? address : null
   const cloud = useCloudAccount(verifiedAddress, session.sessionSignal, st.status === 'ready', session.invalidate)
   const access = <WalletAccess address={address} canSign={canSign} state={session} />
-  return <CozmlingView key={verifiedAddress ?? 'unverified'} {...route} account={{ ...cloud, address: verifiedAddress, access }} />
+  let hatchWalletAction: CommunityHatchWalletAction | undefined
+  if (session.revocationPending) {
+    hatchWalletAction = { label: session.busy ? 'Signing out…' : 'Finish signing out', onClick: session.signOut, disabled: session.busy }
+  } else if (!address) {
+    hatchWalletAction = { label: 'Connect wallet', onClick: openConnect }
+  } else if (!canSign) {
+    hatchWalletAction = { label: 'Switch wallets', onClick: openConnect }
+  } else if (!session.verified) {
+    hatchWalletAction = { label: session.busy ? 'Checking wallet…' : 'Verify for the Grove', onClick: session.verify, disabled: session.busy }
+  }
+  return <CozmlingView key={verifiedAddress ?? 'unverified'} {...route} account={{ ...cloud, address: verifiedAddress, access, hatchWalletAction }} />
 }
 
 function CozmlingView({ sub = null, extra = null, account: given }: Route & { account?: Account }) {
@@ -125,6 +141,7 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
   const communityPanel = account && communityHatchEnabled ? (
     <CommunityHatchPanel
       walletAddress={account.address}
+      walletAction={account.hatchWalletAction}
       onOpenEgg={receipt => {
         if (canOpenEgg(receipt)) {
           setCommunityNotice('')
