@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { MUSIC_IDS } from '../config'
+import { createPreview, type Preview } from '../lib/musicPreview'
 
 /* Background music, in a little piece of arcade hardware: the COZMC mini-player.
    The YouTube tracks play in a fresh random order every visit, looping.
-   It starts as soon as the site opens wherever the browser allows sound; most browsers
-   and phones block sound until the visitor first interacts, so it's retried on the first
-   click/tap/keypress anywhere. Pausing lasts for this visit; the next visit plays again.
-   When it starts, the play button flashes with a "tap here to pause" label so it's easy to find.
+   When the site opens and the browser allows sound, the music plays for two seconds (measured from when
+   it actually starts playing) and pauses itself, with a note beside the player: "Music paused. Press Play
+   to continue." Where the browser blocks autoplay nothing plays and no note shows; Play is there as always.
+   After that the visitor is in charge: their play or pause lasts for this visit (a reload follows it).
    A track that won't play is skipped. The screen shows the current track's title. */
 const shuffled = <T,>(a: T[]) => { const o = [...a]; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]] } return o }
 const KEY = 'cozmc-music'
@@ -18,10 +19,9 @@ export function MusicButton() {
   const [playing, setPlaying] = useState(false)
   const [started, setStarted] = useState(false)       // has it played at all this visit (so "paused" means paused)
   const [broken, setBroken] = useState(false)
-  const [intro, setIntro] = useState(false)          // the "music on · tap to pause" flash, once per visit
+  const [note, setNote] = useState(false)            // "Music paused. Press Play to continue." after the opening preview
   const [title, setTitle] = useState('')
   const [pos, setPos] = useState(0)                  // which track of the shuffled order
-  const introShown = useRef(false)
   const toggle = useRef<() => void>(() => {})
   const skip = useRef<() => void>(() => {})
 
@@ -30,11 +30,16 @@ export function MusicButton() {
     let player: any = null, ready = false, dead = false, track = 0
     const order = shuffled(MUSIC_IDS)
     const failed = new Set<number>()
-    let want = store.get() !== 'off'
-    const GEST = ['pointerdown', 'click', 'keydown', 'touchend']
+    const choice = store.get()            // 'off' or 'on' once the visitor (or the preview) has decided this visit
+    let want = choice !== 'off'
+    // a first opening this visit plays the two-second preview; a visitor who chose music keeps it
+    const preview: Preview | null = choice === null
+      ? createPreview({ position: () => player?.getCurrentTime?.() ?? 0, pause: () => player.pauseVideo() }, () => {
+        want = false; store.set('off'); setNote(true)
+      })
+      : null
     const isOn = () => ready && player.getPlayerState?.() === window.YT.PlayerState.PLAYING
     const start = () => { if (ready && !dead) { player.unMute(); player.setVolume(45); player.playVideo() } }
-    const gesture = (e: Event) => { if ((e.target as HTMLElement)?.closest?.('.mp')) return; if (want && !isOn()) start() }
     const readTitle = () => { const t = player?.getVideoData?.()?.title; if (typeof t === 'string' && t.trim()) setTitle(t.trim()) }
     const next = () => {
       track = (track + 1) % order.length
@@ -51,10 +56,10 @@ export function MusicButton() {
             if (e.data === window.YT.PlayerState.ENDED) { next(); return }
             readTitle()
             const on = e.data === window.YT.PlayerState.PLAYING
-            if (on) { failed.clear(); setStarted(true) }
+            // playing without sound isn't the music starting: the browser only allowed silent autoplay
+            if (on && preview?.state === 'waiting' && player.isMuted?.()) { preview.takeOver(); want = false; player.pauseVideo(); return }
+            if (on) { failed.clear(); setStarted(true); preview?.playing() } else preview?.stalled()
             setPlaying(on || e.data === window.YT.PlayerState.BUFFERING)
-            if (on) GEST.forEach(t => removeEventListener(t, gesture, true))
-            if (on && !introShown.current) { introShown.current = true; setIntro(true); setTimeout(() => setIntro(false), 6000) }
           },
           onError: () => {
             failed.add(track)
@@ -66,19 +71,19 @@ export function MusicButton() {
     if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
       const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.body.appendChild(s)
     }
-    GEST.forEach(t => addEventListener(t, gesture, true))
     toggle.current = () => {
       if (dead) return
-      setIntro(false)
+      preview?.takeOver(); setNote(false)
       if (isOn()) { player.pauseVideo(); want = false; store.set('off') }
-      else { want = true; store.set(null); start() }
+      else { want = true; store.set('on'); start() }
     }
     skip.current = () => {
       if (dead || !ready) return
-      want = true; store.set(null)
+      preview?.takeOver(); setNote(false)
+      want = true; store.set('on')
       player.unMute(); player.setVolume(45); next()
     }
-    return () => GEST.forEach(t => removeEventListener(t, gesture, true))
+    return () => { preview?.takeOver() }
   }, [])
 
   // a title too long for the little screen scrolls back and forth (still with reduced motion: then it's cut with "…")
@@ -96,7 +101,7 @@ export function MusicButton() {
   const status = broken ? 'No signal' : playing ? 'Now playing' : started ? 'Paused' : 'COZMC radio'
   return (
     <>
-      <div className={`mp${playing ? ' is-on' : ''}${broken ? ' is-broken' : ''}${intro && playing ? ' is-intro' : ''}`} role="region" aria-label="Music player">
+      <div className={`mp${playing ? ' is-on' : ''}${broken ? ' is-broken' : ''}`} role="region" aria-label="Music player">
         <span className="mp__grille" aria-hidden="true" />
         <span className="mp__screen">
           <span className="mp__status" aria-hidden="true">
@@ -120,7 +125,7 @@ export function MusicButton() {
           </button>
         )}
       </div>
-      {intro && playing && <p className="music-hint" role="status">♪ Music on · tap here to pause</p>}
+      <p className="music-hint" role="status">{note ? 'Music paused. Press Play to continue.' : ''}</p>
       <div className="yt-hidden" aria-hidden="true"><div id="yt-player" /></div>
     </>
   )

@@ -591,12 +591,13 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mp__play { color: #fff; background: radial-gradient(circle at 34% 28%, #dcb4ff, var(--violet) 48%, #5d22a3 100%) }
 .mp__btn:disabled { opacity: .5; cursor: default; transform: none }
 .mp.is-broken .mp__title { color: #6fc457; text-shadow: none }
-.mp.is-intro .mp__play { animation: mp-flash .7s ease-in-out 6 }
-@keyframes mp-flash { 50% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, .22), 0 0 0 5px rgba(255, 255, 255, .85), 0 0 22px var(--violet) } }
 .foot { padding-bottom: 100px }   /* the end of the page never hides under the music player */
-.music-hint { position: fixed; right: 16px; bottom: 86px; z-index: 91; padding: 8px 11px; background: #000; border: 2px solid var(--phos); box-shadow: 3px 3px 0 var(--phos-deep); font: 700 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos); white-space: nowrap; animation: music-hint 6s ease forwards; pointer-events: none }
+.music-hint { position: fixed; right: 16px; bottom: 86px; z-index: 91; max-width: calc(100vw - 32px); padding: 8px 11px; background: #000; border: 2px solid var(--phos); box-shadow: 3px 3px 0 var(--phos-deep); font: 700 10px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--phos); animation: music-hint .4s ease both; pointer-events: none }
+/* the note's live region stays in the page, empty and invisible, so its words are announced when they appear */
+.music-hint:empty { padding: 0; border: 0; box-shadow: none; animation: none }
+.music-hint:empty::after { display: none }
 .music-hint::after { content: ""; position: absolute; right: 72px; bottom: -8px; width: 12px; height: 12px; background: #000; border-right: 2px solid var(--phos); border-bottom: 2px solid var(--phos); rotate: 45deg }   /* points at the play button */
-@keyframes music-hint { 0% { opacity: 0; translate: 0 6px } 8%, 85% { opacity: 1; translate: 0 0 } 100% { opacity: 0 } }
+@keyframes music-hint { 0% { opacity: 0; translate: 0 6px } 100% { opacity: 1; translate: 0 0 } }
 /* on a touchscreen the player would sit on the game's touch pad, so it steps aside while a run is in play; the music keeps playing */
 @media (pointer: coarse) { body:has(.cabinet.is-playing, .ad-play) :is(.mp, .music-hint) { visibility: hidden; pointer-events: none } }
 @media (max-width: 760px) { .unlock { bottom: 84px } .toast { bottom: 84px } }   /* pop-ups clear the player where they'd meet it */
@@ -610,7 +611,6 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 @media (prefers-reduced-motion: reduce) {
   .mp__title > .is-long { animation: none; display: block; overflow: hidden; text-overflow: ellipsis }
-  .mp.is-intro .mp__play { animation: none; box-shadow: 0 0 0 4px rgba(255, 255, 255, .8) }
   .music-hint { animation: none }
 }
 
