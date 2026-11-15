@@ -138,8 +138,9 @@ function WalletHatchPanel({
   }
 
   return (
-    <section className="community-hatch" aria-labelledby={heading}>
-      <h2 id={heading}>{status?.title ?? 'Community Hatch'}</h2>
+    <section className="community-hatch panel" aria-labelledby={heading}>
+      <p className="kicker">Community Hatch</p>
+      <h2 id={heading}>{status?.title ?? 'Light the Grove'}</h2>
       {status ? <>
         <div className="community-hatch__grove" aria-hidden="true">
           {Array.from({ length: 12 }, (_, index) => (

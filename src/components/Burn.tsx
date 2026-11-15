@@ -17,7 +17,7 @@ import { friendlyError } from '../lib/errors'
 const WISH_MAX = 280
 
 /* ---------- the community burn goal: a segmented meter ---------- */
-export function GoalMeter({ burned, add = 0, full = false }: { burned: number; add?: number; full?: boolean }) {
+export function GoalMeter({ burned, add = 0, full = false, loading = false }: { burned: number; add?: number; full?: boolean; loading?: boolean }) {
   const g = BURN_GOAL.amount, SEG = full ? 30 : 14
   // each segment fills by its exact share (any burn at all shows a sliver), the pending burn previews in brighter fire
   const now = Math.min(1, burned / g) * SEG, next = Math.min(1, (burned + add) / g) * SEG
@@ -28,6 +28,12 @@ export function GoalMeter({ burned, add = 0, full = false }: { burned: number; a
     <span className="goal__segs" aria-hidden="true">
       {Array.from({ length: SEG }, (_, i) => <i key={i} className={fill(i) >= 1 ? 'on' : ''} style={{ ['--f' as string]: fill(i), ['--a' as string]: Math.max(fill(i), lit(next, i)) }} />)}
     </span>
+  )
+  // while the total loads, the same meter, empty, holds its place: nothing moves when the number arrives
+  if (!full && loading) return (
+    <div className="goal is-loading" aria-busy="true" aria-label="Community burn goal, loading">
+      {segs}<span className="goal__txt"><b>…</b><span className="hide-sm"> / {compact(g)}</span><span className="show-sm"> burned</span></span>
+    </div>
   )
   if (!full) return (
     <div className="goal" title={done ? `Goal reached: ${compact(g)} burned` : `Community goal: ${compact(g)} burned ${BURN_GOAL.reward}`}
@@ -82,10 +88,10 @@ export function BurnBar({ onBurn }: { onBurn: () => void }) {
           <span className="sr-only">Visit the Bonfire: </span>
           <Flame size={16} className="burnbar__flame" />
           <p className="burnbar__msg"><b>Support COZMC: burn some.</b> <span className="hide-sm">Every burn shrinks the supply forever and carries a wish on-chain.</span></p>
-          {burned.data != null
-            ? <GoalMeter burned={burned.data} />
-            : <p className="burnbar__total"><span className="burnbar__num">…</span> burned</p>}
-          {count > 0 && <p className="burnbar__total hide-sm">{count} {count === 1 ? 'wish' : 'wishes'}</p>}
+          {burned.data != null ? <GoalMeter burned={burned.data} /> : <GoalMeter burned={0} loading />}
+          {burns.data == null && burns.loading
+            ? <p className="burnbar__total hide-sm" aria-hidden="true"><span className="burnbar__num">…</span> wishes</p>
+            : count > 0 && <p className="burnbar__total hide-sm">{count} {count === 1 ? 'wish' : 'wishes'}</p>}
           <span className="burnbar__go" aria-hidden="true">›</span>
         </a>
         <button className="btn btn--sm btn--fire" onClick={onBurn}>Burn</button>

@@ -43,16 +43,19 @@ export function Ticker() {
     return out.sort((a, b) => b.round - a.round).slice(0, 24)
   }, [burns.data, scores.data, holders.data, round != null])   // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (items.length < 3) return null
+  // While the first activity loads, the strip keeps its place (empty), so the page doesn't jump down when it arrives.
+  // With too little activity once loaded, there's no strip at all.
+  const pending = items.length < 3 && (burns.loading || scores.loading) && !burns.error && !scores.error
+  if (items.length < 3 && !pending) return null
   const row = (dup: boolean) => items.map(i => (
     <li key={i.key + (dup ? '-2' : '')} aria-hidden={dup || undefined}>{i.node}<time>{ago(i.time)}</time></li>
   ))
   return (
-    <div className="ticker" role="region" aria-label="Recent activity on-chain">
+    <div className={`ticker${pending ? ' is-loading' : ''}`} role="region" aria-label="Recent activity on-chain" aria-busy={pending || undefined}>
       <span className="ticker__live"><i />Live</span>
       {/* with reduced motion it stops scrolling by itself and scrolls by hand, so keyboards need to reach it */}
-      <div className="ticker__view" tabIndex={reduceMotion() ? 0 : undefined}>
-        <ul className="ticker__track" style={{ ['--n' as string]: items.length }}>{row(false)}{row(true)}</ul>
+      <div className="ticker__view" tabIndex={reduceMotion() && !pending ? 0 : undefined}>
+        {!pending && <ul className="ticker__track" style={{ ['--n' as string]: items.length }}>{row(false)}{row(true)}</ul>}
       </div>
     </div>
   )

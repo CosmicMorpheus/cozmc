@@ -421,3 +421,20 @@
 .sl-bp__facts { color: var(--dim); font: 500 12.5px/1.5 var(--mono) }
 .sl-bp__problem { margin-top: 12px; padding: 9px 12px; border: 1px dashed var(--sl-coral-deep); background: rgba(21, 9, 8, .9); color: var(--mist); font-size: 14px }
 @media (max-width: 640px) { .sl-bp__options { grid-template-columns: minmax(0, 1fr) } }
+
+/* adoption steps: all three on one row on a phone */
+@media (max-width: 480px) {
+  .sl-steps { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; gap: 8px; font-size: 9px }
+  .sl-steps li { gap: 6px }
+}
+
+/* sharing a card: the panel's own heading style, a clear marker, and comfortable options */
+.sl-share { margin-top: 16px }
+.sl-share > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; font: 700 13px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--text) }
+.sl-share > summary::-webkit-details-marker { display: none }
+.sl-share > summary::before { content: "▸"; color: var(--phos) }
+.sl-share[open] > summary::before { content: "▾" }
+.sl-share[open] > summary { margin-bottom: 12px }
+.sl-share__opts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 14px }
+.sl-share__opts label { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; color: var(--mist) }
+.sl-share__opts input { width: 18px; height: 18px; accent-color: var(--phos) }

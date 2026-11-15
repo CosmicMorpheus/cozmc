@@ -155,7 +155,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .acct__bal { padding: 10px 12px; border-bottom: 1px solid var(--line-2); margin-bottom: 4px; font-size: 13px; color: var(--mist) }
 .acct__bal b { font-family: var(--mono); color: var(--text); font-weight: 500 }
 
-.main { padding-top: clamp(28px, 5vw, 56px); padding-bottom: 100px; min-height: 70vh }
+.main { padding-top: clamp(28px, 5vw, 56px); padding-bottom: 100px; min-height: 100vh; min-height: 100svh }   /* the footer starts below the fold, so it never jumps as a page loads */
 
 /* ---------- page headings ---------- */
 .page-head { margin-bottom: clamp(24px, 4vw, 40px); max-width: 46rem }
@@ -1477,3 +1477,37 @@ html:has(.cabinet) { scroll-padding-top: 0 }   /* no sticky header to clear on g
 @media (prefers-reduced-motion: reduce) { .ad-holo, .ad-holo-text, .ad-vent, .ad-strip-light, .ad-running rect, .ad-dreads, .ad-eyes { animation: none !important } }
 
 /* the music button announces itself when the music starts */
+
+/* ============================================================
+   Visual polish, November 2026: steadier loading, a quieter phone layout, cleaner line breaks.
+   ============================================================ */
+/* line breaks: headings and labels balance their lines; paragraphs avoid a lone last word */
+h1, h2, h3, .kicker, .foot__join { text-wrap: balance }
+p, li, dd, figcaption { text-wrap: pretty }
+/* the burn total keeps one width, loading or not, so the strip never reflows */
+.goal__txt b { display: inline-block; min-width: 4ch; text-align: right }
+.goal.is-loading .goal__txt b { color: var(--dim) }
+/* the account button: a shorter address where the header is narrow, never clipped */
+.acct__addr--short { display: none }
+@media (max-width: 480px) {
+  .acct__addr { display: none }
+  .acct__addr--short { display: inline }
+}
+@media (max-width: 760px) {
+  /* stars stay, but quieter behind full-width text */
+  .starfield { opacity: .6 }
+  /* a row of sub-tabs that scrolls says so: the last one fades at the edge, and scrolls fully clear of the fade */
+  .subnav__links { padding-right: 32px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent) }
+}
+@media (max-width: 560px) {
+  /* on a phone the music player is just its two buttons in the corner, so it doesn't cover what you're reading */
+  .mp { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); gap: 4px; padding: 4px }
+  .mp__grille, .mp__screen { display: none }
+  .music-hint { right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)) }
+  .music-hint::after { right: 64px }
+  /* the daily prize amounts fit their tiles */
+  .dp-ladder li { padding: 10px 10px }
+  .dp-ladder b { font-size: clamp(14px, 4.4vw, 20px) }
+  /* the share dialog's actions: one even column */
+  .share__actions > .btn { flex: 1 1 100%; justify-content: center; text-align: center }
+}

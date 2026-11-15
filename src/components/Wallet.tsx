@@ -126,7 +126,7 @@ export function WalletButton() {
     <div className="acct" ref={wrap}>
       <button className="acct__btn" onClick={() => setMenu(m => !m)} aria-expanded={menu} aria-haspopup="menu">
         {tier && <TierBadge tier={tier} size={16} />}
-        <span>{nfd ?? short(activeAddress)}</span>
+        {nfd ? <span>{nfd}</span> : <><span className="acct__addr">{short(activeAddress)}</span><span className="acct__addr acct__addr--short">{short(activeAddress, 3)}</span></>}
       </button>
       {menu && (
         <div className="acct__menu" role="menu">
