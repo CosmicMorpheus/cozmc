@@ -1,6 +1,5 @@
 export const COMMUNITY_HATCH_PATH = '/api/community-hatch'
 export const COMMUNITY_HATCH_LANTERN = 'community-hatch-lantern'
-export const communityHatchEnabled: boolean = import.meta.env.VITE_COZMC_COMMUNITY_HATCH === '1'
 
 export const COMMUNITY_HATCH_LOOKS = {
   'grove-green': { look: 'a', skin: 'moss', label: 'Grove Green' },
@@ -55,4 +54,15 @@ export function isCommunityHatchStatus(value: unknown): value is CommunityHatchS
     && /^hatch-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipt.companionId)
     && typeof receipt.lookId === 'string'
     && Object.hasOwn(COMMUNITY_HATCH_LOOKS, receipt.lookId)
+}
+
+/** The Grove's twelve zodiac lanterns, in zodiac order: Aries first, Pisces last. */
+export const GROVE_SIGNS = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'] as const
+
+/** How many of the twelve lanterns glow for the community's shared count: min(12, floor(12 x total / goal)).
+    None at zero, all twelve once the goal is reached, and with a small goal one lantern lit by a player can
+    light several signs. It depends on the shared count alone, so every visit shows the same signs for it. */
+export function litSigns(total: number, goal: number): number {
+  if (!Number.isSafeInteger(goal) || goal < 1 || !Number.isFinite(total) || total <= 0) return 0
+  return Math.min(GROVE_SIGNS.length, Math.floor((GROVE_SIGNS.length * total) / goal))
 }

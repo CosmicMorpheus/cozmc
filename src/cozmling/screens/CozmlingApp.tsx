@@ -17,9 +17,9 @@ import type { Companion } from '../types'
 import { AdoptionScreen } from './AdoptionScreen'
 import { StarLoftScreen } from './StarLoftScreen'
 import { CommunityHatchPanel, type CommunityHatchWalletAction } from '../community/CommunityHatchPanel'
-import { COMMUNITY_HATCH_LANTERN, communityHatchEnabled, type CommunityHatchReceipt } from '../community/communityHatch'
+import { COMMUNITY_HATCH_LANTERN, type CommunityHatchReceipt } from '../community/communityHatch'
 import { CozmlingShare } from '../community/CozmlingShare'
-import { COZMLING_WALLET_ACCOUNT } from '../flags'
+import { COZMC_COMMUNITY_HATCH, COZMLING_WALLET_ACCOUNT } from '../flags'
 import { WalletAccess, useWalletVerification } from '../account/walletSession'
 import { useCloudAccount } from '../account/useCloudAccount'
 import { downloadCozmlingCopy } from '../components/SaveStatus'
@@ -138,7 +138,7 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
     })
     if (!result.ok) throw new Error('The lantern couldn’t be saved. Try again in a moment.')
   } : undefined
-  const communityPanel = account && communityHatchEnabled ? (
+  const communityPanel = account && COZMC_COMMUNITY_HATCH ? (
     <CommunityHatchPanel
       walletAddress={account.address}
       walletAction={account.hatchWalletAction}

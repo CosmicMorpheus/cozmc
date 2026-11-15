@@ -7,3 +7,5 @@ export const COZMLING_DEV: boolean = COZMLING_V2 && (import.meta.env.DEV || impo
 /** Permit new adoption only in the signed wallet account flow. Off in regular builds.
     (Plain `import.meta.env.X`, never `?.`: the build replaces these exactly, so a switched-off build leaves the code out.) */
 export const COZMLING_WALLET_ACCOUNT: boolean = import.meta.env.VITE_COZMLING_WALLET_ACCOUNT === '1'
+/** The Community Hatch event (Light the Grove), in wallet-account builds. Off in regular builds. */
+export const COZMC_COMMUNITY_HATCH: boolean = import.meta.env.VITE_COZMC_COMMUNITY_HATCH === '1'

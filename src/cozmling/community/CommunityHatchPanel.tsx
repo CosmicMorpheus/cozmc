@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { ArrowsClockwise, CalendarBlank, Egg, Wallet } from '@phosphor-icons/react'
 import { SOCIAL } from '../../config'
+import { GroveLanterns } from './GroveLanterns'
 import {
-  COMMUNITY_HATCH_PATH, isCommunityHatchStatus,
+  COMMUNITY_HATCH_PATH, isCommunityHatchStatus, litSigns,
   type CommunityHatchAction, type CommunityHatchReceipt, type CommunityHatchStatus,
 } from './communityHatch'
 import './communityHatch.css'
@@ -24,6 +25,10 @@ type Props = {
 }
 
 type Work = 'refresh' | 'initial' | 'place' | CommunityHatchAction
+
+/** The last shared count this page saw. Verifying or switching a wallet opens the panel afresh; until the
+    event answers for the new wallet, its lanterns and count keep this one instead of going dark. */
+let lastCount: { total: number; goal: number } | null = null
 
 // a date and time that never break apart mid-way ("Nov 17, 12:00 AM UTC")
 const eventDate = (value: string) => new Date(value).toLocaleString(undefined, {
@@ -67,6 +72,7 @@ function WalletHatchPanel({
 }: Props) {
   const heading = useId()
   const [status, setStatus] = useState<CommunityHatchStatus>()
+  const [countBefore] = useState(() => lastCount)
   const [work, setWork] = useState<Work | null>(null)
   const [hidden, setHidden] = useState(false)
   const [message, setMessage] = useState('')
@@ -93,6 +99,7 @@ function WalletHatchPanel({
       if (controller.signal.aborted) return
       setHidden(next === null)
       if (!next) return
+      lastCount = { total: next.total, goal: next.goal }
       setStatus(next)
       setError('')
       if (action === 'contribute') setMessage('Your lantern is lit in the Grove.')
@@ -135,6 +142,9 @@ function WalletHatchPanel({
   const verified = Boolean(walletAddress && status?.authenticatedWallet === walletAddress)
   const receipt = verified ? status?.receipt : null
   const showcaseName = receipt?.companionId === showcaseCompanion?.id ? showcaseCompanion?.name : undefined
+  // the twelve zodiac lanterns follow the community's shared count (dark until the event first answers)
+  const count = status ?? countBefore
+  const lit = count ? litSigns(count.total, count.goal) : 0
 
   async function copyIntroduction(name: string) {
     try {
@@ -162,11 +172,15 @@ function WalletHatchPanel({
         <p className="community-hatch__kicker">Community Hatch</p>
         <h2 id={heading}>{status?.title ?? 'Light the Grove'}</h2>
       </header>
+      <GroveLanterns lit={lit} />
       <div className="community-hatch__console">
-        {status && (
+        {count && (
           <div className="community-hatch__progress">
-            <p><strong>{status.total.toLocaleString()} of {status.goal.toLocaleString()}</strong> lanterns lit</p>
-            <progress value={Math.min(status.total, status.goal)} max={status.goal} aria-label="Lantern goal" />
+            <div>
+              <p><strong>{count.total.toLocaleString()} of {count.goal.toLocaleString()}</strong> lanterns lit</p>
+              <p className="community-hatch__signs" aria-hidden="true">{lit === 12 ? 'All 12 signs aglow' : `${lit} of 12 signs aglow`}</p>
+            </div>
+            <progress value={Math.min(count.total, count.goal)} max={count.goal} aria-label="Lantern goal" />
           </div>
         )}
         {status?.phase === 'open' && (

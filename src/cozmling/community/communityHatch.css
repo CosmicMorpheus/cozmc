@@ -20,13 +20,12 @@
   aspect-ratio: 1923 / 818;
   background:
     linear-gradient(180deg, var(--grove-night), transparent 11%, transparent 90%, var(--grove-night)),
-    url('./grove.webp') center top / 100% auto no-repeat;
+    url('./grove-scenery.webp') center top / 100% auto no-repeat;
   pointer-events: none;
 }
 
 .community-hatch__hero {
-  min-height: 28cqw;
-  padding: clamp(14px, 1.65cqw, 23px) 12px 12px;
+  padding: clamp(14px, 1.65cqw, 23px) 12px 0;
 }
 
 .community-hatch__wordmark {
@@ -206,11 +205,53 @@
 .community-hatch__status:empty { display: none }
 
 @container (max-width: 620px) {
-  .community-hatch__scenery { top: clamp(52px, 15cqw, 76px) }
-  .community-hatch__hero { min-height: max(136px, calc(66px + 25cqw)) }
+  /* on a phone the painting fills the panel behind both garlands */
+  .community-hatch__scenery { inset: 0; aspect-ratio: auto; background-size: auto, cover; background-position: center, center top }
+  .community-hatch__grove { margin-top: 6px }
   .community-hatch__console { width: calc(100% - 24px) }
   .community-hatch__progress { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-block: 11px }
   .community-hatch__rules { grid-template-columns: minmax(0, 1fr); padding: 4px 15px 0 }
   .community-hatch__rules li { gap: 12px; padding: 8px 0 }
   .community-hatch__rules li + li { border-inline-start: 0; border-top: 1px solid #8270b54d }
+}
+
+/* ---------- the twelve zodiac lanterns ---------- */
+.community-hatch__grove { position: relative; margin: clamp(2px, .6cqw, 8px) 0 clamp(6px, 1.4cqw, 16px) }
+.grove { display: block; width: 100%; height: auto; overflow: visible }
+.grove--narrow { display: none }
+.grove__wire { fill: none; stroke: #4a3716; stroke-width: 3; stroke-linecap: round }
+.grove__bulbs circle { fill: #ffd27a }
+.grove__bulbs .is-twinkle { animation: grove-twinkle 2.8s ease-in-out infinite }
+
+/* dark glass with its sign still legible; lit, the glow comes up, one after another in zodiac order */
+.grove-lantern > *, .grove-lantern g { transition: opacity .8s ease calc(var(--i) * 110ms), stroke .8s ease calc(var(--i) * 110ms) }
+.grove-lantern__halo, .grove-lantern__glow, .grove-lantern__sign-on { opacity: 0 }
+.grove-lantern__rim { fill: none; stroke: #3b4663 }
+.grove-lantern__sign-off { stroke: #7783a3 }
+.grove-lantern__metal, .grove-lantern__star { opacity: .6 }
+.grove-lantern[data-lit='true'] .grove-lantern__halo { opacity: 1; animation: grove-flicker 3.4s ease-in-out calc(var(--i) * -.37s) infinite }
+.grove-lantern[data-lit='true'] .grove-lantern__glow,
+.grove-lantern[data-lit='true'] .grove-lantern__sign-on,
+.grove-lantern[data-lit='true'] .grove-lantern__metal,
+.grove-lantern[data-lit='true'] .grove-lantern__star { opacity: 1 }
+.grove-lantern[data-lit='true'] .grove-lantern__sign-off { opacity: 0 }
+.grove-lantern[data-lit='true'] .grove-lantern__rim { stroke: var(--rim) }
+
+/* the flicker works on the halo's fill, so its opacity can still fade in with the lantern's turn */
+@keyframes grove-flicker { 0%, 100% { fill-opacity: 1 } 45% { fill-opacity: .78 } 62% { fill-opacity: .93 } }
+@keyframes grove-twinkle { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) {
+  .grove-lantern > *, .grove-lantern g, .grove__bulbs circle { transition: none !important; animation: none !important }
+}
+
+/* the signs caption under the meter: the same count, in the lanterns' terms */
+.community-hatch__signs { margin: 3px 0 0; color: #d8b56f; font: 400 clamp(10px, 1cqw, 11px)/1.4 var(--pixel); letter-spacing: .1em; text-transform: uppercase; text-align: left }
+.grove-lantern__ring { fill: none; stroke: #ffffff; opacity: 0 }
+.grove-lantern[data-lit='true'] .grove-lantern__ring { opacity: .22 }
+
+/* one garland of twelve where there's room; two of six on a phone, so every sign stays readable */
+@container (max-width: 620px) {
+  .grove--wide { display: none }
+  .grove--narrow { display: block }
+  .community-hatch__signs { text-align: center }
 }

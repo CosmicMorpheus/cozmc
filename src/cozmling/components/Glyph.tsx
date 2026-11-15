@@ -3,13 +3,12 @@
 import type { CSSProperties } from 'react'
 import { ELEMENTS, signInfo } from '../domain/starprint'
 import type { Element, ZodiacSign } from '../types'
+import { ZODIAC_PATHS } from './zodiacPaths'
 
 /* Hand-drawn strokes for the signs that have art so far. The others use the font's own glyph
-   (asked for as text, not emoji) until their final glyph files arrive with the production art. */
-const DRAWN: Partial<Record<ZodiacSign, string[]>> = {
-  taurus: ['M4.5 3.5c.4 4.2 3.2 7 7.5 7s7.1-2.8 7.5-7', 'M12 10.5a5 5 0 1 0 0 10a5 5 0 1 0 0-10'],
-  scorpio: ['M3.5 19V8a2.2 2.2 0 0 1 4.4 0v11', 'M7.9 8a2.2 2.2 0 0 1 4.4 0v11', 'M12.3 8a2.2 2.2 0 0 1 4.4 0v8.2c0 1.9 1.3 2.8 3 2.8h1.3', 'M19 16.5l2.5 2.5L19 21.5'],
-}
+   (asked for as text, not emoji) until their final glyph files arrive with the production art.
+   (All twelve are drawn in zodiacPaths.ts; the Grove's lanterns use the full set.) */
+const DRAWN: Partial<Record<ZodiacSign, string[]>> = { taurus: ZODIAC_PATHS.taurus, scorpio: ZODIAC_PATHS.scorpio }
 
 export function Glyph({ sign, size = 20, className = '' }: { sign: ZodiacSign; size?: number; className?: string }) {
   const d = DRAWN[sign]

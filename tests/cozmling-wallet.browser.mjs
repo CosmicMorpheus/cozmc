@@ -53,11 +53,15 @@ const one = fixtureAddress(1)
 const two = fixtureAddress(2)
 const receipt = { companionId: 'hatch-8fe2849d-47d9-4b95-95cd-67ae2810f250', lookId: 'grove-violet' }
 const savedAccounts = new Map()
-const contributions = new Set()
+const contributions = new Set()   // wallets that lit a lantern during the event: each may claim an egg
+const litToday = new Set()        // wallets that lit one today; midnight UTC clears it
 const claims = new Set()
 let phase = 'open'
+let total = 0                     // the community's shared count, as the event reports it
+let goal = 1
 let denyOneLogout = false
 let accountDelay = 0           // ms before the account list answers: shows a device waiting for its first sync
+let hatchDelay = 0             // ms before the event answers a wallet's status
 const errors = []
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {})
 const records = address => savedAccounts.get(address) ?? []
@@ -111,15 +115,20 @@ async function makeBrowser(legacyFixture) {
     const address = request.headers()['x-cozmc-wallet'] === verified ? verified : null
     if (url.pathname === '/api/community-hatch') {
       if (body && !address) return route.fulfill({ status: 401, json: { error: 'wallet_required' } })
-      if (body?.action === 'contribute') contributions.add(address)
+      if (!body && address && hatchDelay) await sleep(hatchDelay)
+      if (body?.action === 'contribute' && !litToday.has(address)) {
+        litToday.add(address)
+        contributions.add(address)
+        total++
+      }
       if (body?.action === 'claim') {
         assert.ok(contributions.has(address))
         claims.add(address)
       }
       return route.fulfill({ json: {
-        eventId: 'grove-review', title: 'Light the Grove', phase, total: contributions.size, goal: 1,
+        eventId: 'grove-review', title: 'Light the Grove', phase, total, goal,
         opensAt: '2026-11-01T00:00:00Z', endsAt: '2026-11-08T00:00:00Z', claimUntil: '2026-11-22T00:00:00Z',
-        authenticatedWallet: address, eligible: contributions.has(address), contributedToday: contributions.has(address),
+        authenticatedWallet: address, eligible: contributions.has(address), contributedToday: litToday.has(address),
         lanternEligible: contributions.has(address), receipt: claims.has(address) ? receipt : null,
       } })
     }
@@ -176,11 +185,45 @@ async function until(predicate, label) {
   }
   throw new Error('Timed out waiting for ' + label)
 }
+// The Grove's twelve lanterns as drawn in the layout on screen: [sign, lit], in order.
+const ZODIAC = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces']
+const NAMES = ZODIAC.map(sign => sign[0].toUpperCase() + sign.slice(1))
+const groveLabel = count => count === 0 ? 'The twelve zodiac lanterns, Aries to Pisces, are waiting to be lit.'
+  : count === 12 ? 'All twelve zodiac lanterns are lit, Aries to Pisces.'
+    : `${count} of 12 zodiac lanterns lit: ${NAMES.slice(0, count).join(', ')}.`
+const shownLanterns = page => page.evaluate(() => {
+  const svg = [...document.querySelectorAll('.community-hatch__grove svg')].find(item => getComputedStyle(item).display !== 'none')
+  return [...svg.querySelectorAll('.grove-lantern')].map(item => [item.dataset.sign, item.dataset.lit === 'true'])
+})
+async function expectLit(page, count) {
+  await page.getByRole('region', { name: 'Light the Grove' }).getByRole('img', { name: groveLabel(count), exact: true }).waitFor()
+  assert.deepEqual(await shownLanterns(page), ZODIAC.map((sign, index) => [sign, index < count]), `${count} lit, in zodiac order`)
+  await page.getByText(count === 12 ? 'All 12 signs aglow' : `${count} of 12 signs aglow`, { exact: true }).waitFor()
+}
+// Tab from the top of the page until the named button has focus; the lanterns themselves take no stops.
+async function tabTo(page, name) {
+  await page.evaluate(() => document.activeElement?.blur())
+  for (let presses = 1; presses <= 80; presses++) {
+    await page.keyboard.press('Tab')
+    const focused = await page.evaluate(() => {
+      const active = document.activeElement
+      return active ? { name: active.textContent.trim(), inGrove: Boolean(active.closest('.community-hatch')), tag: active.tagName } : null
+    })
+    assert.notEqual(focused?.tag, 'svg', 'a lantern never takes focus')
+    if (focused?.inGrove && focused.name === name) return presses
+  }
+  throw new Error('Tab never reached ' + name)
+}
 
 try {
   const a = await makeBrowser()
   const grove = a.getByRole('region', { name: 'Light the Grove' })
-  await button(grove, 'Connect wallet').click()
+  // nobody has lit one yet: all twelve hang dark
+  await expectLit(a, 0)
+  // the keyboard reaches the Grove's wallet button, and Enter opens the wallet picker
+  await button(grove, 'Connect wallet').waitFor()
+  await tabTo(a, 'Connect wallet')
+  await a.keyboard.press('Enter')
   assert.equal(await a.evaluate(() => window.__walletReview.details.connections), 1)
   assert.equal(await grove.getByRole('progressbar', { name: 'Lantern goal' }).getAttribute('value'), '0')
   assert.equal(await a.locator('#sl-bday').count(), 0)
@@ -190,7 +233,8 @@ try {
   assert.equal(await a.locator('#sl-bday').count(), 0)
   await select(a, one)
   await a.evaluate(() => window.__walletReview.reject(true))
-  await button(grove, 'Verify for the Grove').click()
+  await tabTo(a, 'Verify for the Grove')
+  await a.keyboard.press('Space')
   await a.waitForFunction(() => window.__walletReview.details.signatures.length === 1)
   assert.equal(await a.locator('#sl-bday').count(), 0)
   await a.evaluate(() => window.__walletReview.reject(false))
@@ -208,9 +252,12 @@ try {
   await heading(a, 'Share your Cozmling').waitFor()
   await a.getByRole('img', { name: 'Your COZMC share graphic' }).waitFor()
   await a.keyboard.press('Escape')
-  await button(a, 'Light a lantern').click()
+  await tabTo(a, 'Light a lantern')
+  await a.keyboard.press('Enter')
   await button(a, 'Lantern lit today').waitFor()
   assert.equal(await grove.getByRole('progressbar', { name: 'Lantern goal' }).getAttribute('value'), '1')
+  // a goal of one: the first lantern lights all twelve signs
+  await expectLit(a, 12)
 
   const b = await makeBrowser()
   await select(b, one)
@@ -340,6 +387,90 @@ try {
   await d.getByText('Original now uses the wallet account’s copy on this device.').waitFor()
   assert.equal((await d.evaluate(() => window.__cozmling.getState().accountOwners))[original.companionId], one)
   await d.getByText('Wallet account is up to date.').waitFor()
+
+  // Light the Grove with a three-lantern goal: each lantern lights four signs, in zodiac order, and the
+  // signs follow the shared count, whoever lit them and whatever day it is.
+  phase = 'open'
+  goal = 3
+  total = 0
+  const g = await makeBrowser()
+  const gGrove = g.getByRole('region', { name: 'Light the Grove' })
+  await expectLit(g, 0)
+  const fourth = fixtureAddress(4)
+  await select(g, fourth)
+  await verify(g).click()
+  await button(gGrove, 'Light a lantern').click()
+  await button(gGrove, 'Lantern lit today').waitFor()
+  await expectLit(g, 4)
+  assert.deepEqual(await gGrove.getByRole('progressbar', { name: 'Lantern goal' }).evaluate(bar => [bar.value, bar.max]), [1, 3])
+  total = 2                       // someone else lights one
+  await g.reload()
+  await g.waitForFunction(() => Boolean(window.__walletReview))
+  await expectLit(g, 8)
+  // the wallet reconnects and the event answers for it a moment later: the lanterns stay lit meanwhile
+  hatchDelay = 1500
+  await select(g, fourth)
+  await gGrove.getByText('Checking the Grove…').waitFor()
+  await expectLit(g, 8)
+  hatchDelay = 0
+  await button(gGrove, 'Lantern lit today').waitFor()
+  await expectLit(g, 8)
+  // reopening shows the same signs for the same count, on this device and on another
+  const lit8 = await shownLanterns(g)
+  await g.reload()
+  await expectLit(g, 8)
+  assert.deepEqual(await shownLanterns(g), lit8)
+  const other = await makeBrowser()
+  await expectLit(other, 8)
+  assert.deepEqual(await shownLanterns(other), lit8)
+  // midnight UTC: this wallet may light another lantern; the Grove still shows the shared count
+  litToday.clear()
+  await g.reload()
+  await g.waitForFunction(() => Boolean(window.__walletReview))
+  await select(g, fourth)
+  await button(gGrove, 'Light a lantern').waitFor()
+  await expectLit(g, 8)
+  await button(gGrove, 'Light a lantern').click()
+  await expectLit(g, 12)
+  assert.deepEqual(await gGrove.getByRole('progressbar', { name: 'Lantern goal' }).evaluate(bar => [bar.value, bar.max]), [3, 3])
+  total = 5                       // past the goal: still twelve
+  await other.reload()
+  await expectLit(other, 12)
+
+  // Every sign on screen, in order, apart and inside the page, from desktop down to a 320 px phone.
+  total = 1                       // four lit, eight dark: both looks at once
+  await other.reload()
+  await expectLit(other, 4)
+  for (const [width, height, layout, minGlass, minSymbol] of [[1440, 1000, "wide", 80, 30], [390, 844, "narrow", 48, 17], [360, 780, "narrow", 44, 16], [320, 720, "narrow", 40, 14]]) {
+    await other.setViewportSize({ width, height })
+    const shown = await other.evaluate(() => {
+      const svg = [...document.querySelectorAll('.community-hatch__grove svg')].find(item => getComputedStyle(item).display !== 'none')
+      const box = item => item.getBoundingClientRect().toJSON()
+      return {
+        layout: svg.dataset.layout, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, svg: box(svg),
+        lanterns: [...svg.querySelectorAll('.grove-lantern')].map(item => ({
+          sign: item.dataset.sign, glass: box(item.querySelector('.grove-lantern__rim')), glyph: box(item.querySelector('.grove-lantern__sign-off')),
+        })),
+      }
+    })
+    const at = `${width} px`
+    assert.equal(shown.layout, layout, at)
+    assert.ok(shown.scrollWidth <= shown.width, `${at}: no sideways scrolling`)
+    assert.deepEqual(shown.lanterns.map(item => item.sign), ZODIAC, `${at}: all twelve, in order`)
+    for (const { sign, glass, glyph } of shown.lanterns) {
+      assert.ok(glass.width >= minGlass, `${at}: ${sign} is ${glass.width.toFixed(1)} px across`)
+      assert.ok(Math.max(glyph.width, glyph.height) >= minSymbol, `${at}: ${sign}'s symbol is ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px`)
+      assert.ok(glass.left >= shown.svg.left - 0.5 && glass.right <= shown.svg.right + 0.5 && glass.left >= 0 && glass.right <= shown.width, `${at}: ${sign} is inside the Grove`)
+      assert.ok(glass.top >= shown.svg.top - 0.5 && glass.bottom <= shown.svg.bottom + 0.5, `${at}: ${sign} isn't cut off`)
+    }
+    // no lantern overlaps another
+    shown.lanterns.forEach((first, i) => shown.lanterns.slice(i + 1).forEach(second => {
+      const apart = first.glass.right <= second.glass.left || second.glass.right <= first.glass.left
+        || first.glass.bottom <= second.glass.top || second.glass.bottom <= first.glass.top
+      assert.ok(apart, `${at}: ${first.sign} and ${second.sign} overlap`)
+    }))
+    if (process.env.GROVE_REPORT) console.log(at, shown.layout, 'smallest glass', Math.min(...shown.lanterns.map(item => item.glass.width)).toFixed(1), 'symbols', shown.lanterns.map(item => `${item.sign} ${item.glyph.width.toFixed(1)}×${item.glyph.height.toFixed(1)}`).join(', '))
+  }
   assert.deepEqual(errors, [])
   console.log('Wallet-backed Cozmling browser smoke passed.')
 } finally {
