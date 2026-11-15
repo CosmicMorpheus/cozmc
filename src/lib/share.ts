@@ -25,7 +25,7 @@ let assets: Promise<{ mark: HTMLImageElement; card: HTMLImageElement }> | null =
 const img = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src })
 async function ready() {
   await Promise.all([`700 40px ${PIXEL}`, `400 40px ${PIXEL}`, `800 60px ${SANS}`, `500 30px ${MONO}`].map(f => document.fonts.load(f).catch(() => null)))
-  assets ??= Promise.all([img('/assets/cozmc-wordmark.png'), img('/assets/card-face.webp')]).then(([mark, card]) => ({ mark, card }))
+  assets ??= Promise.all([img('/assets/cozmc-wordmark-v2-408.webp'), img('/assets/card-face.webp')]).then(([mark, card]) => ({ mark, card }))
   return assets
 }
 
@@ -70,7 +70,8 @@ function frame(ctx: CanvasRenderingContext2D, mark: HTMLImageElement, label: str
     ctx.fillRect(x - (dx < 0 ? 28 : 0), y - (dy < 0 ? 4 : 0), 28, 4)
     ctx.fillRect(x - (dx < 0 ? 4 : 0), y - (dy < 0 ? 28 : 0), 4, 28)
   }
-  ctx.drawImage(mark, 52, 46, 190, 50)
+  const markHeight = 190 * mark.naturalHeight / mark.naturalWidth
+  ctx.drawImage(mark, 52, 46 + (50 - markHeight) / 2, 190, markHeight)
   ctx.textAlign = 'right'
   text(ctx, label, W - 54, 80, `700 20px ${PIXEL}`, C.phosDim, 0, '2px')
   ctx.textAlign = 'left'

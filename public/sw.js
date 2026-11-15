@@ -7,7 +7,7 @@
 try { importScripts('/sw-manifest.js') } catch { self.__BUILD = { version: 'dev', files: [] } }
 const SHELL = `cozmc-shell-${self.__BUILD.version}`
 const FONTS = 'cozmc-fonts-v1'
-const PRECACHE = ['/', '/manifest.webmanifest', '/assets/card-face.webp', '/assets/cozmc-wordmark.png', '/assets/cozmc-logo-272.png', '/icons/icon-192.png', ...self.__BUILD.files]
+const PRECACHE = ['/', '/manifest.webmanifest', '/assets/card-face.webp', '/assets/cozmc-wordmark-v2-136.webp', '/assets/cozmc-wordmark-v2-272.webp', '/assets/cozmc-wordmark-v2-408.webp', '/assets/cozmc-wordmark-v2-912.webp', '/assets/cozmc-brick-by-brick-v2-still.webp', '/icons/icon-192.png', ...self.__BUILD.files]
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()))
@@ -54,6 +54,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url)
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req))
+    if (url.pathname === '/assets/cozmc-brick-by-brick-v2-rain.webp') {
+      return e.respondWith(cacheFirst(req).catch(async () => (await caches.match('/assets/cozmc-brick-by-brick-v2-still.webp')) || Response.error()))
+    }
     if (/^\/(static|assets|icons)\//.test(url.pathname) && !url.pathname.endsWith('.mp4')) return e.respondWith(cacheFirst(req))
     return
   }

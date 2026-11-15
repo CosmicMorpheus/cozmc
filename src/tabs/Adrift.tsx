@@ -112,7 +112,7 @@ export function Adrift() {
       <header className="page-head ad-head">
         <p className="kicker"><span className="dot" /> Daily word rescue · free to play</p>
         <h1 aria-label="Adrift">ADRI<span className="ad-head__f">F</span>T<span className="ad-head__dot">.</span></h1>
-        <p className="ad-head__with"><span>with</span> <img src="/assets/cozmc-logo-272.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w" sizes="122px" alt="COZMC" width={456} height={120} /></p>
+        <p className="ad-head__with"><span>with</span> <img src="/assets/cozmc-wordmark-v2-272.webp" srcSet="/assets/cozmc-wordmark-v2-136.webp 136w, /assets/cozmc-wordmark-v2-272.webp 272w, /assets/cozmc-wordmark-v2-408.webp 408w" sizes="122px" alt="COZMC" width={912} height={241} /></p>
         <p className="ad-head__tag"><b>Bring them home.</b> One word. One explorer. One shot.</p>
       </header>
 

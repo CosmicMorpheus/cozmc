@@ -66,7 +66,10 @@ export function Philosophy() {
 
       <section className="motto" aria-label="Motto">
         <p>Drip by drip, the bucket fills.</p>
-        <p>Brick by brick, we build.</p>
+        <picture className="motto__brick">
+          <source media="(prefers-reduced-motion: no-preference)" srcSet="/assets/cozmc-brick-by-brick-v2-rain.webp" />
+          <img src="/assets/cozmc-brick-by-brick-v2-still.webp" alt="Brick by brick, we build." width={960} height={115} loading="lazy" decoding="async" />
+        </picture>
         <span>Practice over perfection</span>
       </section>
 

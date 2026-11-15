@@ -34,7 +34,7 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
           <p className="kicker"><span className="dot" /> ASA {ASA_ID} {round && <span className="hide-sm">· Round {fmt(round)}</span>}</p>
           <h1 className="hero__title">Find your people.<br />Build with purpose.</h1>
           <p className="hero__lead">COZMC is a community on Algorand made up of players, builders, and creators. We start with games and good conversation. What it turns into is something we decide together.</p>
-          <div className="row">
+          <div className="row hero__actions">
             {discord && <a className="btn btn--discord" href={discord.url} target="_blank" rel="noopener"><SocialIcon name="discord" size={16} /> Join our community</a>}
             <button className="btn btn--phos" onClick={() => go('arcade')}><Icon name="play" size={10} /> Play the arcade</button>
             <a className="btn btn--fire" href="#/community/bonfire"><Flame size={14} /> Visit the Bonfire</a>

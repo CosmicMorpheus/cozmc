@@ -56,7 +56,7 @@ function Floor({ onPlay }: { onPlay: (id: string, daily?: boolean) => void }) {
   const discord = socialLinks()[0]
   return (
     <>
-      <header className="page-head">
+      <header className="page-head arcade-floor__head">
         <h1>Arcade</h1>
         <p>{GAMES.length} games, all free to play, no wallet needed. Tap a screen to start. Connect a wallet to post your run on-chain and get on the leaderboard.</p>
       </header>

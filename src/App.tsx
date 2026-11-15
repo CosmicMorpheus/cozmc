@@ -2,7 +2,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } fr
 import { BurnBar, BurnModal } from './components/Burn'
 import { WalletButton } from './components/Wallet'
 import { Icon, ICONS } from './components/Pixel'
-import { Starfield } from './components/Starfield'
+import { CosmicBackground } from './components/CosmicBackground'
 import { MusicButton } from './components/Music'
 import { Ticker } from './components/Ticker'
 import { Unlocks } from './components/Unlocks'
@@ -22,6 +22,7 @@ import { COZMLING_DEV, COZMLING_V2, CozmlingProvider } from './cozmling'
 import { COZMLING_WALLET_ACCOUNT } from './cozmling/flags'
 
 const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a']
+const BACKGROUND_MOTION = 'cozmc:background-motion'
 
 // every tab but Home loads on first visit
 const Companion = lazy(() => import('./tabs/Companion').then(m => ({ default: m.Companion })))
@@ -106,6 +107,10 @@ const SITEMAP: [string, string][] = [
 export function App() {
   const [route, setRoute] = useState(parse)
   const [burnOpen, setBurnOpen] = useState(false)
+  const [backgroundPaused, setBackgroundPaused] = useState(() => {
+    try { return localStorage.getItem(BACKGROUND_MOTION) === 'paused' } catch { return false }
+  })
+  const playingGame = route.tab === 'arcade' && (route.sub === 'adrift' || GAMES.some(game => game.id === route.sub))
   useEffect(() => {
     const on = () => { setRoute(parse()); window.scrollTo({ top: 0 }) }
     addEventListener('hashchange', on)
@@ -151,7 +156,7 @@ export function App() {
 
   return (
     <CozmlingProvider>
-      <Starfield />
+      <CosmicBackground paused={backgroundPaused || playingGame} />
       <a className="skip" href="#main">Skip to content</a>
       {previewAsOf != null && (
         <p className="preview-date" role="status">Preview: showing the site as of <b>{previewLabel()}</b>. Wallet transactions are off. <a href={location.pathname + location.hash}>Back to today</a></p>
@@ -160,7 +165,7 @@ export function App() {
       <header className="top">
         <div className="wrap top__in">
           <SiteMenu currentPath={`${route.tab}${route.sub ? `/${route.sub}` : ''}`} />
-          <a className="logo" href="#/home" aria-label="COZMC home"><img src="/assets/cozmc-logo-272.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w, /assets/cozmc-wordmark.png 912w" sizes="(max-width: 380px) 99px, (max-width: 600px) 114px, 129px" alt="COZMC" width={456} height={120} /></a>
+          <a className="logo" href="#/home" aria-label="COZMC home"><img src="/assets/cozmc-wordmark-v2-272.webp" srcSet="/assets/cozmc-wordmark-v2-136.webp 136w, /assets/cozmc-wordmark-v2-272.webp 272w, /assets/cozmc-wordmark-v2-408.webp 408w, /assets/cozmc-wordmark-v2-912.webp 912w" sizes="(max-width: 380px) 99px, (max-width: 600px) 114px, 129px" alt="COZMC" width={912} height={241} /></a>
           <nav className="tabs" aria-label="Sections" ref={tabsRef}>
             {TABS.map(t => (
               <Fragment key={t.id}>
@@ -215,7 +220,7 @@ export function App() {
 
       <footer className="foot">
         <div className="wrap foot__in">
-          <img src="/assets/cozmc-logo-408.png" srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w, /assets/cozmc-wordmark.png 912w" sizes="167px" alt="COZMC" width={456} height={120} className="foot__mark" loading="lazy" />
+          <img src="/assets/cozmc-wordmark-v2-408.webp" srcSet="/assets/cozmc-wordmark-v2-136.webp 136w, /assets/cozmc-wordmark-v2-272.webp 272w, /assets/cozmc-wordmark-v2-408.webp 408w, /assets/cozmc-wordmark-v2-912.webp 912w" sizes="167px" alt="COZMC" width={912} height={241} className="foot__mark" loading="lazy" />
           <p className="foot__join">Built with the community, not just for it. Come say hi.</p>
           <div className="row row--center">
             <CommunityButtons size="sm" />
@@ -226,7 +231,14 @@ export function App() {
             {SITEMAP.map(([href, label]) => <a key={href} href={`#/${href}`}>{label}</a>)}
           </nav>
           <p className="foot__meta">Community &amp; philosophy on Algorand · ASA {ASA_ID}</p>
-          <InstallButton />
+          <div className="row row--center">
+            <InstallButton />
+            {!playingGame && <button className="btn btn--ghost btn--sm background-motion" type="button" onClick={() => {
+              const next = !backgroundPaused
+              setBackgroundPaused(next)
+              try { localStorage.setItem(BACKGROUND_MOTION, next ? 'paused' : 'playing') } catch { /* preference still works for this visit */ }
+            }}>{backgroundPaused ? 'Resume background' : 'Pause background'}</button>}
+          </div>
           <p className="foot__legal">COZMC is a community token. Nothing on this site is financial or investment advice, and no return of any kind is promised. Crypto assets are volatile and you may lose everything you put in. Always verify ASA ID {ASA_ID} before transacting and do your own research.</p>
         </div>
       </footer>

@@ -88,7 +88,7 @@ async function makeBrowser(legacyFixture) {
     if (files.has(url.pathname)) {
       return route.fulfill({ contentType: contentTypes[url.pathname.split('.').pop()], body: Buffer.from(files.get(url.pathname)) })
     }
-    if (url.pathname === '/assets/cozmc-wordmark.png' || url.pathname === '/assets/card-face.webp' || /^\/assets\/cozmc-logo-\d+\.png$/.test(url.pathname)) {
+    if (url.pathname === '/assets/card-face.webp' || /^\/assets\/cozmc-wordmark-v2-\d+\.webp$/.test(url.pathname)) {
       return route.fulfill({ contentType: 'image/png', body: pixel })
     }
     const body = request.method() === 'POST' ? request.postDataJSON() : null

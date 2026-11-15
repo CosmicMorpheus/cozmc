@@ -161,11 +161,11 @@ function WalletHatchPanel({
       <header className="community-hatch__hero">
         <img
           className="community-hatch__wordmark"
-          src="/assets/cozmc-logo-272.png"
-          srcSet="/assets/cozmc-logo-136.png 136w, /assets/cozmc-logo-272.png 272w, /assets/cozmc-logo-408.png 408w"
+          src="/assets/cozmc-wordmark-v2-272.webp"
+          srcSet="/assets/cozmc-wordmark-v2-136.webp 136w, /assets/cozmc-wordmark-v2-272.webp 272w, /assets/cozmc-wordmark-v2-408.webp 408w"
           sizes="(max-width: 560px) 108px, 172px"
-          width={456}
-          height={120}
+          width={912}
+          height={241}
           alt="COZMC"
           decoding="async"
         />
