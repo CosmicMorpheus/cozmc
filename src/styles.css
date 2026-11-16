@@ -1535,8 +1535,10 @@ p, li, dd, figcaption { text-wrap: pretty }
   html { scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) }
   .foot { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) }
   .mp__grille, .mp__screen { display: none }
+  /* until music plays, just the Play button: the smallest corner it can take */
+  .mp:not(.is-on) .mp__skip { display: none }
   .music-hint { right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)) }
-  .music-hint::after { right: 64px }
+  .music-hint::after { right: 18px }   /* points at the lone Play button */
   /* the daily prize amounts fit their tiles */
   .dp-ladder li { padding: 10px 10px }
   .dp-ladder b { font-size: clamp(14px, 4.4vw, 20px) }

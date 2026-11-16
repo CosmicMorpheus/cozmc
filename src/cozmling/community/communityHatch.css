@@ -215,7 +215,8 @@
 }
 
 .community-hatch__rules li + li { border-inline-start: 1px solid var(--grove-line) }
-.community-hatch__rules time { display: inline-block }
+/* each half of a date holds together (local time, then UTC in brackets); the line may break between them */
+.community-hatch__rules time { display: inline }
 .community-hatch__rules svg {
   flex: none;
   width: clamp(22px, 3cqw, 34px);
