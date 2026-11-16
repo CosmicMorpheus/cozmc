@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { ArrowsClockwise, CalendarBlank, Egg, Wallet } from '@phosphor-icons/react'
+import { CalendarBlank, Egg, Sparkle, Wallet } from '@phosphor-icons/react'
 import { SOCIAL } from '../../config'
 import { GroveLanterns } from './GroveLanterns'
 import {
@@ -34,6 +34,11 @@ let lastCount: { total: number; goal: number } | null = null
 const eventDate = (value: string) => new Date(value).toLocaleString(undefined, {
   month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
 }).replace(/(\d) (?=[AP]M)/, '$1\u00a0').replace(/ (?=[A-Z]{2,5}$|GMT|UTC)/g, '\u00a0')
+// the visitor's own time, and the same moment in UTC (the Grove's days run on UTC): "Nov 16, 7:00 PM EST (Nov 17, 00:00 UTC)"
+const utcDate = (value: string) => new Date(value).toLocaleString('en-US', {
+  timeZone: 'UTC', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+}).replace(/ /g, '\u00a0') + '\u00a0UTC'
+const eventWhen = (value: string) => new Date(value).getTimezoneOffset() === 0 ? eventDate(value) : `${eventDate(value)} (${utcDate(value)})`
 
 async function fetchHatch(signal: AbortSignal, address: string | null, action?: CommunityHatchAction) {
   const headers = new Headers()
@@ -176,20 +181,23 @@ function WalletHatchPanel({
       <div className="community-hatch__console">
         {count && (
           <div className="community-hatch__progress">
-            <p><strong>{count.total.toLocaleString()} of {count.goal.toLocaleString()}</strong> lanterns lit</p>
+            <div>
+              <p><strong>{count.total.toLocaleString()} of {count.goal.toLocaleString()}</strong> lanterns lit by the community</p>
+              <p className="community-hatch__signs">{lit === 12 ? 'All 12 zodiac signs are glowing' : `${lit} of 12 zodiac signs glowing`}</p>
+            </div>
             <progress value={Math.min(count.total, count.goal)} max={count.goal} aria-label="Lantern goal" />
           </div>
         )}
         {status?.phase === 'open' && (
           <ul className="community-hatch__rules">
-            <li><CalendarBlank aria-hidden="true" /><span>Light one lantern a day until <time dateTime={status.endsAt}>{eventDate(status.endsAt)}</time>.</span></li>
-            <li><Egg aria-hidden="true" /><span>Your first contribution earns a mystery egg.</span></li>
-            <li><ArrowsClockwise aria-hidden="true" /><span>Daily lanterns reset at midnight UTC.</span></li>
+            <li><CalendarBlank aria-hidden="true" /><span>Light one lantern a day until <time dateTime={status.endsAt}>{eventWhen(status.endsAt)}</time>. Each day starts at midnight UTC.</span></li>
+            <li><Egg aria-hidden="true" /><span>Your first lantern reserves a mystery egg. Claim it after the lanterns close, until <time dateTime={status.claimUntil}>{eventWhen(status.claimUntil)}</time>. Once claimed, adopt it any time.</span></li>
+            <li><Sparkle aria-hidden="true" /><span>If the community reaches its goal, everyone who lit a lantern also gets a Grove lantern for their Star Loft.</span></li>
           </ul>
         )}
         <div className="community-hatch__actions">
           {status ? <>
-            {status.phase === 'upcoming' && <p>The Grove opens {eventDate(status.opensAt)}.</p>}
+            {status.phase === 'upcoming' && <p>The Grove opens {eventWhen(status.opensAt)}.</p>}
             {status.phase === 'open' && verified && <button className="btn btn--phos" type="button" disabled={busy || status.contributedToday} onClick={() => void run('contribute')}>
               {status.contributedToday ? 'Lantern lit today' : work === 'contribute' ? 'Lighting lantern…' : 'Light a lantern'}
             </button>}
@@ -207,7 +215,7 @@ function WalletHatchPanel({
               </>
             )}
             {status.phase === 'claim' && verified && status.eligible && !receipt && <>
-              <p>Claim your mystery egg by {eventDate(status.claimUntil)}.</p>
+              <p>Claim your mystery egg by {eventWhen(status.claimUntil)}. Once claimed, you can adopt it any time.</p>
               <button className="btn btn--phos" type="button" disabled={busy} onClick={() => void run('claim')}>
                 {work === 'claim' ? 'Claiming egg…' : 'Claim my mystery egg'}
               </button>

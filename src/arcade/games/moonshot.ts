@@ -3,6 +3,7 @@ import { TIER_SKINS } from '../types'
 import { sfx } from '../sfx'
 import { rng } from '../../lib/daily'
 import { ASTRO_R as R, HELMETS, SPRITES, astronaut, sprite } from './space'
+import { notForTheGame } from '../keys'
 
 /* ============================================================
    MOONSHOT: a launch game in the spirit of Kitten Cannon.
@@ -448,6 +449,8 @@ export const moonshot: ArcadeGame = {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
       if (![' ', 'arrowup', 'w', 'x', 'z'].includes(k)) return
+      // only a run takes the keys, and never while the visitor types elsewhere or uses a menu
+      if (!running || notForTheGame(e)) return
       e.preventDefault()
       if (e.type === 'keydown' && !e.repeat) act()
     }

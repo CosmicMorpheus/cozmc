@@ -61,9 +61,9 @@ function WalletCozmlingView({ address, route }: { address: string | null; route:
   if (session.revocationPending) {
     hatchWalletAction = { label: session.busy ? 'Signing out…' : 'Finish signing out', onClick: session.signOut, disabled: session.busy }
   } else if (!address) {
-    hatchWalletAction = { label: 'Connect wallet', onClick: openConnect }
+    hatchWalletAction = { label: 'Connect wallet', onClick: () => openConnect('cozmling') }
   } else if (!canSign) {
-    hatchWalletAction = { label: 'Switch wallets', onClick: openConnect }
+    hatchWalletAction = { label: 'Switch wallets', onClick: () => openConnect('cozmling') }
   } else if (!session.verified) {
     hatchWalletAction = { label: session.busy ? 'Checking wallet…' : 'Verify for the Grove', onClick: session.verify, disabled: session.busy }
   }

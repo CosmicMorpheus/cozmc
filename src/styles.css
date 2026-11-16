@@ -38,6 +38,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 .skip { position: fixed; left: 12px; top: -60px; z-index: 300; background: var(--phos); color: #000; padding: 10px 14px; font: 700 12px var(--pixel); text-decoration: none }
 .skip:focus { top: 12px }
+/* focus placed on the page by the skip link or after navigation: no ring on a heading that isn't a control */
+.main:focus, .main h1[tabindex="-1"]:focus { outline: none }
 .cosmic-background { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none }
 .cosmic-background--stars { opacity: .89 }
 .cosmic-background--galaxies { opacity: .87 }
@@ -192,6 +194,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .hero__title { font-size: clamp(3rem, 6.55vw, 5.4rem); margin-top: 18px; text-wrap: balance }
 .hero__actions { gap: 12px 10px }
 .hero__actions .btn { padding-inline: clamp(12px, 1.7vw, 20px) }
+.hero__more { gap: 8px; margin-top: 12px }
 .hero__lead { color: var(--mist); font-size: clamp(1.02rem, 1.3vw, 1.15rem); max-width: 34rem; margin: 22px 0 28px; text-wrap: pretty }
 .asa { display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: 12px; margin-top: 26px; padding: 6px 6px 6px 14px; border: 1px solid var(--line-2); background: var(--bg-1); font: 700 11px var(--pixel); color: var(--dim); text-transform: uppercase }
 .asa code { font: 500 14px var(--mono); font-stretch: 87.5%; color: var(--text) }
@@ -1528,6 +1531,9 @@ p, li, dd, figcaption { text-wrap: pretty }
 @media (max-width: 560px) {
   /* on a phone the music player is just its two buttons in the corner, so it doesn't cover what you're reading */
   .mp { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); gap: 4px; padding: 4px }
+  /* whatever you scroll or tab to stops above the player, and the end of every page clears it */
+  html { scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) }
+  .foot { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) }
   .mp__grille, .mp__screen { display: none }
   .music-hint { right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)) }
   .music-hint::after { right: 64px }
@@ -1536,4 +1542,13 @@ p, li, dd, figcaption { text-wrap: pretty }
   .dp-ladder b { font-size: clamp(14px, 4.4vw, 20px) }
   /* the share dialog's actions: one even column */
   .share__actions > .btn { flex: 1 1 100%; justify-content: center; text-align: center }
+}
+@media (max-width: 420px) {
+  /* the three ways in run full width with their words centred, so the corner player only ever covers an edge */
+  .hero__actions .btn { width: 100%; justify-content: center }
+}
+@media (max-width: 360px) {
+  /* the narrowest phones: words only, so even the longest label clears the corner player */
+  .hero__actions .btn { font-size: 12px; letter-spacing: .02em }
+  .hero__actions .btn svg { display: none }
 }

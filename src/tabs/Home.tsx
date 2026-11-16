@@ -9,7 +9,7 @@ import { GAMES } from '../arcade/games'
 import { ASA_ID, HAYSTACK_INVITE } from '../config'
 import type { TabId } from '../App'
 import { GiveawayBanner } from '../components/GiveawayStrip'
-import { DailyBanner, DailyStrip } from '../components/DailyPrize'
+import { DailyStrip } from '../components/DailyPrize'
 import { dailyLive } from '../lib/dailyPrize'
 import { GameThumb } from '../components/GameThumb'
 import { CommunityButtons, HaystackPanel, PactPanel, SocialIcon, socialLinks } from '../components/Community'
@@ -28,22 +28,27 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
 
   return (
     <>
-      {live && <DailyBanner />}
+      {/* who we are and three ways in come first; today's prizes follow in one line */}
       <section className="hero">
         <div className="hero__copy">
           <p className="kicker"><span className="dot" /> ASA {ASA_ID} {round && <span className="hide-sm">· Round {fmt(round)}</span>}</p>
           <h1 className="hero__title">Find your people.<br />Build with purpose.</h1>
           <p className="hero__lead">COZMC is a community on Algorand made up of players, builders, and creators. We start with games and good conversation. What it turns into is something we decide together.</p>
           <div className="row hero__actions">
-            {discord && <a className="btn btn--discord" href={discord.url} target="_blank" rel="noopener"><SocialIcon name="discord" size={16} /> Join our community</a>}
-            <button className="btn btn--phos" onClick={() => go('arcade')}><Icon name="play" size={10} /> Play the arcade</button>
-            <a className="btn btn--fire" href="#/community/bonfire"><Flame size={14} /> Visit the Bonfire</a>
-            <a className="btn btn--ghost btn--zap" href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC ↗</a>
+            <button className="btn btn--phos" onClick={() => go('arcade')}><Icon name="play" size={10} /> Play free</button>
+            <a className="btn btn--gold" href="#/cozmling">Meet the Cozmlings</a>
+            {discord && <a className="btn btn--discord" href={discord.url} target="_blank" rel="noopener"><SocialIcon name="discord" size={16} /> Join the community</a>}
+          </div>
+          <div className="row hero__more">
+            <a className="btn btn--sm btn--fire" href="#/community/bonfire"><Flame size={12} /> Visit the Bonfire</a>
+            <a className="btn btn--sm btn--ghost btn--zap" href={HAYSTACK_INVITE} target="_blank" rel="noopener">Get COZMC ↗</a>
           </div>
           <div className="asa"><span>ASA ID</span><code>{ASA_ID}</code><CopyBtn text={String(ASA_ID)} what="ASA ID" /></div>
         </div>
         <div className="hero__card"><HoloCard /><p className="hint">Move to tilt · click to flip</p></div>
       </section>
+
+      {live ? <DailyStrip /> : <><DailyStrip /><GiveawayBanner /></>}
 
       {/* Adrift is out for testing: the newest game, outside the giveaway and the daily prizes */}
       <a className="gw-strip newgame-strip" href="#/arcade/adrift">
@@ -52,7 +57,6 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         <span className="gw-strip__go">Try Adrift →</span>
       </a>
 
-      {!live && <><DailyStrip /><GiveawayBanner /></>}
 
       {/* the Bonfire: live total, wallets, the goal, and one click to burn or visit. Right under the hero once the
           weekly giveaway is over; until Nov 9 its final-week banner stays above */}
@@ -78,7 +82,7 @@ export function Home({ go, onBurn }: { go: (t: TabId, sub?: string) => void; onB
         <a className="path path--play" href="#/arcade">
           <span className="path__n">02</span>
           <h2>Explore the arcade</h2>
-          <p>{GAMES.length} free games, a fresh daily challenge, and on-chain leaderboards. No wallet needed to play.</p>
+          <p>{GAMES.length} arcade games plus Adrift, the daily word game. A fresh daily challenge and on-chain leaderboards. No wallet needed to play.</p>
           <span className="path__go">Pick a game →</span>
         </a>
         <a className="path path--why" href="#/about">

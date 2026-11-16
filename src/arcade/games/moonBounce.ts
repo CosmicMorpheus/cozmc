@@ -3,6 +3,7 @@ import { TIER_SKINS } from '../types'
 import { sfx } from '../sfx'
 import { rng } from '../../lib/daily'
 import { HELMETS, SPRITES, astronaut, sprite, type Kind } from './space'
+import { notForTheGame } from '../keys'
 
 /* ============================================================
    MOON BOUNCE — a COZMC take on PapiTrampoline (Sunflat).
@@ -95,9 +96,12 @@ export const moonBounce: ArcadeGame = {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
       if (!['arrowleft', 'arrowright', 'arrowup', 'a', 'd', 'w', ' '].includes(k)) return
+      if (e.type === 'keyup') { keys.delete(k); if (running) e.preventDefault(); return }
+      // only a run takes the keys, and never while the visitor types elsewhere or uses a menu
+      if (!running || notForTheGame(e)) return
       e.preventDefault()
-      if (e.type === 'keydown') { if (!keys.has(k) && (k === ' ' || k === 'arrowup' || k === 'w')) jumpBuf = performance.now(); keys.add(k) }
-      else keys.delete(k)
+      if (!keys.has(k) && (k === ' ' || k === 'arrowup' || k === 'w')) jumpBuf = performance.now()
+      keys.add(k)
     }
     const jumpHeld = () => held(' ', 'arrowup', 'w')
 

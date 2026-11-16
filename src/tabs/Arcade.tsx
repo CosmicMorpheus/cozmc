@@ -26,6 +26,7 @@ import { dailyLive, featuredGame } from '../lib/dailyPrize'
 import { prizeFor, weekOf } from '../lib/giveaway'
 import { SocialIcon, socialLinks } from '../components/Community'
 import type { RunOutcome } from '../companion/care'
+import { notForTheGame } from '../arcade/keys'
 
 // the Cozmling art loads with its own chunk
 const Buddy = lazy(() => import('../companion/Buddy').then(m => ({ default: m.Buddy })))
@@ -58,7 +59,7 @@ function Floor({ onPlay }: { onPlay: (id: string, daily?: boolean) => void }) {
     <>
       <header className="page-head arcade-floor__head">
         <h1>Arcade</h1>
-        <p>{GAMES.length} games, all free to play, no wallet needed. Tap a screen to start. Connect a wallet to post your run on-chain and get on the leaderboard.</p>
+        <p>{GAMES.length} arcade games plus Adrift, the daily word game. All free to play, no wallet needed: tap a screen to start. To compete on the leaderboard, post a run from a connected wallet for {SCORE_FEE_ALGO} ALGO plus network fees; it buys COZMC and burns it in the Bonfire.</p>
       </header>
       <section className="daily-strip" aria-label="Daily Challenge">
         <div className="daily-strip__tag">Daily #{dailyNo()}</div>
@@ -230,7 +231,11 @@ function Cabinet({ game, daily: startDaily, onExit }: { game: ArcadeGame; daily:
   }
   useEffect(() => {
     // Enter/Space starts a run, but not in the first moment after dying (mashing jump shouldn't restart)
-    const k = (e: KeyboardEvent) => { if ((e.key === 'Enter' || e.key === ' ') && phase !== 'play' && performance.now() - overAt.current > 900 && (e.target as HTMLElement)?.tagName !== 'BUTTON') { e.preventDefault(); start() } }
+    // …and not when the key is meant for a button, link, field, menu or dialog
+    const k = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if ((e.key === 'Enter' || e.key === ' ') && phase !== 'play' && performance.now() - overAt.current > 900 && tag !== 'BUTTON' && tag !== 'A' && !notForTheGame(e)) { e.preventDefault(); start() }
+    }
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   })
 

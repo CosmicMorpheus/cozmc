@@ -42,7 +42,8 @@ export function Philosophy() {
           onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); done ? next() : setTyped(body.length) } }}>
           <p className="oracle__sys"><span>{isToday ? 'TODAY’S WISDOM' : 'MORE WISDOM'}</span><span>{todayLabel()}</span></p>
           {w.ctx && <p className="oracle__ctx">&gt; {w.ctx}</p>}
-          <p className="oracle__quote">{body.slice(0, typed)}<span className={`oracle__cursor${done ? ' blink' : ''}`}>█</span><span className="sr-only">{body}</span></p>
+          {/* the typing is for the eyes; screen readers hear the whole quote once */}
+          <p className="oracle__quote"><span aria-hidden="true">{body.slice(0, typed)}<span className={`oracle__cursor${done ? ' blink' : ''}`}>█</span></span><span className="sr-only">{body}</span></p>
           <p className={`oracle__by${done ? ' on' : ''}`}>— {w.a.toUpperCase()}</p>
           {byline(w) && <p className={`oracle__src${done ? ' on' : ''}`}>{byline(w)}</p>}
         </div>

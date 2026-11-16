@@ -2,6 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 ;(globalThis as any).localStorage = { length: 0, key: () => null, getItem: () => null, setItem() {}, removeItem() {} }
 const { placeBook, toBirthplace, fold } = await import('../src/cozmling/celestial/places/places')
@@ -121,8 +123,9 @@ test('a damaged or unusable birthplace is caught, and never silently becomes Mau
 })
 
 test('nothing about the player’s own location is ever read', () => {
-  const walk = (dir: string): string[] => readdirSync(dir).flatMap(f => { const p = `${dir}/${f}`; return statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx)$/.test(f) ? [p] : [] })
-  for (const f of walk(new URL('../src', import.meta.url).pathname)) assert.doesNotMatch(readFileSync(f, 'utf8'), /navigator\.geolocation|getCurrentPosition|watchPosition/, f)
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap(f => { const p = join(dir, f); return statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx)$/.test(f) ? [p] : [] })
+  // fileURLToPath, not URL.pathname, so the path is right on Windows too
+  for (const f of walk(fileURLToPath(new URL('../src', import.meta.url)))) assert.doesNotMatch(readFileSync(f, 'utf8'), /navigator\.geolocation|getCurrentPosition|watchPosition/, f)
   const b = toBirthplace(book.search('paris')[0], 'chosen', book)
   assert.deepEqual(Object.keys(b).sort(), ['choice', 'elevationM', 'fictional', 'id', 'latitude', 'longitude', 'name', 'place', 'source', 'timeZone', 'version'], 'only the place itself is kept')
 })

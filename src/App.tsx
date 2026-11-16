@@ -104,6 +104,36 @@ const SITEMAP: [string, string][] = [
   ['community/holders', 'Holders'], ['community/bonfire', 'The Bonfire'], ['community/wisdom', 'Wisdom'], ['community/token', 'Token'], ['about', 'About'],
 ]
 
+/** Focus the page's main heading, or the main area if it has none (the skip link uses this directly). */
+function focusPage(main: HTMLElement | null, scroll = false) {
+  if (!main) return
+  const heading = main.querySelector<HTMLElement>('h1')
+  if (heading && !heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1')
+  ;(heading ?? main).focus({ preventScroll: !scroll })
+}
+
+/** After moving to another page: pages load on demand, so wait for the new page's heading, then focus it.
+    A screen that puts focus into the new page itself keeps it; after two seconds the main area is used. */
+function focusNewPage(main: HTMLElement | null) {
+  if (!main) return
+  const before = document.activeElement
+  const old = main.querySelector('h1'), oldText = old?.textContent
+  const started = performance.now()
+  let done = false
+  const watch = new MutationObserver(() => settle())
+  const finish = () => { done = true; watch.disconnect() }
+  function settle() {
+    if (done) return
+    const active = document.activeElement
+    if (active && active !== before && active !== document.body && main!.contains(active)) return finish()
+    const heading = main!.querySelector('h1')
+    if ((heading && (heading !== old || heading.textContent !== oldText)) || performance.now() - started > 2000) { finish(); focusPage(main) }
+  }
+  watch.observe(main, { childList: true, subtree: true, characterData: true })
+  requestAnimationFrame(() => requestAnimationFrame(settle))
+  setTimeout(settle, 2050)
+}
+
 export function App() {
   const [route, setRoute] = useState(parse)
   const [burnOpen, setBurnOpen] = useState(false)
@@ -111,8 +141,16 @@ export function App() {
     try { return localStorage.getItem(BACKGROUND_MOTION) === 'paused' } catch { return false }
   })
   const playingGame = route.tab === 'arcade' && (route.sub === 'adrift' || GAMES.some(game => game.id === route.sub))
+  const main = useRef<HTMLElement>(null)
   useEffect(() => {
-    const on = () => { setRoute(parse()); window.scrollTo({ top: 0 }) }
+    const on = () => {
+      // the site menu hands focus back to its own button; everywhere else focus lands on the new page,
+      // so keyboard and screen-reader visitors start where the content does (screens that place focus
+      // themselves keep it)
+      const fromMenu = Boolean((document.activeElement as HTMLElement | null)?.closest?.('.site-menu'))
+      setRoute(parse()); window.scrollTo({ top: 0 })
+      if (!fromMenu) focusNewPage(main.current)
+    }
     addEventListener('hashchange', on)
     return () => removeEventListener('hashchange', on)
   }, [])
@@ -157,7 +195,8 @@ export function App() {
   return (
     <CozmlingProvider>
       <CosmicBackground paused={backgroundPaused || playingGame} />
-      <a className="skip" href="#main">Skip to content</a>
+      {/* moves focus to the page without changing the address: the address is the page itself */}
+      <a className="skip" href="#main" onClick={event => { event.preventDefault(); focusPage(main.current, true) }}>Skip to content</a>
       {previewAsOf != null && (
         <p className="preview-date" role="status">Preview: showing the site as of <b>{previewLabel()}</b>. Wallet transactions are off. <a href={location.pathname + location.hash}>Back to today</a></p>
       )}
@@ -190,7 +229,7 @@ export function App() {
       <Ticker />
       <div className="chan" key={`${route.tab}/${pageOf(route.tab, route.sub)}`} aria-hidden="true" />
 
-      <main id="main" className="wrap main">
+      <main id="main" className="wrap main" ref={main} tabIndex={-1}>
         <Suspense fallback={<p className="state state--load tab-loading"><span className="blink">▮</span> Loading…</p>}>
         <SubNav tab={route.tab} active={pageOf(route.tab, route.sub)} />
         <div className="page" key={`${route.tab}/${pageOf(route.tab, route.sub)}`}>

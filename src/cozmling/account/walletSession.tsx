@@ -123,9 +123,9 @@ export function WalletAccess({
       ) : state.verified ? (
         <p>Wallet verified. <button className="btn btn--ghost btn--sm" disabled={state.busy} onClick={() => void state.signOut()}>Sign out of Cozmlings</button></p>
       ) : !address ? (
-        <p><button className="btn btn--phos" onClick={openConnect}>Connect Algorand wallet</button> to adopt and open your account.</p>
+        <p><button className="btn btn--phos" onClick={() => openConnect('cozmling')}>Connect Algorand wallet</button> to adopt and open your account.</p>
       ) : !canSign ? (
-        <p>Use Pera or Lute to sign in to Cozmlings. <button className="btn btn--ghost btn--sm" onClick={openConnect}>Choose another wallet</button></p>
+        <p>Use Pera or Lute to sign in to Cozmlings. <button className="btn btn--ghost btn--sm" onClick={() => openConnect('cozmling')}>Choose another wallet</button></p>
       ) : (
         <p><button className="btn btn--phos" disabled={state.busy} onClick={() => void state.verify()}>{state.busy ? 'Checking wallet…' : 'Verify wallet'}</button> to adopt. Verification signs a message and costs nothing.</p>
       )}

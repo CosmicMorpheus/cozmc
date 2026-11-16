@@ -13,7 +13,8 @@ import { useChain } from '../lib/data'
 /* ---------- the connected wallet's COZMC, shared app-wide ----------
    balance = spendable COZMC in the wallet (burns, max buttons)
    holding = balance + COZMC in ALGO/COZMC LP + COZMC staked in Pact farms (tiers, ranks, skins) */
-interface Me { balance: number | null; holding: number | null; loading: boolean; balanceError: boolean; refresh: () => void; openConnect: () => void }
+/** `openConnect('cozmling')` explains Cozmling sign-in; anything else (a click event, nothing) the general picker. */
+interface Me { balance: number | null; holding: number | null; loading: boolean; balanceError: boolean; refresh: () => void; openConnect: (purpose?: unknown) => void }
 const MeCtx = createContext<Me>({ balance: null, holding: null, loading: false, balanceError: false, refresh: () => {}, openConnect: () => {} })
 export const useMe = () => useContext(MeCtx)
 
@@ -23,6 +24,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [balanceError, setBalanceError] = useState(false)   // the node didn't answer: not the same as holding no COZMC
   const [connectOpen, setConnectOpen] = useState(false)
+  const [forCozmling, setForCozmling] = useState(false)
   const refresh = useCallback(() => {
     setBalanceError(false)
     if (!activeAddress) { setBalance(null); return }
@@ -34,9 +36,9 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const row = activeAddress ? holders.data?.find(h => h.address === activeAddress) : undefined
   const holding = row ? row.amount : balance
   return (
-    <MeCtx.Provider value={{ balance, holding, loading, balanceError, refresh, openConnect: () => setConnectOpen(true) }}>
+    <MeCtx.Provider value={{ balance, holding, loading, balanceError, refresh, openConnect: purpose => { setForCozmling(purpose === 'cozmling'); setConnectOpen(true) } }}>
       {children}
-      <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <ConnectModal open={connectOpen} forCozmling={forCozmling} onClose={() => setConnectOpen(false)} />
     </MeCtx.Provider>
   )
 }
@@ -54,7 +56,7 @@ function walletPopupClosed(cancel: { done: boolean }) {
 }
 
 /* ---------- wallet picker ---------- */
-function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ConnectModal({ open, forCozmling, onClose }: { open: boolean; forCozmling: boolean; onClose: () => void }) {
   const { wallets, activeAddress } = useWallet()
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -65,7 +67,9 @@ function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void })
   return (
     <Modal open={open} onClose={onClose} labelledBy="connect-title" className="modal__box--narrow">
       <h2 id="connect-title" className="modal__title">Connect a wallet</h2>
-      <p className="modal__lede">Games are free to play. A wallet lets you post scores and burn COZMC. Nothing is signed without your approval.</p>
+      {forCozmling
+        ? <p className="modal__lede">Connect a wallet to sign in to your Cozmlings. Signing in signs a short message: it costs nothing and sends no transaction. Pera and Lute can sign in to Cozmlings today.</p>
+        : <p className="modal__lede">Games are free to play. A wallet lets you post scores and burn COZMC. Nothing is signed without your approval.</p>}
       <ul className="wallets">
         {wallets.map(w => (
           <li key={w.walletKey}>

@@ -2,6 +2,7 @@ import type { ArcadeGame, GameHooks, StartOptions } from '../types'
 import { TIER_SKINS } from '../types'
 import { sfx } from '../sfx'
 import { rng } from '../../lib/daily'
+import { notForTheGame } from '../keys'
 
 /* ============================================================
    BRICK BY BRICK — a falling-block puzzle. Stack the bricks, clear
@@ -230,9 +231,10 @@ export const brickByBrick: ArcadeGame = {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
       const ours = ['arrowleft', 'arrowright', 'arrowdown', 'arrowup', 'a', 'd', 's', 'w', 'x', 'z', ' ', 'c', 'shift']
-      if (!ours.includes(k)) return
+      if (!ours.includes(k) || notForTheGame(e)) return
+      // only a run takes the keys: before it starts, Space and the arrows still scroll the page
+      if (!running || overT) { if (e.type === 'keyup') keys.delete(k); return }
       e.preventDefault()
-      if (!running || overT) return
       if (e.type === 'keyup') {
         keys.delete(k)
         if ((k === 'arrowleft' || k === 'a') && dir === -1) dir = (keys.has('arrowright') || keys.has('d')) ? 1 : 0

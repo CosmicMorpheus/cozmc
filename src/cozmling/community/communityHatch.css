@@ -136,6 +136,9 @@
   filter: drop-shadow(0 0 5px var(--glow));
 }
 
+/* the second count: how many of the twelve signs the community's lanterns have lit */
+.community-hatch__signs { margin: 3px 0 0; color: #cbbde6; font-size: .84em; letter-spacing: .01em }
+
 .community-hatch__console {
   width: min(87%, 1080px);
   margin: 0 auto clamp(18px, 3cqw, 34px);
