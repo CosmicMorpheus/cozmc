@@ -4,6 +4,7 @@
   "version": "3.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/mark-astronomy-esm.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
