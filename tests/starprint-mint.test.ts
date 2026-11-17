@@ -274,3 +274,11 @@ test('real PostgreSQL: one asset per Starprint through repeats, races, timeouts 
     await admin.end()
   }
 })
+
+test('the report script uses the same MainNet addresses as the site', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const script = await readFile(new URL('../scripts/starprint-report.mjs', import.meta.url), 'utf8')
+  assert.ok(script.includes(`'${algosdk.getApplicationAddress(siteConfig.PACT_VAULT_APP).toString()}'`), 'Pact Vault')
+  assert.ok(script.includes(`'${siteConfig.BONFIRE_ADDRESS}'`) && script.includes(String(siteConfig.ASA_ID)), 'Bonfire and COZMC')
+  assert.ok(script.includes(`'${siteConfig.NOTE_STARPRINT_FEE}'`), 'fee note')
+})

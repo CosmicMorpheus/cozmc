@@ -79,19 +79,45 @@ Prerequisites, before any MainNet switch:
 
 When those are done:
 
-1. Create a **new issuer account** for Starprints only. Keep its balance small (25 ALGO covers about 240
-   Starprints).
-2. Use a **separate cold account** as the manager and keep it offline.
-3. In Netlify, on the **production** site only, set:
+1. Create a **new issuer account** for Starprints only, and a **separate cold account** as the manager, kept
+   offline.
+2. In Netlify, on the **production** site only, set:
    - `COZMC_STARPRINT_ISSUER_MNEMONIC`: the issuer's recovery phrase, marked **secret**, Functions scope.
      Only Mark enters this; Claude never sees it.
    - `COZMC_STARPRINT_MANAGER`: the cold manager address.
-   - `COZMC_STARPRINT_DAILY_CAP`: start at `1`.
    - `COZMC_STARPRINT_MINT=1`, `COZMC_STARPRINT_NETWORK=mainnet`, `COZMC_STARPRINT_MAINNET=1`.
    - The build flag `VITE_COZMC_STARPRINT_MINT=1`.
-4. Deploy outside **00:00–01:00 UTC** (the daily prize payout).
-5. Mint the first Starprint yourself. Check the asset, the burn and the delivery on the explorer, then raise
-   the cap.
+3. Deploy outside **00:00–01:00 UTC** (the daily prize payout). Change switches and the cap outside that hour
+   too.
+
+## How the launch runs (decided Nov 17, 2026)
+
+The fee stays **0.01 ALGO, all of it burned**. COZMC covers about 0.102 ALGO per Starprint as a launch cost,
+and the daily cap is the budget limit.
+
+1. **Cap of 1, then 20.**
+   - Set `COZMC_STARPRINT_DAILY_CAP=1`, fund the issuer with about **2 ALGO**, and mint the first Starprint
+     yourself from your own wallet.
+   - Check it on the explorer: the asset (supply 1, STAR, your manager address, no freeze or clawback), the
+     0.01 ALGO fee, the COZMC burned in the Bonfire, and the Starprint arriving in your wallet.
+   - If all of that is right, set `COZMC_STARPRINT_DAILY_CAP=20`.
+2. **Top up in small amounts as it's used.**
+   - Check the minting account with the read-only report (it signs and sends nothing):
+
+     ```
+     node scripts/starprint-report.mjs --issuer <ISSUER ADDRESS>
+     ```
+
+   - It shows the Starprints minted and delivered, the ALGO locked and spendable, the COZMC burned by fees,
+     the last 7 days' pace, and how long the balance lasts.
+   - When spendable ALGO drops below **2**, it says to top up, by about a week's worth at the current pace
+     (at least 2 ALGO). At the full cap of 20 a day, that's about 15 ALGO a week.
+   - A small balance also limits what could be lost if the issuer key were ever exposed.
+3. **Review after 30 days.**
+   - Run the report with `--since <launch date>` for the month's numbers.
+   - If the cost is too high, switch to **splitting the fee**: send about 0.102 ALGO of each fee to the minting
+     account and burn the rest, which needs a higher fee (about 0.11 ALGO or more). Changing the fee doesn't
+     affect anyone who already minted.
 
 To switch MainNet off again, unset `COZMC_STARPRINT_MAINNET` (it falls back to TestNet) or
 `COZMC_STARPRINT_MINT` (everything off).
