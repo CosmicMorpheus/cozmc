@@ -13,6 +13,8 @@ export default async function cozmlingAccount(request: Request, context: Context
     if (!accountConfig) return response({ error: 'disabled' }, 404)
     const badRequest = validateRequest(request, accountConfig.origin)
     if (badRequest) return badRequest
+    // the game switch: with it off, saved Starprints can still be read and exported, but nothing new is written
+    if (request.method !== 'GET' && !accountConfig.switches.game) return response({ error: 'game_off' }, 503)
 
     const db = await previewPool(accountConfig)
     const wallet = await accountWallet(request, accountConfig, db)

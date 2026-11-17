@@ -103,7 +103,11 @@ export function publicTraits(record) {
   }
 }
 
-export function createMintService({ db, origin, algod, indexer, dailyCap = 20, feeMicro = FEE_MICRO, mainnet = false, issuerMnemonic, managerAddress }) {
+/** What one Starprint costs the issuer: the 0.1 ALGO it keeps for each asset it created, plus creating and sending it. */
+export const ISSUER_COST_MICRO = 100_000 + 2 * 1000
+
+export function createMintService({ db, origin, algod, indexer, dailyCap = 20, monthlyBudgetAlgo = null, lowBalanceAlgo = 2,
+  feeMicro = FEE_MICRO, mainnet = false, issuerMnemonic, managerAddress }) {
   const net = mainnet ? MAINNET : TESTNET
   let fixedIssuer = null
   if (mainnet) {
@@ -129,11 +133,21 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, f
   }
 
   /** Where the issuer stands: its address (to fund from the TestNet faucet) and balance. */
+  /** The issuer's ALGO beyond what it must keep (its minimum balance), in microALGO; null if the node didn't answer. */
+  async function spendable(address) {
+    try {
+      const a = await algod.accountInformation(address).do()
+      return Number(a.amount) - Number(a.minBalance ?? 0)
+    } catch { return null }
+  }
+
   async function info() {
     const { address, manager } = await issuer()
     let balance = null
     try { balance = Number((await algod.accountInformation(address).do()).amount) / 1e6 } catch { /* the node didn't answer */ }
-    return { network: net.network, issuer: address, manager, balanceAlgo: balance, dailyCap }
+    const free = await spendable(address)
+    return { network: net.network, issuer: address, manager, balanceAlgo: balance, spendableAlgo: free == null ? null : free / 1e6,
+      lowBalance: free == null ? null : free / 1e6 < lowBalanceAlgo, dailyCap, monthlyBudgetAlgo }
   }
 
   const view = row => row && ({
@@ -244,6 +258,14 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, f
       const { rows: [{ today }] } = await client.query(`SELECT count(*)::int AS today FROM starprint_mints
         WHERE network = $1 AND status <> 'awaiting_fee' AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`, [net.network])
       if (today >= dailyCap) throw new CozmlingRequestError('daily_cap_reached', 429)
+      if (monthlyBudgetAlgo != null) {
+        const { rows: [{ month }] } = await client.query(`SELECT count(*)::int AS month FROM starprint_mints
+          WHERE network = $1 AND status <> 'awaiting_fee' AND created_at >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`, [net.network])
+        if ((month + 1) * ISSUER_COST_MICRO / 1e6 > monthlyBudgetAlgo) throw new CozmlingRequestError('monthly_budget_reached', 429)
+      }
+      // before the player is asked to pay: can the issuer afford this mint and its delivery right now?
+      const free = await spendable(address)
+      if (free == null || free < ISSUER_COST_MICRO) throw new CozmlingRequestError('issuer_low', 503)
       const name = typeof publicName === 'string' && publicName.trim() ? publicName.trim().slice(0, 40) : null
       const { rows: [made] } = await client.query(`INSERT INTO starprint_mints (network, companion_id, wallet_address, mint_ref, status, public_name, traits)
         VALUES ($1, $2, $3, $4, $7, $5, $6) RETURNING *`, [net.network, companionId, wallet, randomBytes(12).toString('hex'), name, publicTraits(record), feeMicro > 0 ? 'awaiting_fee' : 'queued'])

@@ -138,4 +138,23 @@ ALTER TABLE starprint_mints DROP CONSTRAINT IF EXISTS starprint_mints_network_ch
 ALTER TABLE starprint_mints ADD CONSTRAINT starprint_mints_network_check CHECK (network IN ('testnet', 'mainnet'));
 `
 
-export const SCHEMA = WALLET_SCHEMA + COMPANION_SCHEMA + MINT_SCHEMA
+/** Which tables the database has. Production stops with database_not_migrated until scripts/db-migrate.mjs has
+    applied at least this version. Raise it whenever the SQL above changes, and keep changes additive, so the
+    previous code still runs on the new tables (that is what makes a site rollback safe). */
+export const SCHEMA_VERSION = 5
+const VERSION_SCHEMA = `
+-- switches that take effect at once, without a redeploy (scripts/starprint-pause.mjs sets them)
+CREATE TABLE IF NOT EXISTS cozmc_runtime_flags (
+  name text PRIMARY KEY CHECK (name IN ('starprint_paused')),
+  value boolean NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS cozmc_schema_version (
+  singleton boolean PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+  version integer NOT NULL CHECK (version > 0),
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+`
+
+export const SCHEMA = WALLET_SCHEMA + COMPANION_SCHEMA + MINT_SCHEMA + VERSION_SCHEMA

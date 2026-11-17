@@ -26,6 +26,9 @@ const REASONS: Record<string, string> = {
   disabled: 'Starprint minting is switched off right now.',
   fee_invalid: 'That payment doesn’t match this Starprint’s mint fee, so nothing was minted.',
   not_opted_in: 'Your wallet hasn’t accepted the Starprint yet. Press the button again to approve it.',
+  paused: 'Starprint minting is paused for a moment. Anything already paid for is kept and finishes when it resumes.',
+  issuer_low: 'Starprint minting is waiting for a top-up. Nothing was charged; try again later.',
+  monthly_budget_reached: 'This month’s Starprint mints are used up. Nothing was charged; try again next month.',
 }
 const code = (error: unknown) => error instanceof AccountRequestError ? (error.payload as { error?: string } | null)?.error : undefined
 const reason = (error: unknown, net: Net) => {
@@ -46,6 +49,7 @@ export function StarprintMintPanel({ companion, wallet }: { companion: Adventure
   const [mint, setMint] = useState<StarprintMint | null | undefined>(undefined)
   const [net, setNet] = useState<Net>('testnet')
   const [feeMicro, setFeeMicro] = useState(10_000)
+  const [paused, setPaused] = useState(false)
   const [includeName, setIncludeName] = useState(false)
   const [step, setStep] = useState<'' | 'start' | 'sign' | 'send' | 'check' | 'optin' | 'deliver'>('')
   const [note, setNote] = useState('')
@@ -60,6 +64,7 @@ export function StarprintMintPanel({ companion, wallet }: { companion: Adventure
       const info = await starprintMints(wallet, task.signal)
       setNet(info.network === 'mainnet' ? 'mainnet' : 'testnet')
       if (Number.isInteger(info.feeMicro)) setFeeMicro(info.feeMicro!)
+      setPaused(info.paused === true)
       setMint(info.mints.find(m => m.companionId === id) ?? null)
     } catch (error) { if (!task.signal.aborted) { setMint(null); setNote(reason(error, net)) } }
   }, [wallet, id, net])
@@ -153,7 +158,7 @@ export function StarprintMintPanel({ companion, wallet }: { companion: Adventure
     if (current.status === 'confirmed' && current.assetId) await receive(current.assetId)
   })
 
-  const busy = step !== ''
+  const busy = step !== '' || paused
   const fee = (feeMicro / 1e6).toLocaleString('en-US', { maximumFractionDigits: 6 })
   const labels = { start: 'Starting…', sign: 'Approve in your wallet…', send: 'Sending…', check: 'Minting…', optin: 'Approve receiving it in your wallet…', deliver: 'Sending it to your wallet…' }
   const delivered = mint?.delivery?.status === 'delivered'
@@ -173,7 +178,7 @@ export function StarprintMintPanel({ companion, wallet }: { companion: Adventure
           {!delivered && mint.delivery?.status !== 'sending' && (
             <>
               <p className="sl-fine">Your wallet will ask you to accept the asset first. That holds back 0.1 {T}ALGO of your balance while you keep it, plus a 0.001 network fee.</p>
-              <p><button type="button" className="btn btn--phos" disabled={busy} onClick={() => void run(() => receive(mint.assetId!))}>{busy ? labels[step as keyof typeof labels] : 'Receive in my wallet'}</button></p>
+              <p><button type="button" className="btn btn--phos" disabled={busy} onClick={() => void run(() => receive(mint.assetId!))}>{step ? labels[step as keyof typeof labels] : 'Receive in my wallet'}</button></p>
             </>
           )}
         </>
@@ -197,10 +202,11 @@ export function StarprintMintPanel({ companion, wallet }: { companion: Adventure
             </div>
           )}
           <p><button type="button" className="btn btn--phos" disabled={busy} onClick={() => void startMint()}>
-            {busy ? labels[step as keyof typeof labels] : mint?.status === 'awaiting_fee' ? `Pay ${fee} ${T}ALGO and mint` : `Mint for ${fee} ${T}ALGO`}
+            {step ? labels[step as keyof typeof labels] : mint?.status === 'awaiting_fee' ? `Pay ${fee} ${T}ALGO and mint` : `Mint for ${fee} ${T}ALGO`}
           </button></p>
         </>
       )}
+      {paused && <p className="sl-fine" role="status">{REASONS.paused}</p>}
       {note && <p className="sl-fine" role="alert">{note}</p>}
     </details>
   )

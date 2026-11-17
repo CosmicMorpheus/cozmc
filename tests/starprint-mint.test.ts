@@ -56,7 +56,7 @@ test('MainNet needs its key from secret storage and a separate manager', () => {
 })
 
 /** A TestNet node in memory: transactions confirm a few rounds after they're sent, unless told otherwise. */
-function fakeNode({ lose = 0, dropAnswer = 0 } = {}) {
+function fakeNode({ lose = 0, dropAnswer = 0, balance = 25_000_000 } = {}) {
   let round = 1000
   const pool = new Map(), created: number[] = [], holdings = new Map<string, number>()   // `${address}:${asset}` -> amount
   const key = (who: string, asset: number) => `${who}:${asset}`
@@ -91,7 +91,7 @@ function fakeNode({ lose = 0, dropAnswer = 0 } = {}) {
     }),
     status: () => call(() => ({ lastRound: BigInt(round) })),
     statusAfterBlock: (r: number | bigint) => call(() => { tick(); return { lastRound: BigInt(Math.max(Number(r) + 1, round)) } }),
-    accountInformation: () => call(() => ({ amount: 25_000_000n })),
+    accountInformation: () => call(() => ({ amount: BigInt(balance), minBalance: 100_000n })),
     accountAssetInformation: (who: string, asset: number) => call(() => {
       if (!holdings.has(key(who, asset))) throw new Error('account asset info not found')
       return { assetHolding: { amount: BigInt(holdings.get(key(who, asset))!) } }
@@ -264,6 +264,19 @@ test('real PostgreSQL: one asset per Starprint through repeats, races, timeouts 
     assert.equal(mainMint.status, 'confirmed'); assert.match(mainMint.explorer, /lora\.algokit\.io\/mainnet\//)
     assert.equal(publicMetadata(await sm.publicRecord(mainMint.serial), origin).properties.network, 'mainnet')
     assert.equal((await db.query('SELECT count(*)::int AS n FROM starprint_issuer WHERE network = $1', ['mainnet'])).rows[0].n, 0, 'the MainNet key is never stored')
+
+    // 9. budget and balance limits, all checked before the player is asked to pay
+    const poor = createMintService({ db, origin, algod: fakeNode({ balance: 150_000 }), indexer: noIndexer, dailyCap: 100 })
+    const ninth = await companion(addr(), 'hatched')
+    const ninthOwner = (await db.query('SELECT wallet_address FROM cozmling_account_companions WHERE companion_id = $1', [ninth])).rows[0].wallet_address
+    await assert.rejects(poor.mint(ninthOwner, ninth), /issuer_low/, 'an issuer that cannot afford the mint never asks the player for a fee')
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM starprint_mints WHERE companion_id = $1', [ninth])).rows[0].n, 0)
+    const low = await createMintService({ db, origin, algod: fakeNode({ balance: 1_500_000 }), indexer: noIndexer, lowBalanceAlgo: 2 }).info()
+    assert.deepEqual([low.spendableAlgo, low.lowBalance], [1.4, true], 'flags a low balance')
+    const { rows: [{ month }] } = await db.query(`SELECT count(*)::int AS month FROM starprint_mints WHERE network = 'testnet' AND status <> 'awaiting_fee'
+      AND created_at >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`)
+    const budgeted = createMintService({ db, origin, algod: fakeNode(), indexer: noIndexer, dailyCap: 100, monthlyBudgetAlgo: month * 0.102 + 0.05 })
+    await assert.rejects(budgeted.mint(ninthOwner, ninth), /monthly_budget_reached/, 'the next mint would pass the month’s budget')
 
     // the public record: confirmed mints only, with nothing private
     const meta = await svc.publicRecord(a.serial)

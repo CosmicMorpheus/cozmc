@@ -12,6 +12,7 @@ export default async function communityHatch(request: Request, context: Context)
     if (!accountConfig) return response({ error: 'disabled' }, 404)
     const badRequest = validateRequest(request, accountConfig.origin)
     if (badRequest) return badRequest
+    if (!accountConfig.switches.game) return response({ error: 'disabled' }, 404)      // the Grove is part of the game switch
     const hatchConfig = readEventConfig(accountConfig.event)
     if (!hatchConfig) return response({ error: 'disabled' }, 404)
 

@@ -9,7 +9,9 @@ export const config: Config = { path: '/api/starprint-meta/:serial' }
 export default async function starprintMeta(request: Request, context: Context) {
   try {
     const accountConfig = readConfig(context.deploy.context, process.env, context.site?.id)
-    if (!accountConfig || process.env.COZMC_STARPRINT_MINT !== '1') return response({ error: 'disabled' }, 404)
+    // not tied to the mint switch: an asset's URL is fixed forever, so a minted Starprint's description stays
+    // readable when minting is switched off or paused
+    if (!accountConfig) return response({ error: 'disabled' }, 404)
     const serial = Number(context.params?.serial)
     if (!Number.isSafeInteger(serial) || serial < 1) return response({ error: 'not_found' }, 404)
     const db = await previewPool(accountConfig)

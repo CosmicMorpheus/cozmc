@@ -65,9 +65,8 @@ else about the player. A test checks this.
 
 Prerequisites, before any MainNet switch:
 
-1. **Run the wallet account in production.** Today the server refuses to run the wallet account, and so
-   minting, on cozmc.us (it is preview-only by design). Launch plan section (a) covers this: a production
-   database, production config, and a hatch the server decides. This is the largest remaining piece.
+1. **Set up production** (see "Production on cozmc.us" below), and finish the hatch decided by the server (launch
+   plan section 1), which is still to come.
 2. **Do a full TestNet rehearsal with a real wallet.** Use Pera or Lute in TestNet mode and run mint, receive
    and the explorer check on the preview. The site's wallet setup is MainNet-only, so this is the check that
    signing a TestNet payment works on a phone.
@@ -139,3 +138,99 @@ To switch MainNet off again, unset `COZMC_STARPRINT_MAINNET` (it falls back to T
 - The asset's metadata lives at a cozmc.us address. If that address ever changes, older Starprints keep
   pointing at the old one (ARC-19 would fix this).
 - The asset's name is "Starprint #N" and the unit name is STAR. Both fit Algorand's limits (32 and 8 bytes).
+
+## Production on cozmc.us (built Nov 17, 2026; everything off until Mark sets it)
+
+The account, game and minting can now run on cozmc.us, but only when **every** production setting below is in
+place on the live site. Without them, the live site behaves exactly as today. This was checked: the regular build
+contains none of the new code, the existing site test passes on it, and with the settings missing every account,
+game and mint route answers "disabled".
+
+### Settings (Netlify, live site only)
+
+| Setting | Value | Notes |
+|---|---|---|
+| `COZMC_ACCOUNT_ENABLED` | `1` | **Wallet switch**: wallet sign-in and reading saved Starprints. |
+| `COZMC_PRODUCTION` | `1` | Allows production at all. |
+| `COZMC_PRODUCTION_SITE_ID` | the live site's ID | Settings copied to another site do nothing. |
+| `COZMC_ACCOUNT_ORIGIN` | `https://cozmc.us` | Exactly this; anything else refuses to start. |
+| `DATABASE_URL` | the **production** database (secret) | Its own database, never the preview's. On first use it is bound to cozmc.us, so a preview can never use it. |
+| `COZMC_ACCOUNT_SESSION_SECRET` | 32 random bytes, base64url (secret) | Signs sign-in sessions. Required in production. |
+| `COZMC_GAME_ENABLED` | `1` to turn on | **Game switch**: adoption, saves and the Grove. Off: Starprints can still be read and exported. |
+| `COZMC_STARPRINT_MINT` | `1` to turn on | **Mint switch**: TestNet unless the two MainNet settings are also set. |
+| `COZMC_STARPRINT_DAILY_CAP` | `1`, then `20` | Mints a day across everyone. |
+| `COZMC_STARPRINT_MONTHLY_BUDGET_ALGO` | for example `60` | Refuses a new mint that would take the month past this (0.102 ALGO each). |
+| `COZMC_STARPRINT_LOW_BALANCE_ALGO` | `2` | The level for the low-balance alert. |
+| `COZMC_ALERT_WEBHOOK_URL` | optional (secret) | A private Discord channel webhook for the hourly low-balance alert. |
+| `COZMC_STARPRINTS_PER_WALLET` | leave unset (10) | Starprints per wallet. |
+| Build flags | `VITE_COZMLING_V2=1`, `VITE_COZMLING_WALLET_ACCOUNT=1`, `VITE_COZMC_STARPRINT_MINT=1` | The player-facing parts. Never set `VITE_COZMLING_DEV` on the live site. |
+
+To make the session secret:
+
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+### Safety built in
+
+- **The live database never changes itself.** Production stops with `database_not_migrated` until the
+  migration script has brought the database to the code's version.
+- **The minting account is checked before the player pays.** A mint is refused, and nothing is charged, if the
+  issuer can't afford it (`issuer_low`), or if the daily cap or monthly budget would be passed.
+- **Hourly low-balance alert.** It writes to the function logs, and to the webhook if one is set. It only reads.
+
+### Steps to go live (outside 00:00–01:00 UTC)
+
+1. **Create the production database.** It must be separate from the preview's. Put its URL in `DATABASE_URL`
+   on the live site, marked secret.
+2. **Back up, then migrate**, from your own computer:
+
+   ```
+   DATABASE_URL=… scripts/db-backup.sh backup ~/cozmc-backups
+   DATABASE_URL=… node scripts/db-migrate.mjs            # dry run: shows the version, changes nothing
+   DATABASE_URL=… node scripts/db-migrate.mjs --apply
+   ```
+
+3. **Set the production settings with the game and mint switches off**, and deploy. Check that the site works and
+   that wallet sign-in works.
+4. **Turn the game on**: set `COZMC_GAME_ENABLED=1`, redeploy, then create a Starprint with your own wallet.
+5. **Turn minting on, on TestNet first**: set `COZMC_STARPRINT_MINT=1` and run a TestNet mint on the live site.
+6. **MainNet**: follow "Mark's MainNet checklist" and "How the launch runs" above. Cap of 1, your own first mint,
+   then 20.
+
+### Pause
+
+- **Instantly, with no redeploy:**
+
+  ```
+  DATABASE_URL=… node scripts/starprint-pause.mjs on      # pause minting
+  DATABASE_URL=… node scripts/starprint-pause.mjs status
+  DATABASE_URL=… node scripts/starprint-pause.mjs off     # resume
+  ```
+
+  While paused, nothing new is started, signed or sent. Anything queued or already paid for is kept and carries
+  on when minting resumes. Starprint descriptions and the rest of the site keep working.
+- **With a redeploy:** set `COZMC_STARPRINT_PAUSED=1`. Or turn a whole part off: `COZMC_STARPRINT_MINT`, then
+  `COZMC_GAME_ENABLED`, then `COZMC_ACCOUNT_ENABLED` (everything account-related off; the site works as today).
+- Keep `COZMC_ACCOUNT_ENABLED` on once Starprints exist. Their descriptions are served by the site, so turning
+  it off hides them until it's back on. IPFS metadata (ARC-19) would remove this dependency.
+
+### Roll back
+
+- **The site:** in Netlify's Deploys list, publish the previous deploy. It's instant.
+- **Database changes are additive** (new tables, columns and wider checks), so the previous code runs on the
+  migrated database and no database rollback is needed. There's one exception: deploys from before the
+  10-per-wallet change relied on a database rule that has since been removed, so they wouldn't enforce any
+  per-wallet limit. Production starts on the new code, so this only matters if the live site were rolled back
+  past it.
+- **Data:** if data itself goes wrong, pause minting and turn the game off first, then restore the latest backup:
+
+  ```
+  DATABASE_URL=… scripts/db-backup.sh restore ~/cozmc-backups/cozmc-YYYYMMDD-HHMMSS.dump --confirm
+  ```
+
+  Anything written after that backup is lost, and on-chain assets are not undone. Compare
+  `scripts/starprint-report.mjs` with the restored mint records before turning minting back on.
+
+Backup and restore were tested on PostgreSQL 16: a backup, a change, then a restore brought back the backed-up
+contents and schema version. Restoring refuses to run without `--confirm`.

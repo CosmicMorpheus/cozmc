@@ -93,7 +93,7 @@ export type StarprintMint = {
   fee?: StarprintFee; feeTxid: string | null
   delivery: { status: 'awaiting_optin' | 'sending' | 'delivered'; txid: string | null } | null
 }
-export type StarprintMintInfo = { network: 'testnet' | 'mainnet'; issuer: string; balanceAlgo: number | null; dailyCap: number; feeMicro?: number; mints: StarprintMint[] }
+export type StarprintMintInfo = { network: 'testnet' | 'mainnet'; issuer: string; balanceAlgo: number | null; dailyCap: number; feeMicro?: number; paused?: boolean; mints: StarprintMint[] }
 
 export async function starprintMints(address: string, signal: AbortSignal): Promise<StarprintMintInfo> {
   const reply = object(await request(MINT_ENDPOINT, signal, undefined, address))

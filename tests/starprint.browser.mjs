@@ -34,7 +34,7 @@ const fee = { network: 'testnet', receiver: issuer, amountMicro: 10000, note: 'c
 const row = (over = {}) => ({ companionId: 'c-1', serial: 7, status: 'awaiting_fee', assetId: null, txid: null, explorer: null, publicName: null, feeTxid: null, delivery: null, fee, ...over })
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {})
-async function open({ network = 'testnet', mints = [], onPost } = {}) {
+async function open({ network = 'testnet', mints = [], onPost, paused = false } = {}) {
   const context = await browser.newContext()
   const posts = []
   await context.route('**/*', async route => {
@@ -42,7 +42,7 @@ async function open({ network = 'testnet', mints = [], onPost } = {}) {
     if (url.origin === origin && url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: html })
     if (url.origin === origin && files.has(url.pathname)) return route.fulfill({ contentType: 'text/javascript', body: Buffer.from(files.get(url.pathname)) })
     if (url.pathname === '/api/starprint-mint') {
-      if (route.request().method() === 'GET') return route.fulfill({ json: { network, issuer, balanceAlgo: 5, dailyCap: 20, feeMicro: 10000, mints } })
+      if (route.request().method() === 'GET') return route.fulfill({ json: { network, issuer, balanceAlgo: 5, dailyCap: 20, feeMicro: 10000, paused, mints } })
       const body = route.request().postDataJSON(); posts.push(body)
       return route.fulfill({ json: { mint: onPost ? onPost(body) : row() } })
     }
@@ -111,6 +111,16 @@ try {
     const { page, errors, close } = await open({ mints: [row({ status: 'confirmed', assetId: 7123, delivery: { status: 'delivered', txid: 'X' }, fee: undefined })] })
     await page.getByText('It’s in your wallet.').waitFor()
     assert.equal(await page.getByRole('button').count(), 0)
+    assert.deepEqual(errors, [])
+    await close()
+  }
+  // 5. paused: the button stays labelled but can't be pressed, and the page says why
+  {
+    const { page, errors, close } = await open({ paused: true })
+    const button = page.getByRole('button', { name: 'Mint for 0.01 TestNet ALGO' })
+    await button.waitFor()
+    assert.equal(await button.isDisabled(), true)
+    assert.match(await text(page), /paused for a moment\. Anything already paid for is kept/)
     assert.deepEqual(errors, [])
     await close()
   }
