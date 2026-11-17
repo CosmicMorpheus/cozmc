@@ -9,7 +9,7 @@
    Positions are geocentric and apparent (light-time and aberration included), on the true
    ecliptic and equinox of the date: the tropical zodiac.
    ============================================================ */
-import { Body, GeoVector, MakeTime, MoonPhase, RotateVector, Rotation_EQD_ECT, Rotation_EQJ_ECT, SiderealTime, SphereFromVector } from 'astronomy-engine'
+import { Body, GeoVector, MakeTime, MoonPhase, RotateVector, Rotation_EQD_ECT, Rotation_EQJ_ECT, SiderealTime, SphereFromVector } from './astronomy'
 import type { BodyId } from './types'
 import { LIBRARY } from './version'
 import { deg, norm360, wrap180 } from './zodiac'
