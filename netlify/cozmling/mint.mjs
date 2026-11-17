@@ -9,6 +9,10 @@
      not frozen by default, the manager a separate address from the issuer.
    - Public: the serial, its Star Chart's Sun sign, element and archetype, and its name only if the
      player chose to include it. Never its birthplace, birthday, care, story or anything about the player.
+   - The player pays a mint fee first (FEE_MICRO: 0.01 ALGO, Mark's price). On TestNet it's a payment of
+     0.01 TestNet ALGO to the issuer, with the note cozmc:starprint:v1:fee:<mintRef>, checked on chain
+     before anything is minted; each payment pays for one mint. On MainNet the same 0.01 ALGO will buy
+     COZMC on the Pact pool and burn it in the Bonfire, like a score; that part isn't built or switched on here.
    - The issuer's TestNet key is made once by the preview database and never leaves it. The MainNet
      issuer is a separate account Mark creates and keeps in Netlify's secret storage; it isn't used here. */
 import { randomBytes } from 'node:crypto'
@@ -22,6 +26,9 @@ export const TESTNET = {
   explorer: id => `https://lora.algokit.io/testnet/asset/${id}`,
 }
 const NAME_BYTES = 32, UNIT = 'STAR', URL_BYTES = 96, VALID_ROUNDS = 40
+/** The mint fee: 0.01 ALGO. */
+export const FEE_MICRO = 10_000
+export const feeNote = mintRef => `cozmc:starprint:v1:fee:${mintRef}`
 
 
 /** UTF-8 bytes, for Algorand's byte limits. */
@@ -70,7 +77,7 @@ export function publicTraits(record) {
   }
 }
 
-export function createMintService({ db, origin, algod, indexer, dailyCap = 20, net = TESTNET }) {
+export function createMintService({ db, origin, algod, indexer, dailyCap = 20, feeMicro = FEE_MICRO, net = TESTNET }) {
   if (net.network !== 'testnet') throw new Error('Starprint minting here is TestNet only.')
 
   async function issuer() {
@@ -80,7 +87,8 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, n
       ON CONFLICT (network) DO NOTHING`, [net.network, Buffer.from(fresh.sk), manager.addr.toString()])
     const { rows: [row] } = await db.query('SELECT secret, manager_address FROM starprint_issuer WHERE network = $1', [net.network])
     const sk = new Uint8Array(row.secret)
-    return { address: algosdk.encodeAddress(sk.slice(32)), sk, manager: row.manager_address }
+    issuerAddress = algosdk.encodeAddress(sk.slice(32))
+    return { address: issuerAddress, sk, manager: row.manager_address }
   }
 
   /** Where the issuer stands: its address (to fund from the TestNet faucet) and balance. */
@@ -95,9 +103,13 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, n
     companionId: row.companion_id, serial: Number(row.serial), status: row.status,
     assetId: row.asset_id == null ? null : Number(row.asset_id), txid: row.txid,
     explorer: row.asset_id == null ? null : net.explorer(row.asset_id), publicName: row.public_name,
+    ...(row.status === 'awaiting_fee' ? { fee: { network: net.network, receiver: issuerAddress, amountMicro: feeMicro, note: feeNote(row.mint_ref) } } : {}),
+    feeTxid: row.fee_txid ?? null,
   })
+  let issuerAddress = null
 
   async function list(wallet) {
+    await issuer()
     const { rows } = await db.query('SELECT * FROM starprint_mints WHERE network = $1 AND wallet_address = $2 ORDER BY serial', [net.network, wallet])
     return { network: net.network, mints: await Promise.all(rows.map(async r => view(r.status === 'submitted' ? await settle(r) : r))) }
   }
@@ -115,6 +127,29 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, n
       if (t?.confirmedRound) return { round: Number(t.confirmedRound), assetId: Number(t.createdAssetIndex) }
     } catch { /* not found */ }
     return null
+  }
+
+  /** The fee payment, as the chain records it: confirmed, from this wallet, to the issuer, enough, with
+      this mint's note. From the node while it remembers it, otherwise the indexer. */
+  async function feePaid(txid, row, receiver) {
+    let t = null
+    try {
+      const p = await algod.pendingTransactionInformation(txid).do()
+      if (Number(p.confirmedRound ?? 0) > 0) {
+        const x = p.txn.txn
+        t = { type: x.type, sender: String(x.sender), receiver: String(x.payment?.receiver ?? ''), amount: Number(x.payment?.amount ?? 0), note: x.note }
+      }
+    } catch { /* gone from the node's memory: ask the indexer */ }
+    if (!t) {
+      try {
+        const x = (await indexer.lookupTransactionByID(txid).do()).transaction
+        if (x?.confirmedRound) t = { type: x.txType, sender: String(x.sender), receiver: String(x.paymentTransaction?.receiver ?? ''), amount: Number(x.paymentTransaction?.amount ?? 0), note: x.note }
+      } catch { /* not found yet */ }
+    }
+    if (!t) return null
+    const note = t.note ? new TextDecoder().decode(t.note) : ''
+    return t.type === 'pay' && t.sender === row.wallet_address && t.receiver === receiver
+      && t.amount >= feeMicro && note === feeNote(row.mint_ref)
   }
 
   async function markConfirmed(row, c) {
@@ -139,7 +174,7 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, n
   }
 
   /** Mint (or keep minting) this wallet's hatched Starprint. Safe to call any number of times, at once. */
-  async function mint(wallet, companionId, { publicName = null } = {}) {
+  async function mint(wallet, companionId, { publicName = null, feeTxid = null } = {}) {
     if (typeof companionId !== 'string' || !companionId) throw new CozmlingRequestError('invalid_companion', 400)
     const { address, sk, manager } = await issuer()
     let row = await transaction(db, async client => {
@@ -154,14 +189,28 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, n
       if (!record) throw new CozmlingRequestError('companion_missing', 404)
       if (record.kind !== 'adventurer' || record.hatch?.status !== 'hatched') throw new CozmlingRequestError('not_hatched', 409)
       const { rows: [{ today }] } = await client.query(`SELECT count(*)::int AS today FROM starprint_mints
-        WHERE network = $1 AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`, [net.network])
+        WHERE network = $1 AND status <> 'awaiting_fee' AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`, [net.network])
       if (today >= dailyCap) throw new CozmlingRequestError('daily_cap_reached', 429)
       const name = typeof publicName === 'string' && publicName.trim() ? publicName.trim().slice(0, 40) : null
       const { rows: [made] } = await client.query(`INSERT INTO starprint_mints (network, companion_id, wallet_address, mint_ref, status, public_name, traits)
-        VALUES ($1, $2, $3, $4, 'queued', $5, $6) RETURNING *`, [net.network, companionId, wallet, randomBytes(12).toString('hex'), name, publicTraits(record)])
+        VALUES ($1, $2, $3, $4, $7, $5, $6) RETURNING *`, [net.network, companionId, wallet, randomBytes(12).toString('hex'), name, publicTraits(record), feeMicro > 0 ? 'awaiting_fee' : 'queued'])
       return made
     })
 
+    if (row.status === 'awaiting_fee') {
+      if (typeof feeTxid !== 'string' || !/^[A-Z2-7]{52}$/.test(feeTxid)) return view(row)
+      const paid = await feePaid(feeTxid, row, address)
+      if (paid === null) throw new CozmlingRequestError('fee_pending', 409)
+      if (!paid) throw new CozmlingRequestError('fee_invalid', 402)
+      try {
+        const { rows: [next] } = await db.query(`UPDATE starprint_mints SET status = 'queued', fee_txid = $3, updated_at = now()
+          WHERE network = $1 AND companion_id = $2 AND status = 'awaiting_fee' RETURNING *`, [net.network, companionId, feeTxid])
+        row = next ?? (await db.query('SELECT * FROM starprint_mints WHERE network = $1 AND companion_id = $2', [net.network, companionId])).rows[0]
+      } catch (error) {
+        if (error?.code === '23505') throw new CozmlingRequestError('fee_invalid', 402)   // that payment already paid for a mint
+        throw error
+      }
+    }
     if (row.status === 'submitted') row = await settle(row)
     if (row.status !== 'queued') return view(row)
 
@@ -192,7 +241,7 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, n
   }
 
   async function publicRecord(serial) {
-    const { rows: [row] } = await db.query("SELECT * FROM starprint_mints WHERE network = $1 AND serial = $2 AND status <> 'queued'", [net.network, serial])
+    const { rows: [row] } = await db.query("SELECT * FROM starprint_mints WHERE network = $1 AND serial = $2 AND status IN ('submitted', 'confirmed')", [net.network, serial])
     return row ?? null
   }
 

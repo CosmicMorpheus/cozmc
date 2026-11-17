@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS starprint_mints (
   wallet_address text NOT NULL CHECK (wallet_address ~ '^[A-Z2-7]{58}$'),
   serial bigserial UNIQUE,
   mint_ref text NOT NULL UNIQUE CHECK (mint_ref ~ '^[a-f0-9]{24}$'),
-  status text NOT NULL CHECK (status IN ('queued', 'submitted', 'confirmed')),
+  status text NOT NULL CHECK (status IN ('awaiting_fee', 'queued', 'submitted', 'confirmed')),
   public_name text,
   traits jsonb NOT NULL,
   txid text,
@@ -123,6 +123,11 @@ CREATE TABLE IF NOT EXISTS starprint_mints (
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (network, companion_id)
 );
+
+-- the player's mint fee (added after the first TestNet preview): one payment pays for one mint
+ALTER TABLE starprint_mints ADD COLUMN IF NOT EXISTS fee_txid text UNIQUE;
+ALTER TABLE starprint_mints DROP CONSTRAINT IF EXISTS starprint_mints_status_check;
+ALTER TABLE starprint_mints ADD CONSTRAINT starprint_mints_status_check CHECK (status IN ('awaiting_fee', 'queued', 'submitted', 'confirmed'));
 `
 
 export const SCHEMA = WALLET_SCHEMA + COMPANION_SCHEMA + MINT_SCHEMA

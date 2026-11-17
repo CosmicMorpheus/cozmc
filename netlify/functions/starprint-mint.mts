@@ -1,7 +1,7 @@
 import type { Config, Context } from '@netlify/functions'
 import algosdk from 'algosdk'
 import { readBody, requestError, response, validateRequest } from '../cozmling/http.mjs'
-import { createMintService, TESTNET } from '../cozmling/mint.mjs'
+import { createMintService, FEE_MICRO, TESTNET } from '../cozmling/mint.mjs'
 import { previewPool, readConfig } from '../cozmling/runtime.mjs'
 import { accountWallet } from '../cozmling/wallet-runtime.mjs'
 
@@ -9,7 +9,8 @@ export const config: Config = { path: '/api/starprint-mint' }
 
 /* Starprint NFTs on TestNet, for the wallet that owns them. Off unless COZMC_STARPRINT_MINT=1, and only
    where the wallet account runs (previews, never cozmc.us). GET: the issuer and this wallet's mints.
-   POST { companionId, publicName? }: mint that hatched Starprint (or carry on minting it). */
+   POST { companionId, publicName? }: start minting that hatched Starprint; the reply says what fee to pay.
+   POST { companionId, feeTxid }: once the fee payment has confirmed, mint it (or carry on minting it). */
 export default async function starprintMint(request: Request, context: Context) {
   try {
     const accountConfig = readConfig(context.deploy.context, process.env, context.site?.id)
@@ -23,10 +24,10 @@ export default async function starprintMint(request: Request, context: Context) 
       algod: new algosdk.Algodv2('', TESTNET.algod, ''), indexer: new algosdk.Indexer('', TESTNET.indexer, ''),
     })
     const wallet = await accountWallet(request, accountConfig, db)
-    if (request.method === 'GET') return response({ ...(await mints.info()), ...(wallet ? await mints.list(wallet) : { mints: [] }) })
+    if (request.method === 'GET') return response({ ...(await mints.info()), feeMicro: FEE_MICRO, ...(wallet ? await mints.list(wallet) : { mints: [] }) })
     if (!wallet) return response({ error: 'wallet_required' }, 401)
     const body = await readBody(request)
-    return response({ mint: await mints.mint(wallet, body.companionId, { publicName: body.publicName ?? null }) })
+    return response({ mint: await mints.mint(wallet, body.companionId, { publicName: body.publicName ?? null, feeTxid: body.feeTxid ?? null }) })
   } catch (error) {
     return requestError(error)
   }

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import algosdk from 'algosdk'
-import { assetFields, createMintService, publicMetadata, publicTraits } from '../netlify/cozmling/mint.mjs'
+import { assetFields, createMintService, feeNote, publicMetadata, publicTraits } from '../netlify/cozmling/mint.mjs'
 
 const origin = 'https://cozmc-preview.netlify.app'
 const addr = () => algosdk.generateAccount().addr.toString()
@@ -43,7 +43,7 @@ function fakeNode({ lose = 0, dropAnswer = 0 } = {}) {
   const call = (fn: () => any) => ({ do: async () => fn() })
   const tick = () => {
     round++
-    for (const [id, t] of pool) if (!t.confirmedRound && round >= t.sentAt + 2 && round <= t.lastValid) { t.confirmedRound = round; t.assetIndex = nextAsset++; created.push(t.assetIndex) }
+    for (const [, t] of pool) if (!t.confirmedRound && round >= t.sentAt + 2 && round <= t.lastValid) { t.confirmedRound = round; if (t.txn.type === 'acfg') { t.assetIndex = nextAsset++; created.push(t.assetIndex) } }
   }
   return {
     created, pool,
@@ -52,14 +52,14 @@ function fakeNode({ lose = 0, dropAnswer = 0 } = {}) {
     sendRawTransaction: (raw: Uint8Array) => call(() => {
       if (losing > 0) { losing--; throw new Error('network timeout') }               // never reached the node
       const s = algosdk.decodeSignedTransaction(raw), id = s.txn.txID()
-      if (!pool.has(id)) pool.set(id, { sentAt: round, lastValid: Number(s.txn.lastValid) })
+      if (!pool.has(id)) pool.set(id, { sentAt: round, lastValid: Number(s.txn.lastValid), txn: s.txn })
       if (dropping > 0) { dropping--; throw new Error('socket hang up') }            // reached it; the answer was lost
       return { txid: id }
     }),
     pendingTransactionInformation: (id: string) => call(() => {
       const t = pool.get(id)
       if (!t) throw new Error('not found')
-      return { confirmedRound: t.confirmedRound ? BigInt(t.confirmedRound) : undefined, assetIndex: t.assetIndex ? BigInt(t.assetIndex) : undefined, poolError: '' }
+      return { confirmedRound: t.confirmedRound ? BigInt(t.confirmedRound) : undefined, assetIndex: t.assetIndex ? BigInt(t.assetIndex) : undefined, poolError: '', txn: { txn: t.txn } }
     }),
     status: () => call(() => ({ lastRound: BigInt(round) })),
     statusAfterBlock: (r: number | bigint) => call(() => { tick(); return { lastRound: BigInt(Math.max(Number(r) + 1, round)) } }),
@@ -89,7 +89,7 @@ test('real PostgreSQL: one asset per Starprint through repeats, races, timeouts 
 
     // 1. a mint, and the same mint asked for again: one asset
     const node = fakeNode()
-    const svc = createMintService({ db, origin, algod: node, indexer: noIndexer, dailyCap: 10 })
+    const svc = createMintService({ db, origin, algod: node, indexer: noIndexer, dailyCap: 10, feeMicro: 0 })
     const first = await companion(owner, 'hatched')
     const a = await svc.mint(owner, first, { publicName: 'Orbi' })
     assert.equal(a.status, 'confirmed'); assert.ok(a.assetId)
@@ -106,7 +106,7 @@ test('real PostgreSQL: one asset per Starprint through repeats, races, timeouts 
 
     // 3. a timeout after sending (the node got it, the answer was lost): the retry re-sends the same bytes
     const n3 = fakeNode({ dropAnswer: 1 })
-    const s3 = createMintService({ db, origin, algod: n3, indexer: noIndexer, dailyCap: 10 })
+    const s3 = createMintService({ db, origin, algod: n3, indexer: noIndexer, dailyCap: 10, feeMicro: 0 })
     const third = await companion(owner === other ? addr() : addr(), 'hatched')
     const thirdOwner = (await db.query('SELECT wallet_address FROM cozmling_account_companions WHERE companion_id = $1', [third])).rows[0].wallet_address
     const pending = await s3.mint(thirdOwner, third)
@@ -118,7 +118,7 @@ test('real PostgreSQL: one asset per Starprint through repeats, races, timeouts 
 
     // 4. the send never arrives and its window closes: only then is a fresh transaction signed
     const n4 = fakeNode({ lose: 1 })
-    const s4 = createMintService({ db, origin, algod: n4, indexer: noIndexer, dailyCap: 10 })
+    const s4 = createMintService({ db, origin, algod: n4, indexer: noIndexer, dailyCap: 10, feeMicro: 0 })
     const fourth = await companion(addr(), 'hatched')
     const fourthOwner = (await db.query('SELECT wallet_address FROM cozmling_account_companions WHERE companion_id = $1', [fourth])).rows[0].wallet_address
     const lost = await s4.mint(fourthOwner, fourth)
@@ -137,10 +137,44 @@ test('real PostgreSQL: one asset per Starprint through repeats, races, timeouts 
     const egg = await companion(addr(), 'egg')
     const eggOwner = (await db.query('SELECT wallet_address FROM cozmling_account_companions WHERE companion_id = $1', [egg])).rows[0].wallet_address
     await assert.rejects(svc.mint(eggOwner, egg), /not_hatched/)
-    const capped = createMintService({ db, origin, algod: fakeNode(), indexer: noIndexer, dailyCap: 4 })
+    const capped = createMintService({ db, origin, algod: fakeNode(), indexer: noIndexer, dailyCap: 4, feeMicro: 0 })
     const fifth = await companion(addr(), 'hatched')
     const fifthOwner = (await db.query('SELECT wallet_address FROM cozmling_account_companions WHERE companion_id = $1', [fifth])).rows[0].wallet_address
     await assert.rejects(capped.mint(fifthOwner, fifth), /daily_cap_reached/)
+
+    // 6. the 0.01 ALGO fee: nothing is minted until the player's payment has confirmed, with this mint's note
+    const n6 = fakeNode()
+    const s6 = createMintService({ db, origin, algod: n6, indexer: noIndexer, dailyCap: 100 })
+    const payer = algosdk.generateAccount(), payerAddr = payer.addr.toString()
+    const sixth = await companion(payerAddr, 'hatched')
+    const asked = await s6.mint(payerAddr, sixth)
+    assert.equal(asked.status, 'awaiting_fee')
+    assert.deepEqual([asked.fee.amountMicro, asked.fee.network], [10_000, 'testnet'])
+    assert.equal(asked.fee.receiver, (await s6.info()).issuer)
+    const pay = async (amount: number, note: string, receiver = asked.fee.receiver) => {
+      const sp = await n6.getTransactionParams().do()
+      const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({ sender: payerAddr, receiver, amount, note: new TextEncoder().encode(note), suggestedParams: sp })
+      await n6.sendRawTransaction(txn.signTxn(payer.sk)).do()
+      return txn.txID()
+    }
+    const cheap = await pay(9_999, asked.fee.note)
+    await assert.rejects(s6.mint(payerAddr, sixth, { feeTxid: cheap }), /fee_pending/, 'not confirmed yet')
+    n6.advance(3)
+    await assert.rejects(s6.mint(payerAddr, sixth, { feeTxid: cheap }), /fee_invalid/, 'too little')
+    const wrongNote = await pay(10_000, feeNote('b'.repeat(24))); n6.advance(3)
+    await assert.rejects(s6.mint(payerAddr, sixth, { feeTxid: wrongNote }), /fee_invalid/, 'paid for another mint')
+    const elsewhere = await pay(10_000, asked.fee.note, addr()); n6.advance(3)
+    await assert.rejects(s6.mint(payerAddr, sixth, { feeTxid: elsewhere }), /fee_invalid/, 'not paid to the issuer')
+    assert.equal(n6.created.length, 0, 'no asset without a valid fee')
+    const good = await pay(10_000, asked.fee.note); n6.advance(3)
+    const paidMint = await s6.mint(payerAddr, sixth, { feeTxid: good })
+    assert.equal(paidMint.status, 'confirmed'); assert.equal(paidMint.feeTxid, good); assert.equal(n6.created.length, 1)
+    // the same payment can't pay for a second Starprint
+    await db.query('DELETE FROM cozmling_account_companions WHERE companion_id = $1', [sixth])   // room for another Starprint on this wallet
+    const seventh = await companion(payerAddr, 'hatched')
+    await s6.mint(payerAddr, seventh)
+    await assert.rejects(s6.mint(payerAddr, seventh, { feeTxid: good }), /fee_invalid/)
+    assert.equal(n6.created.length, 1)
 
     // the public record: confirmed mints only, with nothing private
     const meta = await svc.publicRecord(a.serial)
