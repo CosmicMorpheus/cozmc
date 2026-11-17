@@ -27,14 +27,37 @@ import { prizeFor, weekOf } from '../lib/giveaway'
 import { SocialIcon, socialLinks } from '../components/Community'
 import type { RunOutcome } from '../companion/care'
 import { notForTheGame } from '../arcade/keys'
+import { COZMLING_V2, startCozmling } from '../cozmling'
 
 // the Cozmling art loads with its own chunk
 const Buddy = lazy(() => import('../companion/Buddy').then(m => ({ default: m.Buddy })))
 
-/** Each finished run cheers up your Cozmling: the wallet's, or a guest one kept in this browser. */
+/** Each finished run cheers up your Cozmling: with the rebuilt Cozmling on, the Starprint you have selected;
+    otherwise (or for a first-version Cozmling) the wallet's, or a guest one kept in this browser. */
 async function cheerCozmling(owner: string | null | undefined, run: { daily: boolean; best: boolean }): Promise<RunOutcome | null> {
+  if (COZMLING_V2) {
+    const outcome = await cheerStarprint(run).catch(() => undefined)
+    if (outcome !== undefined) return outcome
+  }
   const { cheer } = await import('../companion/care')
   return cheer(owner, run)
+}
+
+/** The selected Starprint's share of a run (undefined: no Starprint is selected, so the first version's path runs). */
+async function cheerStarprint(run: { daily: boolean; best: boolean }): Promise<RunOutcome | null | undefined> {
+  const store = await startCozmling()
+  const { selectedId, companions } = store.getState()
+  const chosen = companions.find(c => c.companionId === selectedId)
+  if (!chosen || chosen.kind !== 'adventurer') return undefined
+  const { arcadeCheer } = await import('../cozmling/domain/care')
+  const { utcDay } = await import('../companion/care')
+  let outcome: RunOutcome | null = null
+  const res = await store.update(chosen.companionId, (cur, now) => {
+    const out = arcadeCheer(cur, run, now)
+    outcome = out.outcome
+    return out.companion
+  }, { note: { eventId: `arcade:${chosen.companionId}:${utcDay()}`, type: 'arcade-run' } })
+  return res.ok ? outcome : null
 }
 
 export function Arcade({ playing, daily, setPlaying }: { playing: string | null; daily: boolean; setPlaying: (id: string | null, daily?: boolean) => void }) {

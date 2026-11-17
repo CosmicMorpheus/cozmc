@@ -56,7 +56,6 @@ async function fetchHatch(signal: AbortSignal, address: string | null, action?: 
   const value: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const code = value && typeof value === 'object' && 'error' in value ? value.error : undefined
-    if (code === 'pilot_full') throw new Error('The Grove has reached capacity for this preview.')
     if (response.status === 401) throw new Error('Verify your Algorand wallet again to take part.')
     if (response.status === 409) throw new Error('The event status changed. Refresh to see what you can do now.')
     if (response.status === 429 || response.status === 503) throw new Error('The Grove is busy. Give it a moment and try again.')

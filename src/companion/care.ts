@@ -26,6 +26,7 @@ export interface Pet {
   arcade?: number              // arcade runs played with this Cozmling
   cheered?: number             // …of those, runs played while it was happy
   checkins?: number            // daily check-ins
+  tally?: { day: number; fed: number; played: number; pets: number }   // today's care that counted toward growth (UTC day)
   owner?: string               // the wallet it belongs to
   txid?: string                // its latest save on Algorand
   round?: number               // …and the round it landed in
@@ -169,6 +170,19 @@ export function settle(p: Pet, now = Date.now()): Pet {
   return { ...p, food, fun, energy, asleep, at: now }
 }
 
+/* ---- how much care counts toward growth in a day ----
+   Feeding, playing and patting always do what they do (more food, more fun). Only the first few of each in a
+   UTC day also count toward growing up, so tapping a button 200 times can't skip the stages. The lifetime
+   counts (fed, played, pets) are the care that counted. */
+export const DAILY_COUNTED = { fed: 5, played: 5, pets: 10 } as const
+type Counted = keyof typeof DAILY_COUNTED
+function counted(p: Pet, kind: Counted): Pet {
+  const day = utcDay(p.at)
+  const t = p.tally?.day === day ? p.tally : { day, fed: 0, played: 0, pets: 0 }
+  if (t[kind] >= DAILY_COUNTED[kind]) return { ...p, tally: t }
+  return { ...p, [kind]: p[kind] + 1, tally: { ...t, [kind]: t[kind] + 1 } }
+}
+
 /* ---- things you can do ---- */
 export interface Food { id: string; name: string; food: number; fun: number }
 export const FOODS: Food[] = [
@@ -182,13 +196,13 @@ export type Outcome = { pet: Pet; ok: boolean; say: string }
 export function feed(p: Pet, f: Food): Outcome {
   if (p.asleep) return { pet: p, ok: false, say: `${p.name} is asleep.` }
   if (p.food >= 94) return { pet: p, ok: false, say: `${p.name} is full.` }
-  return { pet: { ...p, food: clamp(p.food + f.food), fun: clamp(p.fun + f.fun), fed: p.fed + 1 }, ok: true, say: f.fun > 10 ? 'A treat!' : 'Yum.' }
+  return { pet: counted({ ...p, food: clamp(p.food + f.food), fun: clamp(p.fun + f.fun) }, 'fed'), ok: true, say: f.fun > 10 ? 'A treat!' : 'Yum.' }
 }
 
 export function play(p: Pet): Outcome {
   if (p.asleep) return { pet: p, ok: false, say: `${p.name} is asleep.` }
   if (p.energy < 12) return { pet: p, ok: false, say: `${p.name} is too sleepy to play.` }
-  return { pet: { ...p, fun: clamp(p.fun + 26), energy: clamp(p.energy - 8), food: clamp(p.food - 4), played: p.played + 1 }, ok: true, say: 'Again, again!' }
+  return { pet: counted({ ...p, fun: clamp(p.fun + 26), energy: clamp(p.energy - 8), food: clamp(p.food - 4) }, 'played'), ok: true, say: 'Again, again!' }
 }
 
 export function toggleSleep(p: Pet, now = Date.now()): Outcome {
@@ -199,7 +213,7 @@ export function toggleSleep(p: Pet, now = Date.now()): Outcome {
 }
 
 export function pat(p: Pet): Outcome {
-  return { pet: { ...p, fun: clamp(p.fun + 3), pets: p.pets + 1 }, ok: true, say: '' }
+  return { pet: counted({ ...p, fun: clamp(p.fun + 3) }, 'pets'), ok: true, say: '' }
 }
 
 /* ---- the arcade loop ----
@@ -257,7 +271,11 @@ export type Mood = 'great' | 'good' | 'low'
 export function mood(p: Pet): { mood: Mood; need: Need | null; line: string } {
   const n = p.name
   if (!p.hatched) return { mood: 'good', need: null, line: 'Something is moving inside. Tap the egg.' }
-  if (p.asleep) return { mood: 'good', need: null, line: p.energy >= 99.5 ? `${n} is fully rested. Wake them up!` : p.energy > 85 ? `${n} is almost rested.` : `${n} is fast asleep.` }
+  if (p.asleep) {
+    // asleep, it looks content, but say plainly what it will want when it wakes
+    const wakes = p.food < 25 ? ' It’ll be hungry when it wakes.' : p.fun < 25 ? ' It’ll want to play when it wakes.' : ''
+    return { mood: 'good', need: null, line: (p.energy >= 99.5 ? `${n} is fully rested. Wake them up!` : p.energy > 85 ? `${n} is almost rested.` : `${n} is fast asleep.`) + wakes }
+  }
   const needs: [Need, number][] = [['food', p.food], ['fun', p.fun], ['energy', p.energy]]
   const [need, low] = needs.reduce((a, b) => (b[1] < a[1] ? b : a))
   if (low < 25) return { mood: 'low', need, line: need === 'food' ? `${n} is hungry.` : need === 'fun' ? `${n} is bored. Play together?` : `${n} can barely keep their eyes open.` }

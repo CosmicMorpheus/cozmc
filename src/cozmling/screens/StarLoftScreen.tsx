@@ -15,7 +15,7 @@ import { CareMeters } from '../components/CareMeters'
 import { Glyph, Orb } from '../components/Glyph'
 import { SaveChip, SaveStatus } from '../components/SaveStatus'
 import { StarSky } from '../components/StarSky'
-import { careFor, hatch, look, nameOf, type CareAction, type CareResult } from '../domain/care'
+import { careFor, dailyVisit, hatch, look, nameOf, type CareAction, type CareResult } from '../domain/care'
 import { birthdayText, ELEMENTS, signInfo } from '../domain/starprint'
 import { legacyStage } from '../integrations/legacyAdapter'
 import { CompanionRenderer, type RendererHandle } from '../render/CompanionRenderer'
@@ -154,6 +154,11 @@ export function StarLoftScreen({ companion: c, arrived, accountBacked, serverHat
   }
   // a Cozmling that hatched before its sky could be read gets it now, from its own record
   useLateSky(c)
+  // the first visit of the day counts once toward growing up (a second tab, or a reload, changes nothing)
+  useEffect(() => {
+    if (c.kind !== 'adventurer' || c.hatch.status !== 'hatched') return
+    void cozmlingStore()?.update(id, (cur, now) => dailyVisit(cur, now))
+  }, [id, c.kind, c.hatch.status])
   // today's sky and today's story: read and written once a day, for the whole page
   const today = useDailyStory(c)
   // a story read is kept as a memory without changing the Cozmling itself: tell Memories to look again

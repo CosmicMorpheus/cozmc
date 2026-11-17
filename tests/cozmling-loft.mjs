@@ -135,7 +135,9 @@ await scenario('a guest adopts, hatches and looks after a Cozmling, and it is al
   assert.match(await page.locator('.sl-hero').innerText(), /SPROUT/)                                // the original creature's first stage
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'sl-feed-btn')                   // the egg's buttons are gone: the keyboard moves to Feed
   c = await mine(page)
-  assert.equal(c.hatch.status, 'hatched'); assert.equal(c.hatch.provenance, 'known'); assert.equal(c.progress.visualStage, 'hatchling'); assert.equal(c.revision, 1)
+  assert.equal(c.hatch.status, 'hatched'); assert.equal(c.hatch.provenance, 'known'); assert.equal(c.progress.visualStage, 'hatchling')
+  // the hatch is one save; the day's first visit, counted once it has hatched, may be a second
+  assert.equal(c.revision, 1 + (c.progress.counters.visitDay != null ? 1 : 0)); assert.ok((c.progress.counters.checkins ?? 0) <= 1)
   await page.waitForTimeout(1700)
   await shot(page, 'loft-hatched-390', true)
 
@@ -145,7 +147,8 @@ await scenario('a guest adopts, hatches and looks after a Cozmling, and it is al
   await button(page, 'Feed').click()
   await page.getByRole('menuitem', { name: /Comet cookie/ }).click()
   await button(page, 'Pat').click()
-  await page.waitForFunction(id => window.__cozmling.getState().companions.find(c => c.companionId === id)?.revision === 4, id)
+  // wait for the pat to be saved (the day's first visit may be one more save than play, feed and pat)
+  await page.waitForFunction(id => window.__cozmling.getState().companions.find(c => c.companionId === id)?.progress.counters.pets === 1, id)
   c = await mine(page)
   assert.deepEqual({ fed: c.progress.counters.fed, played: c.progress.counters.played, pets: c.progress.counters.pets }, { fed: 1, played: 1, pets: 1 })
   assert.ok(Math.abs(c.care.fun - 100) < 0.5 && Math.abs(c.care.food - (80 - 4 + 12)) < 0.5 && Math.abs(c.care.energy - (90 - 8)) < 0.5, JSON.stringify(c.care))
@@ -165,7 +168,8 @@ await scenario('a guest adopts, hatches and looks after a Cozmling, and it is al
   await button(page, 'Wake up').waitFor()
   assert.equal(await page.evaluate(() => window.__sawAdopt), false)
   const again = await mine(page)
-  assert.equal(again.companionId, id); assert.equal(again.revision, 5); assert.equal(again.name, 'Orbi'); assert.equal(again.hatch.status, 'hatched')
+  assert.equal(again.companionId, id); assert.equal(again.revision, 5 + (again.progress.counters.visitDay != null ? 1 : 0));   // + the day's first visit
+  assert.equal(again.name, 'Orbi'); assert.equal(again.hatch.status, 'hatched')
   assert.deepEqual(again.progress.counters, c.progress.counters); assert.ok(again.care.asleepAt)
   await button(page, 'Wake up').click()
   await page.waitForFunction(id => window.__cozmling.getState().companions.find(c => c.companionId === id)?.care.asleepAt == null, id)
