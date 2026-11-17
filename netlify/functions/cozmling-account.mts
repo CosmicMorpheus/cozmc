@@ -1,6 +1,6 @@
 import type { Config, Context } from '@netlify/functions'
 import { companionProblem } from '../../src/cozmling/store/validators'
-import { createAccountService } from '../cozmling/account.mjs'
+import { createAccountService, ordinaryLimitFrom } from '../cozmling/account.mjs'
 import { readBody, requestError, response, validateRequest } from '../cozmling/http.mjs'
 import { previewPool, readConfig } from '../cozmling/runtime.mjs'
 import { accountWallet } from '../cozmling/wallet-runtime.mjs'
@@ -17,7 +17,7 @@ export default async function cozmlingAccount(request: Request, context: Context
     const db = await previewPool(accountConfig)
     const wallet = await accountWallet(request, accountConfig, db)
     if (!wallet) return response({ error: 'wallet_required' }, 401)
-    const account = createAccountService({ db, validateRecord: companionProblem })
+    const account = createAccountService({ db, validateRecord: companionProblem, ordinaryLimit: ordinaryLimitFrom(process.env) })
     if (request.method === 'GET') return response(await account.list(wallet))
 
     const body = await readBody(request)

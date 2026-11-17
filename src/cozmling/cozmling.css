@@ -445,3 +445,7 @@
 .sl-account > .sl-fine { margin: 0; padding: 0 clamp(18px, 2.4vw, 26px) clamp(16px, 2.2vw, 22px); border: 1px solid var(--line-2); border-top: 0; background: var(--bg-1) }
 .sl-account > .sl-fine p { margin: 0 }
 .sl-account > .sl-fine .btn { margin-top: 10px }
+
+/* "Create a new Starprint" with how many of the wallet's 10 are used */
+.sl-new { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px }
+.sl-new .sl-fine { margin-top: 0 }

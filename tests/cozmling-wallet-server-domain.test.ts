@@ -24,6 +24,7 @@ function accountDatabase(wallet: string, companionId: string, eventId: string | 
         assert.deepEqual(params, [wallet, companionId])
         return { rows: eventId ? [{ event_id: eventId, look_id: 'grove-violet' }] : [] }
       }
+      if (sql.includes('pg_advisory_xact_lock')) return { rows: [] }               // the per-wallet adoption lock
       if (sql.startsWith('INSERT INTO cozmling_account_companions')) {
         assert.deepEqual(params.slice(0, 4), [wallet, companionId, eventId ? 'event' : 'ordinary', eventId])
         assert.equal(saved, null)
@@ -43,7 +44,7 @@ function accountDatabase(wallet: string, companionId: string, eventId: string | 
         return { rows: hash ? [{ payload_hash: hash }] : [] }
       }
       if (sql.includes('FROM cozmling_account_companions')) {
-        return { rows: params[0] === wallet && saved ? [saved] : [] }
+        return { rows: params[0] === wallet && saved ? [{ companion_id: companionId, ...saved }] : [] }
       }
       assert.fail('Unexpected account query')
     },

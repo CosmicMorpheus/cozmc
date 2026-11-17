@@ -57,6 +57,8 @@ export const ARCADE_START_ROUND = 66_060_000
 export const SCORE_FEE_ALGO = 0.1
 /** Minting a Starprint costs 0.01 ALGO (Mark's price), on TestNet and MainNet. On MainNet it buys and burns COZMC like a score. */
 export const STARPRINT_FEE_ALGO = 0.01
+/** Each wallet may have up to 10 Starprints (Mark's cap). The server enforces it; this only shapes the button. */
+export const STARPRINTS_PER_WALLET = 10
 export const PACT_POOL_APP = 3744648325        // Pact ALGO/COZMC weighted pool
 export const PACT_LP_ASSET = 3744648328        // its LP token
 export const PACT_URL = 'https://pact.fi'

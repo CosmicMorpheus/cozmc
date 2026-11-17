@@ -79,7 +79,15 @@ function requestHash(expectedRevision, snapshot) {
   return createHash('sha256').update(ordered).digest('hex')
 }
 
-export function createAccountService({ db, validateRecord }) {
+/** How many Starprints one wallet may adopt: 10 (Mark's cap, Nov 17, 2026), unless COZMC_STARPRINTS_PER_WALLET
+    sets another whole number from 1 to 100. Mystery eggs from events are counted separately. */
+export const STARPRINTS_PER_WALLET = 10
+export function ordinaryLimitFrom(env) {
+  const n = Number(env?.COZMC_STARPRINTS_PER_WALLET ?? STARPRINTS_PER_WALLET)
+  return Number.isInteger(n) && n >= 1 && n <= 100 ? n : STARPRINTS_PER_WALLET
+}
+
+export function createAccountService({ db, validateRecord, ordinaryLimit = STARPRINTS_PER_WALLET }) {
   return {
     async list(wallet) {
       if (!wallet) fail('wallet_required', 401)
@@ -97,6 +105,15 @@ export function createAccountService({ db, validateRecord }) {
 
       return transaction(db, async (client) => {
         let eventId = null
+        if (source === 'ordinary') {
+          // one wallet at a time, so two devices can't both slip under the limit
+          await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`cozmling-ordinary:${wallet}`])
+          const { rows: mine } = await client.query(`SELECT companion_id, revision, snapshot FROM cozmling_account_companions
+            WHERE wallet_address = $1 AND source = 'ordinary' ORDER BY created_at DESC, companion_id DESC`, [wallet])
+          const same = mine.find(row => row.companion_id === id)
+          if (same) return { companion: publicCompanion(same) }                  // a repeat of this adoption
+          if (mine.length >= ordinaryLimit) return { companion: publicCompanion(mine[0]) }   // at the limit: the latest one
+        }
         if (source === 'event') {
           const { rows: [claim] } = await client.query(`SELECT event_id, look_id FROM cozmling_hatch_claims
             WHERE wallet_address = $1 AND companion_id = $2`, [wallet, id])
@@ -113,6 +130,7 @@ export function createAccountService({ db, validateRecord }) {
           (wallet_address, companion_id, source, event_id, snapshot) VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT DO NOTHING RETURNING revision, snapshot`, [wallet, id, source, eventId, JSON.stringify(starter)])
         if (created) return { companion: publicCompanion(created) }
+        if (source === 'ordinary') fail('adoption_conflict', 409)               // that id belongs to another wallet
 
         // A competing insert can have committed after our INSERT took its statement snapshot.
         // Read in a separate statement before returning the existing companion.

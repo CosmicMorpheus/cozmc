@@ -21,6 +21,7 @@ import { CommunityHatchPanel, type CommunityHatchWalletAction } from '../communi
 import { COMMUNITY_HATCH_LANTERN, type CommunityHatchReceipt } from '../community/communityHatch'
 import { CozmlingShare } from '../community/CozmlingShare'
 import { COZMC_COMMUNITY_HATCH, COZMC_STARPRINT_MINT, COZMLING_WALLET_ACCOUNT } from '../flags'
+import { STARPRINTS_PER_WALLET } from '../../config'
 import { StarprintMintPanel } from '../account/StarprintMint'
 import { WalletAccess, useWalletVerification } from '../account/walletSession'
 import { useCloudAccount } from '../account/useCloudAccount'
@@ -161,8 +162,10 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
   const accountStatus = account?.address ? <AccountStatus account={account} ownedCompanionId={isOwned ? selected?.companionId : undefined} companions={st.companions} /> : null
   // the wallet panel and its sync status read as one panel
   const walletPanel = account ? <div className="sl-account">{account.access}{accountStatus}</div> : null
-  const mayAdoptOrdinary = !!account?.address && account.loaded && !st.companions.some(c =>
-    st.accountOwners[c.companionId] === account.address && !c.companionId.startsWith('hatch-'))
+  // each wallet may have up to STARPRINTS_PER_WALLET Starprints (mystery eggs from events don't count)
+  const ownedStarprints = account?.address ? st.companions.filter(c =>
+    st.accountOwners[c.companionId] === account.address && !c.companionId.startsWith('hatch-')).length : 0
+  const mayAdoptOrdinary = !!account?.address && account.loaded && ownedStarprints < STARPRINTS_PER_WALLET
 
   if (!selected || adopting) return (
     <>
@@ -174,10 +177,12 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
           <AdoptionScreen key="ordinary" onCancel={selected ? () => setAdopting(false) : undefined}
             onAccountAdopt={account ? async record => {
               const saved = await account.adopt(record)
-              if (selected && selected.companionId !== saved.companionId) {
-                setCommunityNotice('Your Star Egg is saved. Choose it under Your Cozmlings to hatch it.')
+              if (saved.companionId !== record.companionId) {
+                // the wallet was already at its limit: the account kept the Starprints it has
+                setCommunityNotice(`This wallet already has ${STARPRINTS_PER_WALLET} Starprints, the most one wallet can have.`)
               } else {
-                await cozmlingStore()?.select(saved.companionId)
+                setMoved(true); setCommunityNotice('')
+                await cozmlingStore()?.select(saved.companionId)          // open the new Starprint
               }
               setAdopting(false)
             } : undefined}
@@ -207,7 +212,13 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
     <>
       <StarLoftScreen key={selected.companionId} companion={selected} arrived={moved} accountBacked={isOwned} />
       {walletPanel}
-      {mayAdoptOrdinary && <button className="btn btn--phos" type="button" onClick={() => setAdopting(true)}>Adopt a wallet-backed Cozmling</button>}
+      {mayAdoptOrdinary && (
+        <p className="sl-new">
+          <button className="btn btn--phos" type="button" onClick={() => setAdopting(true)}>{ownedStarprints ? 'Create a new Starprint' : 'Adopt a wallet-backed Starprint'}</button>
+          {ownedStarprints > 0 && <span className="sl-fine"> {ownedStarprints} of {STARPRINTS_PER_WALLET} Starprints on this wallet</span>}
+        </p>
+      )}
+      {!mayAdoptOrdinary && ownedStarprints >= STARPRINTS_PER_WALLET && <p className="sl-fine">This wallet has {STARPRINTS_PER_WALLET} Starprints, the most one wallet can have.</p>}
       {isOwned && selected.kind === 'adventurer' && selected.hatch.status === 'hatched'
         && <CozmlingShare companion={selected} />}
       {COZMC_STARPRINT_MINT && isOwned && account?.address && selected.kind === 'adventurer' && selected.hatch.status === 'hatched'

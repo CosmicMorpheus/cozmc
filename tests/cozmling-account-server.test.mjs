@@ -58,18 +58,39 @@ test('adoption races return the authenticated wallet’s existing row and never 
   const proposed = starter()
   const flow = scriptedStore([
     [/^BEGIN$/],
-    [/^INSERT INTO cozmling_account_companions/, (params) => {
-      assert.deepEqual(params.slice(0, 4), [wallet, proposed.record.companionId, 'ordinary', null])
-      const parsed = JSON.parse(params[4]); assert.equal(parsed.events[0].type, 'adopted')
-    }],
-    [/WHERE wallet_address = \$1 AND source = \$2/, (params) => {
-      assert.deepEqual(params, [wallet, 'ordinary', null]); return [{ revision: 2, snapshot: existing }]
+    [/pg_advisory_xact_lock/, (params) => { assert.deepEqual(params, [`cozmling-ordinary:${wallet}`]) }],
+    [/WHERE wallet_address = \$1 AND source = 'ordinary'/, (params) => {
+      assert.deepEqual(params, [wallet]); return [{ companion_id: existing.record.companionId, revision: 2, snapshot: existing }]
     }],
     [/^COMMIT$/],
   ])
-  const account = createAccountService({ db: flow.db, validateRecord: validatesRecord })
-  assert.deepEqual(await account.adopt(wallet, proposed), { companion: { revision: 2, snapshot: existing } })
+  const account = createAccountService({ db: flow.db, validateRecord: validatesRecord, ordinaryLimit: 1 })
+  assert.deepEqual(await account.adopt(wallet, proposed), { companion: { revision: 2, snapshot: existing } }, 'at the limit: the latest existing one')
   flow.check()
+})
+
+test('under the per-wallet limit a new Starprint is adopted alongside the first', async () => {
+  const existing = starter()
+  const proposed = starter()
+  const flow = scriptedStore([
+    [/^BEGIN$/],
+    [/pg_advisory_xact_lock/],
+    [/WHERE wallet_address = \$1 AND source = 'ordinary'/, () => [{ companion_id: existing.record.companionId, revision: 2, snapshot: existing }]],
+    [/^INSERT INTO cozmling_account_companions/, (params) => {
+      assert.deepEqual(params.slice(0, 4), [wallet, proposed.record.companionId, 'ordinary', null])
+      return [{ revision: 0, snapshot: JSON.parse(params[4]) }]
+    }],
+    [/^COMMIT$/],
+  ])
+  const account = createAccountService({ db: flow.db, validateRecord: validatesRecord })   // the default cap of 10
+  const made = await account.adopt(wallet, proposed)
+  assert.equal(made.companion.snapshot.record.companionId, proposed.record.companionId)
+  flow.check()
+})
+
+test('the per-wallet cap: 10 unless set to a whole number from 1 to 100', async () => {
+  const { ordinaryLimitFrom } = await import('../netlify/cozmling/account.mjs')
+  assert.deepEqual([undefined, '5', '0', '2.5', 'many', '101'].map(v => ordinaryLimitFrom({ COZMC_STARPRINTS_PER_WALLET: v })), [10, 5, 10, 10, 10, 10])
 })
 
 test('a wallet cannot use another wallet’s event receipt, or submit a different look', async () => {
@@ -163,9 +184,9 @@ test('PostgreSQL integration verifies account isolation, contention, history, an
     await db.query(SCHEMA)          // applying it again changes nothing
     await bindPreviewOrigin(db, origin)
     await assert.rejects(bindPreviewOrigin(db, 'https://different.example'), hasError('preview_database_mismatch', 503))
-    const account = createAccountService({ db, validateRecord: validatesRecord })
+    const account = createAccountService({ db, validateRecord: validatesRecord, ordinaryLimit: 1 })
     const [a, b] = await Promise.all([account.adopt(wallet, starter()), account.adopt(wallet, starter())])
-    assert.deepEqual(a, b)
+    assert.deepEqual(a, b, 'at a cap of 1, two adoptions at once give the same Starprint')
     assert.deepEqual(await account.list(otherWallet), { companions: [] })
     const duplicate = starter(a.companion.snapshot.record.companionId)
     await assert.rejects(account.adopt(otherWallet, duplicate), hasError('adoption_conflict', 409))

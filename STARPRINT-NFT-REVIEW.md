@@ -90,6 +90,16 @@ When those are done:
 3. Deploy outside **00:00–01:00 UTC** (the daily prize payout). Change switches and the cap outside that hour
    too.
 
+## How many Starprints a player can have (decided Nov 17, 2026)
+
+- Each wallet can have up to **10 Starprints**, on TestNet and MainNet. Mystery eggs from events are separate.
+- The server enforces this under a per-wallet lock: even 12 adoptions sent at once make exactly 10 (tested on
+  a real database).
+- `COZMC_STARPRINTS_PER_WALLET` can change it (1–100); without it, the cap is 10.
+- The Star Loft shows **Create a new Starprint** with how many of the 10 are used.
+- Each one can be minted, so one wallet can cost COZMC at most about 1 ALGO (10 × 0.102). The daily mint cap
+  still limits the total across everyone.
+
 ## How the launch runs (decided Nov 17, 2026)
 
 The fee stays **0.01 ALGO, all of it burned**. COZMC covers about 0.102 ALGO per Starprint as a launch cost,

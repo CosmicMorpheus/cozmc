@@ -2,6 +2,7 @@
    ARC-60 form a wallet returns. Skipped unless COZMLING_TEST_DATABASE_URL names a disposable database:
    each run works in a schema of its own and drops it afterwards.
      COZMLING_TEST_DATABASE_URL=postgres://… npx tsx --test tests/cozmling-wallet-postgres.test.ts        */
+import algosdk from 'algosdk'
 import assert from 'node:assert/strict'
 import { createHash, generateKeyPairSync, randomUUID, sign, type KeyObject } from 'node:crypto'
 import { test } from 'node:test'
@@ -75,8 +76,8 @@ test('real PostgreSQL: sign-in, both adoption paths, a second device, another wa
     const b = await signIn(bob)
     const bobSession = b.verified.cookie!
 
-    // ordinary adoption: a starter egg, one per wallet, the same answer to a repeat
-    const account = createAccountService({ db, validateRecord: companionProblem })
+    // ordinary adoption with a cap of 1: a starter egg, the same answer to a repeat, the first again at the cap
+    const account = createAccountService({ db, validateRecord: companionProblem, ordinaryLimit: 1 })
     const now = Date.now()
     const egg = (companionId: string, look: 'a' | 'b' = 'a', skin = 'teal') => {
       const choices = { name: 'Orbi', birthday: '2026-05-05', look, skin }
@@ -86,7 +87,13 @@ test('real PostgreSQL: sign-in, both adoption paths, a second device, another wa
     const adopted = await account.adopt(alice.address, { record: egg(ordinaryId), events: [] })
     assert.deepEqual(await account.adopt(alice.address, { record: egg(ordinaryId), events: [] }), adopted)
     const another = await account.adopt(alice.address, { record: egg(randomUUID()), events: [] })
-    assert.equal(another.companion.snapshot.record.companionId, ordinaryId, 'a second ordinary adoption returns the first')
+    assert.equal(another.companion.snapshot.record.companionId, ordinaryId, 'at the cap, another adoption returns the existing one')
+
+    // the real cap of 10: twelve adoptions at once from one wallet make exactly ten Starprints
+    const capped = createAccountService({ db, validateRecord: companionProblem })
+    const many = algosdk.generateAccount().addr.toString()
+    await Promise.all(Array.from({ length: 12 }, () => capped.adopt(many, { record: egg(randomUUID()), events: [] })))
+    assert.equal((await capped.list(many)).companions.length, 10, 'never more than 10, even all at once')
 
     // play on the first device: hatch, and a save the second device must see
     const hatched = hatchWithSky(adopted.companion.snapshot.record, now + 60_000, 'America/New_York')

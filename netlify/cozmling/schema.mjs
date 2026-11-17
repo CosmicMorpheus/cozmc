@@ -79,8 +79,9 @@ CREATE TABLE IF NOT EXISTS cozmling_account_companions (
 CREATE UNIQUE INDEX IF NOT EXISTS cozmling_globally_unique_companion_id
   ON cozmling_account_companions (companion_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS cozmling_one_ordinary_companion
-  ON cozmling_account_companions (wallet_address) WHERE source = 'ordinary';
+-- (how many ordinary Starprints a wallet may adopt is now a setting, checked under a per-wallet lock in
+-- account.mjs: COZMC_STARPRINTS_PER_WALLET, 10 by default; the old one-per-wallet index goes)
+DROP INDEX IF EXISTS cozmling_one_ordinary_companion;
 
 CREATE UNIQUE INDEX IF NOT EXISTS cozmling_one_companion_per_event
   ON cozmling_account_companions (wallet_address, event_id) WHERE source = 'event';

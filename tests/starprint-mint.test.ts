@@ -282,3 +282,10 @@ test('the report script uses the same MainNet addresses as the site', async () =
   assert.ok(script.includes(`'${siteConfig.BONFIRE_ADDRESS}'`) && script.includes(String(siteConfig.ASA_ID)), 'Bonfire and COZMC')
   assert.ok(script.includes(`'${siteConfig.NOTE_STARPRINT_FEE}'`), 'fee note')
 })
+
+test('the site and the server agree on 10 Starprints per wallet', async () => {
+  const { STARPRINTS_PER_WALLET, ordinaryLimitFrom } = await import('../netlify/cozmling/account.mjs')
+  assert.equal(siteConfig.STARPRINTS_PER_WALLET, 10)
+  assert.equal(STARPRINTS_PER_WALLET, siteConfig.STARPRINTS_PER_WALLET)
+  assert.equal(ordinaryLimitFrom({}), 10)
+})
