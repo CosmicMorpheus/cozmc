@@ -845,13 +845,17 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
 
 /* ---------- responsive ---------- */
 .tabs__tab svg { flex: none }   /* never let a tight header squeeze the icons away */
-@media (max-width: 1180px) {     /* all destinations remain available in the menu; leaves room for a connected wallet */
+@media (max-width: 1200px) {     /* all destinations remain available in the menu; leaves room for a connected wallet */
   .top__in { gap: 12px; min-height: 68px }
   .logo { margin-right: auto }
   .tabs { display: none }
 }
-@media (max-width: 1200px) {
+@media (max-width: 1500px) {     /* Discord and X stay in the footer and the menu; this keeps Connect on screen at laptop widths */
   .top .top__social { display: none }
+}
+@media (min-width: 1201px) and (max-width: 1440px) {     /* the tabs just fit beside Connect (or a connected wallet) */
+  .top__in { gap: 10px }
+  .tabs__tab { padding: 0 6px; gap: 5px; letter-spacing: 0 }
 }
 @media (max-width: 600px) {
   .logo img { height: 30px }

@@ -4,7 +4,8 @@
    Covers: games never take keys typed into the site search (and only take keys during a run), the skip link
    stays on the current page, focus lands on a new page after navigation, Home leads with the introduction,
    the wallet picker explains Cozmling sign-in when opened from the Grove, and the Arcade states the cost of
-   posting a score. Outside requests are blocked; nothing touches Algorand. */
+   posting a score, and the header fits beside Connect at every desktop width. Outside requests are blocked;
+   nothing touches Algorand. */
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 
@@ -17,7 +18,8 @@ const browser = await chromium.launch({
 })
 // a visitor outside UTC, so event times show both their own time and UTC
 const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, timezoneId: 'America/New_York' })
-await context.route(u => !u.href.startsWith(SITE), route => route.abort())
+// outside requests are blocked, except the site's Google Fonts, which the header's widths depend on
+await context.route(u => !u.href.startsWith(SITE) && !/^fonts\.(googleapis|gstatic)\.com$/.test(u.hostname), route => route.abort())
 // a simulated Grove event (open, one of three lanterns lit) and no signed-in wallet, so builds with the
 // Community Hatch show it whether or not their server runs the event
 await context.route('**/api/community-hatch', route => route.fulfill({ json: {
@@ -113,6 +115,25 @@ try {
   // The Arcade says what posting a score costs before anyone plays
   await go('arcade')
   assert.match(await page.locator('main header').first().innerText(), /0\.1 ALGO plus network fees/)
+
+  // The header fits at every desktop width: Connect (or a connected wallet's wider button) stays on screen.
+  // Measured in the site's own pixel font: a narrower fallback font would hide an overflow.
+  const fonts = await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 12px Silkscreen') })
+  if (!fonts) console.log('  (Google Fonts could not load here: header widths measured in a fallback font)')
+  for (const width of [1201, 1280, 1366, 1440, 1501, 1920]) {
+    await page.setViewportSize({ width, height: 860 })
+    await go('home')
+    const fit = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll('header.top button')].find(b => /connect/i.test(b.textContent))
+      const plain = Math.round(btn.getBoundingClientRect().right)
+      const label = btn.textContent
+      btn.textContent = 'G6YFT…T5ZMA ▾'
+      const connected = Math.round(btn.getBoundingClientRect().right)
+      btn.textContent = label
+      return { plain, connected, page: document.documentElement.scrollWidth }
+    })
+    assert.ok(fit.plain <= width && fit.connected <= width && fit.page <= width, `the header fits at ${width}px (${JSON.stringify(fit)})`)
+  }
 
   assert.deepEqual(errors, [])
   console.log('Site keyboard and layout checks passed.')
