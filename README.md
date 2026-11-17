@@ -209,9 +209,9 @@ A visitor can adopt and care for a Cozmling without a wallet. The logic is in `s
 - **Start over** is under the quiet "Settings" link below the room, behind a hold-to-confirm button.
 - **Tests:** `npm test` runs `tests/care.test.ts`.
 
-## The rebuilt Cozmling (v2, switched off)
+## The rebuilt Cozmling (v2, on at cozmc.us since Nov 17, 2026)
 
-The Cozmling is being rebuilt in `src/cozmling/`: zodiac "Starprint" adventurers, a new Star Loft, and one companion shared by the Cozmling page, the Home band and the arcade panel. **It is behind a switch that is off.** A normal build contains none of it, and the site runs exactly as described above.
+The Cozmling is being rebuilt in `src/cozmling/`: zodiac "Starprint" adventurers, a new Star Loft, and one companion shared by the Cozmling page, the Home band and the arcade panel. **It is behind the switch `VITE_COZMLING_V2=1`.** cozmc.us is built with it on (the Star Chart, observatory, birthplaces and Story Mode, saved in the player's browser), and with every other launch switch off: no wallet account, Grove or minting, and no preview tools (`VITE_COZMLING_DEV`). A build without the switch contains none of it and runs exactly as described above.
 
 - **Turning it on (your computer only).** `VITE_COZMLING_V2=1 npm run dev`. Add `VITE_COZMLING_DEV=1` to a build to get the inspection page at `#/cozmling/dev` (it is always there in `npm run dev` with the switch on).
 - **What is built so far: the save system, and the first journey.** With the switch on, the site opens one store for the whole site and brings every first-version Cozmling into it, and the Cozmling page becomes the new one: adopt, hatch, the Star Loft, care, reload, all with no wallet. Still to come: the Home band and the arcade panel reading the same store (until then they still use the first version, so they don't know about a new adventurer), arcade runs counting for adventurers, and wallet linking, daily check-in and wallet back-up inside the new page.
