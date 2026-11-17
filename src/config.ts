@@ -44,6 +44,8 @@ export const BURN_GOAL = { amount: 10_000_000, reward: 'unlocks the next arcade 
 /** On-chain note prefixes. Changing these orphans existing burns/scores — don't. */
 export const NOTE_BURN = 'cozmc:burn:v1:'
 export const NOTE_SCORE = 'cozmc:arcade:v1:'
+/** A Starprint mint fee payment; the mint reference follows it. */
+export const NOTE_STARPRINT_FEE = 'cozmc:starprint:v1:fee:'
 /** Scores are only read from this round onward (keeps the indexer search fast). */
 export const ARCADE_START_ROUND = 66_060_000
 
@@ -53,6 +55,8 @@ export const ARCADE_START_ROUND = 66_060_000
  * transaction group contains that burn count on the boards.
  */
 export const SCORE_FEE_ALGO = 0.1
+/** Minting a Starprint costs 0.01 ALGO (Mark's price), on TestNet and MainNet. On MainNet it buys and burns COZMC like a score. */
+export const STARPRINT_FEE_ALGO = 0.01
 export const PACT_POOL_APP = 3744648325        // Pact ALGO/COZMC weighted pool
 export const PACT_LP_ASSET = 3744648328        // its LP token
 export const PACT_URL = 'https://pact.fi'

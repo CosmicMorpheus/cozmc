@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS starprint_issuer (
 );
 
 CREATE TABLE IF NOT EXISTS starprint_mints (
-  network text NOT NULL CHECK (network = 'testnet'),
+  network text NOT NULL,
   companion_id text NOT NULL,
   wallet_address text NOT NULL CHECK (wallet_address ~ '^[A-Z2-7]{58}$'),
   serial bigserial UNIQUE,
@@ -128,6 +128,13 @@ CREATE TABLE IF NOT EXISTS starprint_mints (
 ALTER TABLE starprint_mints ADD COLUMN IF NOT EXISTS fee_txid text UNIQUE;
 ALTER TABLE starprint_mints DROP CONSTRAINT IF EXISTS starprint_mints_status_check;
 ALTER TABLE starprint_mints ADD CONSTRAINT starprint_mints_status_check CHECK (status IN ('awaiting_fee', 'queued', 'submitted', 'confirmed'));
+-- delivery to the player's wallet, and MainNet rows (the MainNet issuer key is never stored here)
+ALTER TABLE starprint_mints ADD COLUMN IF NOT EXISTS delivery_status text CHECK (delivery_status IN ('sending', 'delivered'));
+ALTER TABLE starprint_mints ADD COLUMN IF NOT EXISTS delivery_txid text;
+ALTER TABLE starprint_mints ADD COLUMN IF NOT EXISTS delivery_last_valid bigint;
+ALTER TABLE starprint_mints ADD COLUMN IF NOT EXISTS delivery_signed bytea;
+ALTER TABLE starprint_mints DROP CONSTRAINT IF EXISTS starprint_mints_network_check;
+ALTER TABLE starprint_mints ADD CONSTRAINT starprint_mints_network_check CHECK (network IN ('testnet', 'mainnet'));
 `
 
 export const SCHEMA = WALLET_SCHEMA + COMPANION_SCHEMA + MINT_SCHEMA

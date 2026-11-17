@@ -1,6 +1,6 @@
 import algosdk from 'algosdk'
 import {
-  ALGOD, INDEXER, ASA_ID, BONFIRE_ADDRESS, BONFIRE_APP_ID, NOTE_BURN, NOTE_SCORE,
+  ALGOD, INDEXER, ASA_ID, BONFIRE_ADDRESS, BONFIRE_APP_ID, NOTE_BURN, NOTE_SCORE, NOTE_STARPRINT_FEE, STARPRINT_FEE_ALGO,
   ARCADE_START_ROUND, TOKEN_START_ROUND, KNOWN_ACCOUNTS, CREATOR,
   SCORE_FEE_ALGO, PACT_POOL_APP, PACT_VAULT_APP, SCORE_SLIPPAGE, FREE_SCORES_BEFORE_ROUND,
   PACT_LP_ASSET, PACT_URL, PACT_FARMS,
@@ -301,14 +301,28 @@ async function simulate(algod: algosdk.Algodv2, txns: algosdk.Transaction[], sig
  * The swap output is quoted first by simulating the swap against the live pool.
  */
 export async function buildScoreGroup(algod: algosdk.Algodv2, sender: string, game: string, score: number, ms: number, day?: number) {
+  const note = enc.encode(NOTE_SCORE + JSON.stringify({ g: game, s: Math.floor(score), d: Math.round(ms), ...(day != null ? { day } : {}) }))
+  const g = await buildBuyAndBurnGroup(algod, sender, FEE_MICRO, note)
+  return { txns: g.txns, quoted: g.quoted, burn: g.burn, fees: g.fees, optIn: g.optIn, scoreTxId: g.payTxId }
+}
+
+/** The Starprint mint fee on MainNet: STARPRINT_FEE_ALGO buys COZMC and burns it, in the same group as a score,
+    with the note cozmc:starprint:v1:fee:<mintRef> on the payment. Built here; the mint flow uses it only once
+    MainNet minting is switched on. */
+export async function buildStarprintFeeGroup(algod: algosdk.Algodv2, sender: string, feeNote: string) {
+  if (!feeNote.startsWith(NOTE_STARPRINT_FEE)) throw new Error('Not a Starprint fee note.')
+  return buildBuyAndBurnGroup(algod, sender, Math.round(STARPRINT_FEE_ALGO * 1e6), enc.encode(feeNote))
+}
+
+/** Pay `feeMicro` to the Pact Vault (carrying `note`), swap it for COZMC and burn every unit in the Bonfire. */
+async function buildBuyAndBurnGroup(algod: algosdk.Algodv2, sender: string, feeMicro: number, note: Uint8Array) {
   const [sp, held, signer] = await Promise.all([algod.getTransactionParams().do(), fetchCozmcBalance(sender), signerOf(sender)])
   const optedIn = held != null
-  const note = enc.encode(NOTE_SCORE + JSON.stringify({ g: game, s: Math.floor(score), d: Math.round(ms), ...(day != null ? { day } : {}) }))
-  const needAlgo = SCORE_FEE_ALGO + 7 * Math.max(1000, Number(sp.minFee || 1000)) / 1e6 + (optedIn ? 0 : 0.1)   // fees: about 7 × the minimum fee
+  const needAlgo = feeMicro / 1e6 + 7 * Math.max(1000, Number(sp.minFee || 1000)) / 1e6 + (optedIn ? 0 : 0.1)   // fees: about 7 × the minimum fee
   const group = (minOut: bigint, burn: bigint | null) => {
     const txns: algosdk.Transaction[] = []
     if (!optedIn) txns.push(algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({ sender, receiver: sender, assetIndex: ASA_ID, amount: 0, suggestedParams: sp }))
-    txns.push(algosdk.makePaymentTxnWithSuggestedParamsFromObject({ sender, receiver: VAULT_ADDRESS, amount: FEE_MICRO, note, suggestedParams: sp }))
+    txns.push(algosdk.makePaymentTxnWithSuggestedParamsFromObject({ sender, receiver: VAULT_ADDRESS, amount: feeMicro, note, suggestedParams: sp }))
     txns.push(algosdk.makeApplicationNoOpTxnFromObject({
       sender, appIndex: PACT_POOL_APP, appArgs: [SWAP.getSelector(), algosdk.encodeUint64(minOut)],
       foreignAssets: [ASA_ID], foreignApps: [PACT_VAULT_APP],
@@ -323,7 +337,7 @@ export async function buildScoreGroup(algod: algosdk.Algodv2, sender: string, ga
     return txns
   }
 
-  // 1. quote: what does 0.1 ALGO buy right now?
+  // 1. quote: what does the fee buy right now?
   const quote = await simulate(algod, group(0n, null), signer)
   if (quote.failureMessage) throw new Error(explainFailure(quote.failureMessage, needAlgo))
   const logs = quote.txnResults[optedIn ? 1 : 2]?.txnResult.logs ?? []
@@ -338,7 +352,7 @@ export async function buildScoreGroup(algod: algosdk.Algodv2, sender: string, ga
   const check = await simulate(algod, txns, signer)
   if (check.failureMessage) throw new Error(explainFailure(check.failureMessage, needAlgo))
   const fees = txns.reduce((s, t) => s + Number(t.fee), 0) / 1e6
-  return { txns, quoted: toWhole(out), burn: toWhole(minOut), fees, optIn: !optedIn, scoreTxId: txns[optedIn ? 0 : 1].txID() }
+  return { txns, quoted: toWhole(out), burn: toWhole(minOut), fees, optIn: !optedIn, payTxId: txns[optedIn ? 0 : 1].txID() }
 }
 
 type Signer = (txns: algosdk.Transaction[]) => Promise<(Uint8Array | null)[]>

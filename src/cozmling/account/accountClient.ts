@@ -86,13 +86,14 @@ export async function accountWrite(address: string, operation: AccountAdoption |
 
 /* Starprint NFTs on TestNet (preview builds with VITE_COZMC_STARPRINT_MINT=1). */
 const MINT_ENDPOINT = '/api/starprint-mint'
-export type StarprintFee = { network: string; receiver: string; amountMicro: number; note: string }
+export type StarprintFee = { network: 'testnet' | 'mainnet'; receiver: string; amountMicro: number; note: string; burnsCozmc?: boolean }
 export type StarprintMint = {
   companionId: string; serial: number; status: 'awaiting_fee' | 'queued' | 'submitted' | 'confirmed'
   assetId: number | null; txid: string | null; explorer: string | null; publicName: string | null
   fee?: StarprintFee; feeTxid: string | null
+  delivery: { status: 'awaiting_optin' | 'sending' | 'delivered'; txid: string | null } | null
 }
-export type StarprintMintInfo = { network: string; issuer: string; balanceAlgo: number | null; dailyCap: number; feeMicro?: number; mints: StarprintMint[] }
+export type StarprintMintInfo = { network: 'testnet' | 'mainnet'; issuer: string; balanceAlgo: number | null; dailyCap: number; feeMicro?: number; mints: StarprintMint[] }
 
 export async function starprintMints(address: string, signal: AbortSignal): Promise<StarprintMintInfo> {
   const reply = object(await request(MINT_ENDPOINT, signal, undefined, address))
@@ -104,6 +105,12 @@ export async function mintStarprint(address: string, companionId: string, extra:
   const reply = object(await request(MINT_ENDPOINT, signal, {
     companionId, ...(extra.publicName ? { publicName: extra.publicName } : {}), ...(extra.feeTxid ? { feeTxid: extra.feeTxid } : {}),
   }, address))
+  if (!object(reply?.mint)) throw new Error('The Starprint mint service did not answer.')
+  return reply!.mint as StarprintMint
+}
+
+export async function deliverStarprint(address: string, companionId: string, signal: AbortSignal): Promise<StarprintMint> {
+  const reply = object(await request(MINT_ENDPOINT, signal, { companionId, action: 'deliver' }, address))
   if (!object(reply?.mint)) throw new Error('The Starprint mint service did not answer.')
   return reply!.mint as StarprintMint
 }

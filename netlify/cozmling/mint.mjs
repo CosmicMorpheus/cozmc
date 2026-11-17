@@ -1,6 +1,8 @@
 /* Starprint NFTs on Algorand TestNet: one asset per hatched Starprint, minted by the COZMC issuer.
 
-   A rehearsal for the MainNet launch, on TestNet only: this file refuses any other network.
+   TestNet by default (the rehearsal). MainNet only when the caller passes `mainnet: true` with an issuer key
+   from Netlify's secret storage and Mark's separate manager address: the function does that only when
+   COZMC_STARPRINT_NETWORK=mainnet and COZMC_STARPRINT_MAINNET=1 are both set, which is Mark's switch.
    - One mint per Starprint and network (a database constraint), whoever asks and however often.
    - The transaction is signed and saved (its id, its validity window, the signed bytes) before it is sent.
      A retry, a timeout or a restarted function re-sends those same bytes, or checks the chain, and only
@@ -13,8 +15,12 @@
      0.01 TestNet ALGO to the issuer, with the note cozmc:starprint:v1:fee:<mintRef>, checked on chain
      before anything is minted; each payment pays for one mint. On MainNet the same 0.01 ALGO will buy
      COZMC on the Pact pool and burn it in the Bonfire, like a score; that part isn't built or switched on here.
-   - The issuer's TestNet key is made once by the preview database and never leaves it. The MainNet
-     issuer is a separate account Mark creates and keeps in Netlify's secret storage; it isn't used here. */
+   - The fee on MainNet: the same group as posting a score. 0.01 ALGO paid to the Pact Vault with the fee note,
+     swapped for COZMC, and the COZMC sent to the Bonfire in the same group. The server checks all of that.
+   - Delivery: once minted, the player opts in to the asset and the issuer sends it. With a supply of 1 it can
+     only ever be sent once; a saved transfer is re-sent within its window, never doubled.
+   - The issuer's TestNet key is made once by the preview database and never leaves it. The MainNet issuer
+     key is only ever read from the environment (Netlify secret storage), never stored in the database. */
 import { randomBytes } from 'node:crypto'
 import algosdk from 'algosdk'
 import { CozmlingRequestError, transaction } from './http.mjs'
@@ -25,6 +31,18 @@ export const TESTNET = {
   indexer: 'https://testnet-idx.algonode.cloud',
   explorer: id => `https://lora.algokit.io/testnet/asset/${id}`,
 }
+export const MAINNET = {
+  network: 'mainnet',
+  algod: 'https://mainnet-api.algonode.cloud',
+  indexer: 'https://mainnet-idx.algonode.cloud',
+  explorer: id => `https://lora.algokit.io/mainnet/asset/${id}`,
+}
+export const MAINNET_ORIGIN = 'https://cozmc.us'
+/** MainNet COZMC, the Bonfire and the Pact Vault (the same values as src/config.ts; a test checks they match). */
+export const COZMC_ASA = 3739851986
+export const BONFIRE_ADDRESS = 'BNFIREKGRXEHCFOEQLTX3PU5SUCMRKDU7WHNBGZA4SXPW42OAHZBP7BPHY'
+export const PACT_VAULT_APP = 3656084807
+const VAULT_ADDRESS = algosdk.getApplicationAddress(PACT_VAULT_APP).toString()
 const NAME_BYTES = 32, UNIT = 'STAR', URL_BYTES = 96, VALID_ROUNDS = 40
 /** The mint fee: 0.01 ALGO. */
 export const FEE_MICRO = 10_000
@@ -46,19 +64,27 @@ export function assetFields({ serial, origin, manager, issuer, mintRef }) {
   }
 }
 
+/** A minted (or minting) Starprint's row by its serial, on either network: serials are unique across both. */
+export async function findPublicRecord(db, serial) {
+  const { rows: [row] } = await db.query("SELECT * FROM starprint_mints WHERE serial = $1 AND status IN ('submitted', 'confirmed')", [serial])
+  return row ?? null
+}
+
 /** The public description (ARC-3 JSON) of a minted Starprint: nothing private, nothing about the player. */
 export function publicMetadata(row, origin) {
   const traits = row.traits ?? {}
+  const main = row.network === 'mainnet'
   return {
     name: `Starprint #${row.serial}`,
-    description: 'A COZMC Starprint, minted on Algorand TestNet as a rehearsal for the MainNet launch. It has no value.',
+    description: main ? 'A COZMC Starprint: a one-of-one record of a hatched Starprint and its Star Chart.'
+      : 'A COZMC Starprint, minted on Algorand TestNet as a rehearsal for the MainNet launch. It has no value.',
     image: `${origin}/assets/card-face.webp`,
     image_mimetype: 'image/webp',
     external_url: `${origin}/#/cozmling`,
     properties: {
       serial: Number(row.serial),
-      edition: 'TestNet rehearsal',
-      network: 'testnet',
+      edition: main ? 'MainNet' : 'TestNet rehearsal',   // Genesis naming waits on Mark's Genesis policy
+      network: main ? 'mainnet' : 'testnet',
       ...(row.public_name ? { public_name: row.public_name } : {}),
       star_chart: { sun_sign: traits.sunSign ?? null, element: traits.element ?? null, archetype: traits.archetype ?? null },
     },
@@ -77,10 +103,21 @@ export function publicTraits(record) {
   }
 }
 
-export function createMintService({ db, origin, algod, indexer, dailyCap = 20, feeMicro = FEE_MICRO, net = TESTNET }) {
-  if (net.network !== 'testnet') throw new Error('Starprint minting here is TestNet only.')
+export function createMintService({ db, origin, algod, indexer, dailyCap = 20, feeMicro = FEE_MICRO, mainnet = false, issuerMnemonic, managerAddress }) {
+  const net = mainnet ? MAINNET : TESTNET
+  let fixedIssuer = null
+  if (mainnet) {
+    // MainNet: the key comes from secret storage only, and the manager is a different (offline) account
+    if (typeof issuerMnemonic !== 'string' || !algosdk.isValidAddress(String(managerAddress ?? ''))) throw new Error('MainNet minting needs its issuer key and manager address.')
+    // an asset's URL is fixed forever when it's minted: MainNet Starprints always point at cozmc.us
+    if (origin !== MAINNET_ORIGIN) throw new Error('MainNet Starprints can only be minted from https://cozmc.us.')
+    const account = algosdk.mnemonicToSecretKey(issuerMnemonic)
+    if (account.addr.toString() === managerAddress) throw new Error('The manager must be a different account from the issuer.')
+    fixedIssuer = { address: account.addr.toString(), sk: account.sk, manager: managerAddress }
+  }
 
   async function issuer() {
+    if (fixedIssuer) { issuerAddress = fixedIssuer.address; return fixedIssuer }
     const fresh = algosdk.generateAccount(), manager = algosdk.generateAccount()
     // the manager is a separate address (on MainNet, Mark's offline key); here its key is simply not kept
     await db.query(`INSERT INTO starprint_issuer (network, secret, manager_address) VALUES ($1, $2, $3)
@@ -103,8 +140,9 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, f
     companionId: row.companion_id, serial: Number(row.serial), status: row.status,
     assetId: row.asset_id == null ? null : Number(row.asset_id), txid: row.txid,
     explorer: row.asset_id == null ? null : net.explorer(row.asset_id), publicName: row.public_name,
-    ...(row.status === 'awaiting_fee' ? { fee: { network: net.network, receiver: issuerAddress, amountMicro: feeMicro, note: feeNote(row.mint_ref) } } : {}),
+    ...(row.status === 'awaiting_fee' ? { fee: { network: net.network, receiver: mainnet ? VAULT_ADDRESS : issuerAddress, burnsCozmc: mainnet, amountMicro: feeMicro, note: feeNote(row.mint_ref) } } : {}),
     feeTxid: row.fee_txid ?? null,
+    delivery: row.status !== 'confirmed' ? null : { status: row.delivery_status ?? 'awaiting_optin', txid: row.delivery_txid ?? null },
   })
   let issuerAddress = null
 
@@ -129,27 +167,42 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, f
     return null
   }
 
-  /** The fee payment, as the chain records it: confirmed, from this wallet, to the issuer, enough, with
-      this mint's note. From the node while it remembers it, otherwise the indexer. */
+  /** The fee payment, as the chain records it: confirmed, from this wallet, enough, with this mint's note, to
+      the issuer (TestNet) or to the Pact Vault in a group that burns COZMC in the Bonfire (MainNet).
+      null: not found yet. From the node while it remembers it, otherwise the indexer. */
   async function feePaid(txid, row, receiver) {
     let t = null
     try {
       const p = await algod.pendingTransactionInformation(txid).do()
       if (Number(p.confirmedRound ?? 0) > 0) {
         const x = p.txn.txn
-        t = { type: x.type, sender: String(x.sender), receiver: String(x.payment?.receiver ?? ''), amount: Number(x.payment?.amount ?? 0), note: x.note }
+        t = { type: x.type, sender: String(x.sender), receiver: String(x.payment?.receiver ?? ''), amount: Number(x.payment?.amount ?? 0), note: x.note,
+          group: x.group ? Buffer.from(x.group).toString('base64') : null, round: Number(p.confirmedRound) }
       }
     } catch { /* gone from the node's memory: ask the indexer */ }
     if (!t) {
       try {
         const x = (await indexer.lookupTransactionByID(txid).do()).transaction
-        if (x?.confirmedRound) t = { type: x.txType, sender: String(x.sender), receiver: String(x.paymentTransaction?.receiver ?? ''), amount: Number(x.paymentTransaction?.amount ?? 0), note: x.note }
+        if (x?.confirmedRound) t = { type: x.txType, sender: String(x.sender), receiver: String(x.paymentTransaction?.receiver ?? ''), amount: Number(x.paymentTransaction?.amount ?? 0), note: x.note,
+          group: x.group ? Buffer.from(x.group).toString('base64') : null, round: Number(x.confirmedRound) }
       } catch { /* not found yet */ }
     }
     if (!t) return null
     const note = t.note ? new TextDecoder().decode(t.note) : ''
-    return t.type === 'pay' && t.sender === row.wallet_address && t.receiver === receiver
+    const paid = t.type === 'pay' && t.sender === row.wallet_address && t.receiver === (mainnet ? VAULT_ADDRESS : receiver)
       && t.amount >= feeMicro && note === feeNote(row.mint_ref)
+    if (!paid || !mainnet) return paid
+    return burnedInGroup(t, row.wallet_address)
+  }
+
+  /** MainNet: the fee's group also sent COZMC from the player to the Bonfire. */
+  async function burnedInGroup(t, wallet) {
+    if (!t.group) return false
+    let page
+    try { page = await indexer.searchForTransactions().address(wallet).round(t.round).do() } catch { return null }
+    return (page.transactions ?? []).some(x => x.group && Buffer.from(x.group).toString('base64') === t.group
+      && x.txType === 'axfer' && String(x.sender) === wallet && Number(x.assetTransferTransaction?.assetId) === COZMC_ASA
+      && String(x.assetTransferTransaction?.receiver) === BONFIRE_ADDRESS && Number(x.assetTransferTransaction?.amount ?? 0) > 0)
   }
 
   async function markConfirmed(row, c) {
@@ -240,10 +293,40 @@ export function createMintService({ db, origin, algod, indexer, dailyCap = 20, f
     }
   }
 
-  async function publicRecord(serial) {
-    const { rows: [row] } = await db.query("SELECT * FROM starprint_mints WHERE network = $1 AND serial = $2 AND status IN ('submitted', 'confirmed')", [net.network, serial])
-    return row ?? null
+  /** Send a minted Starprint to the wallet that owns it, once that wallet has opted in to the asset. */
+  async function deliver(wallet, companionId) {
+    const { address, sk } = await issuer()
+    const { rows: [row] } = await db.query('SELECT * FROM starprint_mints WHERE network = $1 AND companion_id = $2', [net.network, companionId])
+    if (!row || row.wallet_address !== wallet) throw new CozmlingRequestError('companion_missing', 404)
+    if (row.status !== 'confirmed') throw new CozmlingRequestError('not_minted', 409)
+    const assetId = Number(row.asset_id)
+    const holding = async who => { try { return Number((await algod.accountAssetInformation(who, assetId).do()).assetHolding?.amount ?? 0) } catch { return null } }
+    const set = async (fields, values) => (await db.query(`UPDATE starprint_mints SET ${fields}, updated_at = now() WHERE network = $1 AND companion_id = $2 RETURNING *`,
+      [net.network, companionId, ...values])).rows[0]
+    const held = await holding(wallet)
+    if (held === 1) return view(row.delivery_status === 'delivered' ? row : await set("delivery_status = 'delivered', delivery_signed = NULL", []))
+    if (held === null) throw new CozmlingRequestError('not_opted_in', 409)            // the wallet hasn't opted in yet
+    const round = Number((await algod.status().do()).lastRound)
+    if (row.delivery_signed && round <= Number(row.delivery_last_valid)) {
+      try { await algod.sendRawTransaction(new Uint8Array(row.delivery_signed)).do() } catch { /* already sent */ }
+      return view(row)
+    }
+    if ((await holding(address)) !== 1) return view(row)                              // already on its way or gone
+    const params = await algod.getTransactionParams().do()
+    params.lastValid = BigInt(params.firstValid) + BigInt(VALID_ROUNDS)
+    const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({ sender: address, receiver: wallet, assetIndex: assetId, amount: 1, suggestedParams: params,
+      note: new TextEncoder().encode(`cozmc:starprint:v1:deliver:${row.mint_ref}`) })
+    const signed = txn.signTxn(sk)
+    const saved = await set("delivery_status = 'sending', delivery_txid = $3, delivery_last_valid = $4, delivery_signed = $5", [txn.txID(), Number(params.lastValid), Buffer.from(signed)])
+    try { await algod.sendRawTransaction(signed).do() } catch (error) {
+      if (/overspend|balance .* below min/i.test(String(error?.message ?? error))) throw new CozmlingRequestError('issuer_unfunded', 503)
+      return view(saved)
+    }
+    try { await algosdk.waitForConfirmation(algod, txn.txID(), 6) } catch { return view(saved) }
+    return view(await set("delivery_status = 'delivered', delivery_signed = NULL", []))
   }
 
-  return { info, list, mint, publicRecord }
+  const publicRecord = serial => findPublicRecord(db, serial)
+
+  return { info, list, mint, deliver, publicRecord, network: net.network }
 }
