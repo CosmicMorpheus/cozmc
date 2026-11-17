@@ -154,7 +154,7 @@ game and mint route answers "disabled".
 | `COZMC_PRODUCTION` | `1` | Allows production at all. |
 | `COZMC_PRODUCTION_SITE_ID` | the live site's ID | Settings copied to another site do nothing. |
 | `COZMC_ACCOUNT_ORIGIN` | `https://cozmc.us` | Exactly this; anything else refuses to start. |
-| `DATABASE_URL` | the **production** database (secret) | Its own database, never the preview's. On first use it is bound to cozmc.us, so a preview can never use it. |
+| (database) | **nothing to set** | cozmc.us uses its own **Netlify Database**, which Netlify has already created for the live site (separate from the preview's) and connects automatically (`NETLIFY_DB_URL`). On first use it is bound to cozmc.us, so no other site can use it. Set `DATABASE_URL` only to use an outside PostgreSQL instead. |
 | `COZMC_ACCOUNT_SESSION_SECRET` | 32 random bytes, base64url (secret) | Signs sign-in sessions. Required in production. |
 | `COZMC_GAME_ENABLED` | `1` to turn on | **Game switch**: adoption, saves and the Grove. Off: Starprints can still be read and exported. |
 | `COZMC_STARPRINT_MINT` | `1` to turn on | **Mint switch**: TestNet unless the two MainNet settings are also set. |
@@ -185,24 +185,21 @@ Starprints kept only in a browser (as on cozmc.us today) still hatch in the brow
 
 ### Safety built in
 
-- **The live database never changes itself.** Production stops with `database_not_migrated` until the
-  migration script has brought the database to the code's version.
+- **Database changes only through deploys.** Table changes are migration files in `netlify/database/migrations/`.
+  Netlify applies them on each deploy *before* publishing, and a failed migration stops that deploy from going
+  live. The live site never changes its own tables, and stops with `database_not_migrated` if they're behind.
+- **A snapshot on every publish.** Netlify snapshots the live database each time a deploy is published.
 - **The minting account is checked before the player pays.** A mint is refused, and nothing is charged, if the
   issuer can't afford it (`issuer_low`), or if the daily cap or monthly budget would be passed.
 - **Hourly low-balance alert.** It writes to the function logs, and to the webhook if one is set. It only reads.
 
 ### Steps to go live (outside 00:00–01:00 UTC)
 
-1. **Create the production database.** It must be separate from the preview's. Put its URL in `DATABASE_URL`
-   on the live site, marked secret.
-2. **Back up, then migrate**, from your own computer:
-
-   ```
-   DATABASE_URL=… scripts/db-backup.sh backup ~/cozmc-backups
-   DATABASE_URL=… node scripts/db-migrate.mjs            # dry run: shows the version, changes nothing
-   DATABASE_URL=… node scripts/db-migrate.mjs --apply
-   ```
-
+1. **The database is ready.** cozmc.us already has its own Netlify Database. The next live deploy applies the
+   account tables to it (`20261118000000_cozmc_accounts.sql`) before publishing, with every switch still off.
+   Nothing to run.
+2. **Before each switch change, take a snapshot** in Netlify (Data & Storage → Database → Snapshots). Netlify also
+   takes one automatically on every publish.
 3. **Set the production settings with the game and mint switches off**, and deploy. Check that the site works and
    that wallet sign-in works.
 4. **Turn the game on**: set `COZMC_GAME_ENABLED=1`, redeploy, then create a Starprint with your own wallet.
@@ -212,7 +209,9 @@ Starprints kept only in a browser (as on cozmc.us today) still hatch in the brow
 
 ### Pause
 
-- **Instantly, with no redeploy:**
+- **Instantly, with no redeploy** (Mark runs this himself; Claude never connects to the live database). Get the
+  connection string with `netlify database status --show-credentials` (Team Owners and Developers only), and
+  keep it out of chat, files and commits:
 
   ```
   DATABASE_URL=… node scripts/starprint-pause.mjs on      # pause minting
@@ -235,14 +234,12 @@ Starprints kept only in a browser (as on cozmc.us today) still hatch in the brow
   10-per-wallet change relied on a database rule that has since been removed, so they wouldn't enforce any
   per-wallet limit. Production starts on the new code, so this only matters if the live site were rolled back
   past it.
-- **Data:** if data itself goes wrong, pause minting and turn the game off first, then restore the latest backup:
-
-  ```
-  DATABASE_URL=… scripts/db-backup.sh restore ~/cozmc-backups/cozmc-YYYYMMDD-HHMMSS.dump --confirm
-  ```
-
-  Anything written after that backup is lost, and on-chain assets are not undone. Compare
-  `scripts/starprint-report.mjs` with the restored mint records before turning minting back on.
-
-Backup and restore were tested on PostgreSQL 16: a backup, a change, then a restore brought back the backed-up
-contents and schema version. Restoring refuses to run without `--confirm`.
+- **Data:** if data itself goes wrong, pause minting and turn the game off first. Restoring a Netlify snapshot
+  replaces the live database with that moment's copy. That's destructive and Mark's decision each time, not a
+  routine rollback.
+  - Anything written after the snapshot is lost.
+  - On-chain assets are not undone.
+  - Compare `scripts/starprint-report.mjs` with the restored mint records before turning minting back on.
+- **An outside PostgreSQL instead of Netlify's** (only if `DATABASE_URL` is set): `scripts/db-migrate.mjs` and
+  `scripts/db-backup.sh` do the same jobs by hand. Both were tested on PostgreSQL 16: dry run, apply, a backup,
+  then a restore that brought back the backed-up contents; restoring refuses to run without `--confirm`.

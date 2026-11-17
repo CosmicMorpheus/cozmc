@@ -38,7 +38,8 @@ function sessionSecret(env) {
 
    Production (cozmc.us): only when every one of these is set on the live site, so nothing turns it on by accident:
    COZMC_ACCOUNT_ENABLED=1 and COZMC_PRODUCTION=1, COZMC_PRODUCTION_SITE_ID naming this site, COZMC_ACCOUNT_ORIGIN
-   exactly https://cozmc.us, its own DATABASE_URL (never the preview's) and a 32-byte COZMC_ACCOUNT_SESSION_SECRET.
+   exactly https://cozmc.us, its own database (the live site's Netlify Database, or a DATABASE_URL, never the preview's)
+   and a 32-byte COZMC_ACCOUNT_SESSION_SECRET.
    The game and minting then have their own switches, off unless set (see switchesFrom). */
 export function readConfig(context, env = process.env, siteId = undefined) {
   if (env.COZMC_ACCOUNT_ENABLED !== '1') return null
@@ -46,7 +47,8 @@ export function readConfig(context, env = process.env, siteId = undefined) {
   if (context === 'production' && env.COZMC_PRODUCTION === '1') {
     if (!env.COZMC_PRODUCTION_SITE_ID || env.COZMC_PRODUCTION_SITE_ID !== siteId) return null   // settings copied to another site
     if (env.COZMC_ACCOUNT_ORIGIN !== PRODUCTION_ORIGIN) throw new Error('Production runs only at https://cozmc.us.')
-    if (!env.DATABASE_URL) throw new Error('Production needs its own database (DATABASE_URL).')
+    // its own database: the live site's Netlify Database (NETLIFY_DB_URL, set by Netlify), or an explicit DATABASE_URL
+    if (!env.DATABASE_URL && !env.NETLIFY_DB_URL) throw new Error('Production needs its own database (Netlify Database or DATABASE_URL).')
     const walletSecret = sessionSecret(env)
     if (!walletSecret) throw new Error('Production needs a 32-byte COZMC_ACCOUNT_SESSION_SECRET.')
     return {
