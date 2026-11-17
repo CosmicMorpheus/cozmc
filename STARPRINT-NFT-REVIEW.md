@@ -163,6 +163,7 @@ game and mint route answers "disabled".
 | `COZMC_STARPRINT_LOW_BALANCE_ALGO` | `2` | The level for the low-balance alert. |
 | `COZMC_ALERT_WEBHOOK_URL` | optional (secret) | A private Discord channel webhook for the hourly low-balance alert. |
 | `COZMC_STARPRINTS_PER_WALLET` | leave unset (10) | Starprints per wallet. |
+| `COZMC_EGG_MINIMUM_MINUTES` | your choice, for example `1440` (a day) | **Required to hatch in production.** How long a new egg waits before it can hatch, by the server's clock. Until it's set, eggs can be adopted but not hatched. Previews use 10 minutes and say so. |
 | Build flags | `VITE_COZMLING_V2=1`, `VITE_COZMLING_WALLET_ACCOUNT=1`, `VITE_COZMC_STARPRINT_MINT=1` | The player-facing parts. Never set `VITE_COZMLING_DEV` on the live site. |
 
 To make the session secret:
@@ -170,6 +171,17 @@ To make the session secret:
 ```
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
+
+### Hatching is decided by the server
+
+For Starprints saved to a wallet:
+- The server records when each egg may hatch at adoption, by its own clock (`COZMC_EGG_MINIMUM_MINUTES` later).
+- Only the server hatches an egg, at its own time, casting the Star Chart itself, and it saves the hatch time once.
+- Several devices asking at the same moment get the same hatch.
+- A save can't hatch an egg or change its hatch time, Star Chart or Starprint.
+- Pressing Hatch too early tells the player when it can hatch.
+
+Starprints kept only in a browser (as on cozmc.us today) still hatch in the browser; they can't be minted.
 
 ### Safety built in
 
