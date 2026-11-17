@@ -1,6 +1,7 @@
 import type { Config, Context } from '@netlify/functions'
 import { companionProblem } from '../../src/cozmling/store/validators'
-import { createAccountService, ordinaryLimitFrom } from '../cozmling/account.mjs'
+import { hatchWithSky } from '../../src/cozmling/celestial/chart'
+import { createAccountService, eggMinimumFrom, ordinaryLimitFrom } from '../cozmling/account.mjs'
 import { readBody, requestError, response, validateRequest } from '../cozmling/http.mjs'
 import { previewPool, readConfig } from '../cozmling/runtime.mjs'
 import { accountWallet } from '../cozmling/wallet-runtime.mjs'
@@ -19,12 +20,16 @@ export default async function cozmlingAccount(request: Request, context: Context
     const db = await previewPool(accountConfig)
     const wallet = await accountWallet(request, accountConfig, db)
     if (!wallet) return response({ error: 'wallet_required' }, 401)
-    const account = createAccountService({ db, validateRecord: companionProblem, ordinaryLimit: ordinaryLimitFrom(process.env) })
+    const account = createAccountService({
+      db, validateRecord: companionProblem, ordinaryLimit: ordinaryLimitFrom(process.env),
+      eggMinimumMs: eggMinimumFrom(process.env, accountConfig.production), previewHatch: !accountConfig.production, hatchRecord: hatchWithSky,
+    })
     if (request.method === 'GET') return response(await account.list(wallet))
 
     const body = await readBody(request)
     if (body.action === 'adopt') return response(await account.adopt(wallet, body.snapshot))
     if (body.action === 'save') return response(await account.save(wallet, body))
+    if (body.action === 'hatch') return response(await account.hatch(wallet, body))
     return response({ error: 'invalid_action' }, 400)
   } catch (error) {
     return requestError(error)

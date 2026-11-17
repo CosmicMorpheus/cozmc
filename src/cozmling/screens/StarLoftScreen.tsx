@@ -50,7 +50,22 @@ const GROVE_LANTERN = {
   rows: ['...ww...', '..w..w..', '..wwww..', '.wyyyyw.', '.wyffyw.', '.wyffyw.', '.wyyyyw.', '..wwww..'],
   palette: { w: '#7c542c', y: '#ec9b41', f: '#fff2ab' },
 }
-export function StarLoftScreen({ companion: c, arrived, accountBacked }: { companion: Companion; /** just adopted, or just switched to: start at the top of its page, keyboard included */ arrived?: boolean; accountBacked?: boolean }) {
+/** Why the server didn't hatch it yet, in the egg's own words. */
+function hatchRefusal(error: unknown, name: string) {
+  const payload = (error as { payload?: { error?: string; readyAt?: number; preview?: boolean; minutes?: number } })?.payload
+  if (payload?.error === 'egg_not_ready' && Number.isFinite(payload.readyAt)) {
+    const mins = Math.max(1, Math.ceil((payload.readyAt! - Date.now()) / 60_000))
+    const at = new Date(payload.readyAt!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    const preview = payload.preview ? ` (on this preview, an egg waits ${payload.minutes} minutes before it can hatch)` : ''
+    return `Not yet: ${name}’s egg is still settling in. It can hatch at ${at}, in about ${mins} minute${mins === 1 ? '' : 's'}${preview}.`
+  }
+  if (payload?.error === 'hatch_unconfigured') return `${name}’s egg can’t hatch just yet. Hatching opens soon.`
+  return `${name}’s egg couldn’t hatch just now. Nothing was lost; try again in a moment.`
+}
+
+export function StarLoftScreen({ companion: c, arrived, accountBacked, serverHatch }: { companion: Companion; /** just adopted, or just switched to: start at the top of its page, keyboard included */ arrived?: boolean; accountBacked?: boolean
+  /** a wallet-backed egg: the server hatches it (its clock and chart, once its wait is over) */
+  serverHatch?: (companionId: string, timeZone: string) => Promise<Companion> }) {
   const scene = useRef<RendererHandle>(null)
   const title = useRef<HTMLHeadingElement>(null)
   const hatchedHere = useRef(false)
@@ -104,6 +119,24 @@ export function StarLoftScreen({ companion: c, arrived, accountBacked }: { compa
     const store = cozmlingStore()
     if (!store || busy) return
     setBusy(true)
+    if (serverHatch) {
+      const before = c.kind === 'adventurer' ? c.starprint.coreSign : null
+      hatchedHere.current = true
+      try {
+        const born = await serverHatch(id, playerTimeZone())
+        setCrack(0)
+        scene.current?.react('hatch')
+        const sky = born.celestial, after = born.kind === 'adventurer' ? born.starprint.coreSign : null
+        setSay(!sky ? `Welcome to the world, ${name}!`
+          : before && after && before !== after ? `Welcome to the world, ${name}! It hatched just past the cusp: ${bigThree(sky)}.`
+          : `Welcome to the world, ${name}! ${bigThree(sky)}.`)
+      } catch (error) {
+        hatchedHere.current = false
+        setSay(hatchRefusal(error, name))
+        scene.current?.react('refuse')
+      } finally { setBusy(false) }
+      return
+    }
     // its sky is read in the same moment it hatches. If the astronomy can't load, it still hatches, and its
     // sky is read from its record (birthday and hatch time) as soon as it can be
     const sky = await loadSkyEngine().catch(() => null), tz = playerTimeZone()

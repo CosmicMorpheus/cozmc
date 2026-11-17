@@ -8,7 +8,7 @@ import { companionProblem } from '../src/cozmling/store/validators'
 import type { AdventurerCompanion, JourneyEvent } from '../src/cozmling/types'
 
 type Snapshot = { record: AdventurerCompanion; events: JourneyEvent[] }
-type Saved = { revision: number; snapshot: Snapshot }
+type Saved = { revision: number; snapshot: Snapshot; created_at?: Date; hatch_eligible_at?: Date | null }
 const wallet = 'A'.repeat(58)
 const otherWallet = 'B'.repeat(58)
 
@@ -28,13 +28,13 @@ function accountDatabase(wallet: string, companionId: string, eventId: string | 
       if (sql.startsWith('INSERT INTO cozmling_account_companions')) {
         assert.deepEqual(params.slice(0, 4), [wallet, companionId, eventId ? 'event' : 'ordinary', eventId])
         assert.equal(saved, null)
-        saved = { revision: 0, snapshot: JSON.parse(String(params[4])) }
+        saved = { revision: 0, snapshot: JSON.parse(String(params[4])), created_at: new Date(0), hatch_eligible_at: new Date(0) }   // its wait long over
         return { rows: [saved] }
       }
       if (sql.startsWith('UPDATE cozmling_account_companions')) {
         assert.deepEqual(params.slice(0, 2), [wallet, companionId])
         assert.ok(saved)
-        saved = { revision: saved.revision + 1, snapshot: JSON.parse(String(params[2])) }
+        saved = { ...saved, revision: saved.revision + 1, snapshot: JSON.parse(String(params[2])) }
         return { rows: [saved] }
       }
       if (sql.includes('cozmling_account_save_operations')) {
@@ -57,7 +57,7 @@ for (const source of ['ordinary', 'event'] as const) {
     const eventId = source === 'event' ? 'light-the-grove' : null
     const companionId = eventId ? `hatch-${randomUUID()}` : randomUUID()
     const db = accountDatabase(wallet, companionId, eventId)
-    const account = createAccountService({ db, validateRecord: companionProblem })
+    const account = createAccountService({ db, validateRecord: companionProblem, hatchRecord: hatchWithSky })
     const now = Date.parse('2026-11-18T16:30:55Z')
     const choices = { name: 'Luna', birthday: '2026-11-04', look: 'b' as const, skin: 'lilac' }
     const starprint = provisionalStarprint(choices.birthday, now)
@@ -67,20 +67,20 @@ for (const source of ['ordinary', 'event'] as const) {
     assert.equal(added.companion.snapshot.record.hatch.status, 'egg')
     assert.equal(added.companion.snapshot.events[0].type, 'adopted')
 
+    // a save can't hatch it: the server does, with its own clock and chart
     const at = now + 60_000
-    const hatched = hatchWithSky(egg, at, 'America/New_York')
-    assert.ok(hatched?.kind === 'adventurer')
-    const snapshot: Snapshot = {
-      record: { ...hatched, revision: 1, updatedAt: at },
+    const byClient = hatchWithSky(egg, at, 'America/New_York')
+    assert.ok(byClient?.kind === 'adventurer')
+    await assert.rejects(account.save(wallet, { expectedRevision: 0, opId: randomUUID(), snapshot: {
+      record: { ...byClient, revision: 1, updatedAt: at },
       events: [...added.companion.snapshot.events, { eventId: `hatched:${companionId}`, companionId, type: 'hatched', at }],
-    }
-    const operation = { expectedRevision: 0, opId: randomUUID(), snapshot }
-    const saved = await account.save(wallet, operation)
+    } }), /hatch_on_server/)
+    const saved = await account.hatch(wallet, { companionId, timeZone: 'America/New_York' })
 
     assert.equal(saved.companion.revision, 1)
     assert.equal(saved.companion.snapshot.record.celestial?.kind, 'birth')
     assert.equal(saved.companion.snapshot.record.starprint.status, 'calculated')
-    assert.deepEqual(await account.save(wallet, operation), saved, 'Retry returns the existing revision')
+    assert.deepEqual(await account.hatch(wallet, { companionId }), saved, 'asking again returns the same hatch')
     assert.deepEqual(await account.list(wallet), { companions: [saved.companion] })
     assert.deepEqual(await account.list(otherWallet), { companions: [] })
   })

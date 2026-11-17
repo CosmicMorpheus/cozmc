@@ -210,7 +210,8 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
 
   return (
     <>
-      <StarLoftScreen key={selected.companionId} companion={selected} arrived={moved} accountBacked={isOwned} />
+      <StarLoftScreen key={selected.companionId} companion={selected} arrived={moved} accountBacked={isOwned}
+        serverHatch={isOwned && account ? (id, tz) => account.hatch(id, tz) : undefined} />
       {walletPanel}
       {mayAdoptOrdinary && (
         <p className="sl-new">

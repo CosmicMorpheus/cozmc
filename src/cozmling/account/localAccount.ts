@@ -242,6 +242,15 @@ export async function resolveWithAccount(repo: Repository, wallet: string, compa
   if (fresh.metadata && fresh.snapshot) await stageSave(repo, wallet, fresh, fresh.metadata, fresh.snapshot, remote.revision, signal)
 }
 
+/* The server hatches a wallet-backed egg (its clock, its chart, once), and this device takes the account's copy.
+   Anything this device changed meanwhile is merged as usual; the hatch and the chart are always the server's. */
+export async function hatchWithWallet(repo: Repository, wallet: string, companionId: string, timeZone: string, signal: AbortSignal) {
+  const remote = await accountWrite(wallet, { action: 'hatch', companionId, timeZone }, signal)
+  signal.throwIfAborted()
+  await reconcile(repo, wallet, remote, signal)
+  return remote
+}
+
 const draftKey = (wallet: string, kind: 'ordinary' | 'event') => `wallet-adoption:${wallet}:${kind}`
 function readDraft(value: unknown): Draft | null {
   return value && typeof value === 'object' && 'stamp' in value && typeof value.stamp === 'string'

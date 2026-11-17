@@ -77,7 +77,7 @@ test('real PostgreSQL: sign-in, both adoption paths, a second device, another wa
     const bobSession = b.verified.cookie!
 
     // ordinary adoption with a cap of 1: a starter egg, the same answer to a repeat, the first again at the cap
-    const account = createAccountService({ db, validateRecord: companionProblem, ordinaryLimit: 1 })
+    const account = createAccountService({ db, validateRecord: companionProblem, ordinaryLimit: 1, hatchRecord: hatchWithSky })
     const now = Date.now()
     const egg = (companionId: string, look: 'a' | 'b' = 'a', skin = 'teal') => {
       const choices = { name: 'Orbi', birthday: '2026-05-05', look, skin }
@@ -95,13 +95,9 @@ test('real PostgreSQL: sign-in, both adoption paths, a second device, another wa
     await Promise.all(Array.from({ length: 12 }, () => capped.adopt(many, { record: egg(randomUUID()), events: [] })))
     assert.equal((await capped.list(many)).companions.length, 10, 'never more than 10, even all at once')
 
-    // play on the first device: hatch, and a save the second device must see
-    const hatched = hatchWithSky(adopted.companion.snapshot.record, now + 60_000, 'America/New_York')
-    assert.ok(hatched?.kind === 'adventurer')
-    const saved = await account.save(alice.address, {
-      expectedRevision: 0, opId: randomUUID(),
-      snapshot: { record: { ...hatched, revision: 1, updatedAt: now + 60_000 }, events: [...adopted.companion.snapshot.events, { eventId: `hatched:${ordinaryId}`, companionId: ordinaryId, type: 'hatched', at: now + 60_000 }] },
-    })
+    // play on the first device: hatch (on the server, once its wait is over), and a change the second device must see
+    await db.query("UPDATE cozmling_account_companions SET hatch_eligible_at = now() WHERE companion_id = $1", [ordinaryId])
+    const saved = await account.hatch(alice.address, { companionId: ordinaryId, timeZone: 'America/New_York' })
     assert.equal(saved.companion.revision, 1)
     await assert.rejects(account.save(alice.address, { expectedRevision: 0, opId: randomUUID(), snapshot: saved.companion.snapshot }), /stale_save/, 'a stale write is refused')
 

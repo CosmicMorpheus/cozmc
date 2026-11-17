@@ -5,9 +5,10 @@ const WALLET_ENDPOINT = '/api/cozmling-wallet'
 const ACCOUNT_ENDPOINT = '/api/cozmling-account'
 
 export type AccountSnapshot = { record: AdventurerCompanion; events: JourneyEvent[] }
-export type AccountCompanion = { revision: number; snapshot: AccountSnapshot }
+export type AccountCompanion = { revision: number; snapshot: AccountSnapshot; /** an egg: when the server lets it hatch */ hatchReadyAt?: number }
 export type AccountOperation = { action: 'save'; expectedRevision: number; opId: string; snapshot: AccountSnapshot }
 export type AccountAdoption = { action: 'adopt'; snapshot: AccountSnapshot }
+export type AccountHatch = { action: 'hatch'; companionId: string; timeZone: string }
 
 export class AccountRequestError extends Error {
   status: number
@@ -79,7 +80,7 @@ export async function accountCompanions(address: string, signal: AbortSignal) {
   return reply.companions.map(readCompanion)
 }
 
-export async function accountWrite(address: string, operation: AccountAdoption | AccountOperation, signal: AbortSignal) {
+export async function accountWrite(address: string, operation: AccountAdoption | AccountOperation | AccountHatch, signal: AbortSignal) {
   const reply = object(await request(ACCOUNT_ENDPOINT, signal, operation, address))
   return readCompanion(reply?.companion)
 }

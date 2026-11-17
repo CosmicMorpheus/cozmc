@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cozmlingStore } from '../index'
 import type { AdventurerCompanion } from '../types'
 import { AccountRequestError } from './accountClient'
-import { adoptWithWallet, resolveWithAccount, syncWalletAccount } from './localAccount'
+import { adoptWithWallet, hatchWithWallet, resolveWithAccount, syncWalletAccount } from './localAccount'
 
 type CloudState = 'loading' | 'synced' | 'saving' | 'offline' | 'conflict' | 'too-large'
 
@@ -107,8 +107,24 @@ export function useCloudAccount(wallet: string | null, signal: AbortSignal | nul
     }
   }
 
+  /** The server hatches this wallet-backed egg; it throws an AccountRequestError (egg_not_ready, with readyAt) if it's too soon. */
+  async function hatch(companionId: string, timeZone: string) {
+    const store = cozmlingStore()
+    if (!whileVerified || !store || !wallet || !signal) throw new Error('Verify your Algorand wallet to hatch it.')
+    try {
+      const remote = await hatchWithWallet(store.repo, wallet, companionId, timeZone, signal)
+      signal.throwIfAborted()
+      await store.reload()
+      wake.current()
+      return remote.snapshot.record
+    } catch (error) {
+      if (!signal.aborted && error instanceof AccountRequestError && error.status === 401) invalid.current()
+      throw error
+    }
+  }
+
   return {
     state: whileVerified ? state : 'loading', loaded: whileVerified && loaded.current,
-    conflicts: whileVerified ? conflicts : [], adopt, resolve, retry: () => wake.current(),
+    conflicts: whileVerified ? conflicts : [], adopt, resolve, hatch, retry: () => wake.current(),
   }
 }
