@@ -83,3 +83,23 @@ export async function accountWrite(address: string, operation: AccountAdoption |
   const reply = object(await request(ACCOUNT_ENDPOINT, signal, operation, address))
   return readCompanion(reply?.companion)
 }
+
+/* Starprint NFTs on TestNet (preview builds with VITE_COZMC_STARPRINT_MINT=1). */
+const MINT_ENDPOINT = '/api/starprint-mint'
+export type StarprintMint = {
+  companionId: string; serial: number; status: 'queued' | 'submitted' | 'confirmed'
+  assetId: number | null; txid: string | null; explorer: string | null; publicName: string | null
+}
+export type StarprintMintInfo = { network: string; issuer: string; balanceAlgo: number | null; dailyCap: number; mints: StarprintMint[] }
+
+export async function starprintMints(address: string, signal: AbortSignal): Promise<StarprintMintInfo> {
+  const reply = object(await request(MINT_ENDPOINT, signal, undefined, address))
+  if (!reply || !Array.isArray(reply.mints)) throw new Error('The Starprint mint service did not answer.')
+  return reply as StarprintMintInfo
+}
+
+export async function mintStarprint(address: string, companionId: string, publicName: string | null, signal: AbortSignal): Promise<StarprintMint> {
+  const reply = object(await request(MINT_ENDPOINT, signal, { companionId, ...(publicName ? { publicName } : {}) }, address))
+  if (!object(reply?.mint)) throw new Error('The Starprint mint service did not answer.')
+  return reply!.mint as StarprintMint
+}

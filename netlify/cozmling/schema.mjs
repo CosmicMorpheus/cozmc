@@ -96,4 +96,33 @@ CREATE TABLE IF NOT EXISTS cozmling_account_save_operations (
 );
 `
 
-export const SCHEMA = WALLET_SCHEMA + COMPANION_SCHEMA
+/** Starprint NFTs on TestNet: the issuer the database keeps, and one mint per Starprint (mint.mjs). */
+export const MINT_SCHEMA = `
+CREATE TABLE IF NOT EXISTS starprint_issuer (
+  network text PRIMARY KEY CHECK (network = 'testnet'),
+  secret bytea NOT NULL CHECK (octet_length(secret) = 64),
+  manager_address text NOT NULL CHECK (manager_address ~ '^[A-Z2-7]{58}$')
+);
+
+CREATE TABLE IF NOT EXISTS starprint_mints (
+  network text NOT NULL CHECK (network = 'testnet'),
+  companion_id text NOT NULL,
+  wallet_address text NOT NULL CHECK (wallet_address ~ '^[A-Z2-7]{58}$'),
+  serial bigserial UNIQUE,
+  mint_ref text NOT NULL UNIQUE CHECK (mint_ref ~ '^[a-f0-9]{24}$'),
+  status text NOT NULL CHECK (status IN ('queued', 'submitted', 'confirmed')),
+  public_name text,
+  traits jsonb NOT NULL,
+  txid text,
+  first_valid bigint,
+  last_valid bigint,
+  signed_txn bytea,
+  asset_id bigint UNIQUE,
+  confirmed_round bigint,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (network, companion_id)
+);
+`
+
+export const SCHEMA = WALLET_SCHEMA + COMPANION_SCHEMA + MINT_SCHEMA

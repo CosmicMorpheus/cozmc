@@ -9,3 +9,5 @@ export const COZMLING_DEV: boolean = COZMLING_V2 && (import.meta.env.DEV || impo
 export const COZMLING_WALLET_ACCOUNT: boolean = import.meta.env.VITE_COZMLING_WALLET_ACCOUNT === '1'
 /** The Community Hatch event (Light the Grove), in wallet-account builds. Off in regular builds. */
 export const COZMC_COMMUNITY_HATCH: boolean = import.meta.env.VITE_COZMC_COMMUNITY_HATCH === '1'
+/** Minting hatched Starprints as NFTs on Algorand TestNet, in preview builds. Off in regular builds. */
+export const COZMC_STARPRINT_MINT: boolean = import.meta.env.VITE_COZMC_STARPRINT_MINT === '1'

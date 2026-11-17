@@ -20,7 +20,8 @@ import { StarLoftScreen } from './StarLoftScreen'
 import { CommunityHatchPanel, type CommunityHatchWalletAction } from '../community/CommunityHatchPanel'
 import { COMMUNITY_HATCH_LANTERN, type CommunityHatchReceipt } from '../community/communityHatch'
 import { CozmlingShare } from '../community/CozmlingShare'
-import { COZMC_COMMUNITY_HATCH, COZMLING_WALLET_ACCOUNT } from '../flags'
+import { COZMC_COMMUNITY_HATCH, COZMC_STARPRINT_MINT, COZMLING_WALLET_ACCOUNT } from '../flags'
+import { StarprintMintPanel } from '../account/StarprintMint'
 import { WalletAccess, useWalletVerification } from '../account/walletSession'
 import { useCloudAccount } from '../account/useCloudAccount'
 import { downloadCozmlingCopy } from '../components/SaveStatus'
@@ -209,6 +210,8 @@ function CozmlingView({ sub = null, extra = null, account: given }: Route & { ac
       {mayAdoptOrdinary && <button className="btn btn--phos" type="button" onClick={() => setAdopting(true)}>Adopt a wallet-backed Cozmling</button>}
       {isOwned && selected.kind === 'adventurer' && selected.hatch.status === 'hatched'
         && <CozmlingShare companion={selected} />}
+      {COZMC_STARPRINT_MINT && isOwned && account?.address && selected.kind === 'adventurer' && selected.hatch.status === 'hatched'
+        && <StarprintMintPanel key={selected.companionId} companion={selected} wallet={account.address} />}
       {communityNotice && <p className="sl-fine" role="status">{communityNotice}</p>}
       {(active.length > 1 || (COZMLING_DEV && !account)) && (
         <section className="sl-switch" aria-label="Your Cozmlings">
