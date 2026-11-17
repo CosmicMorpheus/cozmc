@@ -102,3 +102,15 @@ test('real PostgreSQL: the instant pause takes effect on the next request, and r
     await admin.end()
   }
 })
+
+test('a preview function start leaves an up-to-date database alone (no table locks to deadlock with a hatch)', async () => {
+  const { ensureSchema } = await import('../netlify/cozmling/runtime.mjs')
+  const { SCHEMA_VERSION } = await import('../netlify/cozmling/schema.mjs')
+  const queries: string[] = []
+  const db = {
+    async query(sql: string) { queries.push(sql); return { rows: sql.includes('cozmc_schema_version') ? [{ version: SCHEMA_VERSION }] : [] } },
+    async connect() { throw new Error('no transaction should be opened') },
+  }
+  await ensureSchema(db)
+  assert.deepEqual(queries.map(q => q.replace(/\s+/g, ' ').trim()), ['SELECT version FROM cozmc_schema_version WHERE singleton = TRUE'], 'only the version is read')
+})

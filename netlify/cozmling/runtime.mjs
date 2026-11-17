@@ -121,7 +121,9 @@ export async function schemaVersion(db) {
 }
 
 export function ensureSchema(db) {
-  schemaReady ??= transaction(db, migrate).catch((error) => {
+  // Already up to date: change nothing. Even an "IF NOT EXISTS" table change takes a lock on the whole table, and a
+  // function starting while another one is mid-hatch could deadlock with it (seen on the preview: Postgres 40P01).
+  schemaReady ??= schemaVersion(db).then((version) => version >= SCHEMA_VERSION ? undefined : transaction(db, migrate)).catch((error) => {
     schemaReady = undefined
     throw error
   })
