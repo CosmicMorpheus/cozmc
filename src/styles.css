@@ -850,7 +850,7 @@ body.konami::before { content: ""; position: fixed; inset: 0; z-index: 250; poin
   .logo { margin-right: auto }
   .tabs { display: none }
 }
-@media (max-width: 1500px) {     /* Discord and X stay in the footer and the menu; this keeps Connect on screen at laptop widths */
+@media (max-width: 1560px) {     /* Discord and X stay in the footer and the menu; this keeps Connect on screen at laptop widths */
   .top .top__social { display: none }
 }
 @media (min-width: 1201px) and (max-width: 1440px) {     /* the tabs just fit beside Connect (or a connected wallet) */

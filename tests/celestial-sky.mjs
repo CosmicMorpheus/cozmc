@@ -266,7 +266,13 @@ await scenario('the cosmic vortex: behind everything, its sphere behind the char
   await page.waitForTimeout(1500)
   const v = await vortex(page)
   assert.equal(v.parent, 'BODY'); assert.equal(v.position, 'fixed'); assert.equal(v.z, '-1'); assert.equal(v.events, 'none'); assert.equal(v.hidden, 'true')
-  assert.equal(v.state, 'running'); assert.equal(v.on, true); assert.ok(v.fallback, 'a still CSS sky stands behind the canvas')
+  assert.equal(v.state, 'running'); assert.equal(v.on, true)
+  // on the Star Chart pages the nebula is the sky: the vortex is see-through (no CSS sky of its own), and the
+  // nebula fills the window behind it, so a canvas that can't draw still leaves a sky
+  assert.equal(v.fallback, false, 'the vortex lets the nebula show through')
+  const nebula = await page.evaluate(() => { const n = document.querySelector('.sk-nebula'), r = n?.getBoundingClientRect(), cs = n && getComputedStyle(n)
+    return n && { parent: n.parentElement.tagName, z: cs.zIndex, fills: r.width === innerWidth && r.height === innerHeight, beforeVortex: !!(n.compareDocumentPosition(document.querySelector('.cv')) & Node.DOCUMENT_POSITION_FOLLOWING) } })
+  assert.deepEqual(nebula, { parent: 'BODY', z: '-1', fills: true, beforeVortex: true }, 'the nebula fills the window, behind the vortex')
   // the sphere sits exactly behind the wheel: same centre, its rim just outside the wheel's outer ring
   assert.ok(Math.abs(v.sphere[0] - v.wheel[0]) <= 1 && Math.abs(v.sphere[1] - v.wheel[1]) <= 1, JSON.stringify(v))
   assert.ok(Math.abs(v.sphere[2] - (v.wheel[2] * 214 / 220 + 2)) <= 1, JSON.stringify(v))

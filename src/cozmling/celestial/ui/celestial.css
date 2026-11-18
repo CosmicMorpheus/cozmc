@@ -152,3 +152,10 @@
   .sk-table th, .sk-table td { padding: 3px 4px }
   .sk-reading { min-height: 0 }
 }
+
+/* The nebula behind the Star Chart pages (NebulaBackground.tsx): above the site's starry background, below the
+   page and its Cosmic Vortex; a soft dark wash keeps every word and line of the chart easy to read. */
+.sk-nebula { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: #07050f }
+.sk-nebula video, .sk-nebula img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9 }
+.sk-nebula::after { content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 38%, rgba(5, 4, 12, .25), rgba(5, 4, 12, .62) 100%) }

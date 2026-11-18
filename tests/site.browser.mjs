@@ -120,7 +120,7 @@ try {
   // Measured in the site's own pixel font: a narrower fallback font would hide an overflow.
   const fonts = await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 12px Silkscreen') })
   if (!fonts) console.log('  (Google Fonts could not load here: header widths measured in a fallback font)')
-  for (const width of [1201, 1280, 1366, 1440, 1501, 1920]) {
+  for (const width of [1201, 1280, 1366, 1440, 1501, 1561, 1600, 1920]) {
     await page.setViewportSize({ width, height: 860 })
     await go('home')
     const fit = await page.evaluate(() => {

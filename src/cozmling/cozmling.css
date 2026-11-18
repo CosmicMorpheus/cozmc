@@ -295,6 +295,7 @@
     radial-gradient(circle at 22% 72%, rgba(16, 26, 78, .45), transparent 60%),
     #020207 }
 .cv.is-on { opacity: 1 }
+.cv.cv--clear { background: transparent }       /* a page background (the Star Chart's nebula) shows through */
 .cv canvas { display: block; width: 100%; height: 100% }
 @media (prefers-reduced-motion: reduce) { .cv { transition: none } }
 

@@ -154,10 +154,13 @@ interface Mote { s: number; a: number; size: number; tw: number; ph: number }
 interface Streak { a: number; period: number; offset: number; tint: number; width: number }
 interface Star { x: number; y: number; size: number; tw: number; ph: number; tint: number }
 
-export function createVortex(canvas: HTMLCanvasElement, opts: { seed?: string; palette?: VortexPalette; quality?: Quality } = {}): Vortex {
-  const ctx = canvas.getContext('2d', { alpha: false })
+/* `clearSky`: leave out the solid night sky and the crimson clouds, so a background behind the canvas (the Star
+   Chart's nebula) shows through; the stars, the rings and the sphere are drawn as usual. */
+export function createVortex(canvas: HTMLCanvasElement, opts: { seed?: string; palette?: VortexPalette; quality?: Quality; clearSky?: boolean } = {}): Vortex {
+  // opaque is faster to draw; a clear sky needs the canvas to be see-through
+  const ctx = canvas.getContext('2d', { alpha: opts.clearSky === true })
   if (!ctx) throw new Error('no 2D canvas')
-  const pal = opts.palette ?? ORIGIN_PALETTE, quality = opts.quality ?? 'high', seed = opts.seed ?? 'origin'
+  const pal = opts.palette ?? ORIGIN_PALETTE, quality = opts.quality ?? 'high', seed = opts.seed ?? 'origin', clearSky = opts.clearSky === true
   const HIGH = quality === 'high'
   const RINGS = HIGH ? 46 : 30, MOTES = HIGH ? 230 : 110, TWINKLES = HIGH ? 36 : 20, POINTS = HIGH ? 220 : 130, STREAKS = HIGH ? 46 : 24
   const r0 = rng(`${seed}:disk`)
@@ -199,8 +202,9 @@ export function createVortex(canvas: HTMLCanvasElement, opts: { seed?: string; p
     base.width = Math.round(W * DPR); base.height = Math.round(H * DPR)
     const g = base.getContext('2d')!, rand = rng(`${seed}:stars`)
     g.setTransform(DPR, 0, 0, DPR, 0, 0)
-    g.fillStyle = rgba(pal.space, 1); g.fillRect(0, 0, W, H)
-    for (const [fx, fy, rr, a] of [[0.22, 0.72, 0.95, 0.42], [0.86, 0.16, 0.7, 0.3], [0.6, 0.45, 0.55, 0.14]] as const) {
+    if (clearSky) g.clearRect(0, 0, W, H)
+    else { g.fillStyle = rgba(pal.space, 1); g.fillRect(0, 0, W, H) }
+    for (const [fx, fy, rr, a] of clearSky ? [] : [[0.22, 0.72, 0.95, 0.42], [0.86, 0.16, 0.7, 0.3], [0.6, 0.45, 0.55, 0.14]] as const) {
       const rg = g.createRadialGradient(W * fx, H * fy, 0, W * fx, H * fy, Math.max(W, H) * rr)
       rg.addColorStop(0, rgba(pal.wash, a)); rg.addColorStop(1, rgba(pal.wash, 0))
       g.fillStyle = rg; g.fillRect(0, 0, W, H)
@@ -272,6 +276,7 @@ export function createVortex(canvas: HTMLCanvasElement, opts: { seed?: string; p
     if (!W) return
     ctx!.setTransform(1, 0, 0, 1, 0, 0)
     ctx!.globalCompositeOperation = 'source-over'; ctx!.globalAlpha = 1
+    if (clearSky) ctx!.clearRect(0, 0, ctx!.canvas.width, ctx!.canvas.height)     // nothing solid underneath: start each frame clear
     ctx!.drawImage(base, 0, 0)
     ctx!.setTransform(DPR, 0, 0, DPR, 0, 0)
 
@@ -285,7 +290,7 @@ export function createVortex(canvas: HTMLCanvasElement, opts: { seed?: string; p
 
     // the clouds drift, almost too slowly to notice
     const dx = Math.sin((t / 97) * 6.283) * 11, dy = Math.sin((t / 131) * 6.283 + 1.3) * 7
-    ctx!.drawImage(clouds, 0, 0, clouds.width, clouds.height, -MARGIN + dx, -MARGIN + dy, W + MARGIN * 2, H + MARGIN * 2)
+    if (!clearSky) ctx!.drawImage(clouds, 0, 0, clouds.width, clouds.height, -MARGIN + dx, -MARGIN + dy, W + MARGIN * 2, H + MARGIN * 2)
 
     if (sphere && sphere.r > 4) drawSphereAndDisk(t, sphere)
 

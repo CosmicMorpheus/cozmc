@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { signInfo } from '../../domain/starprint'
 import { nameOf } from '../../domain/care'
 import { CosmicVortex } from '../../components/CosmicVortex'
+import { NebulaBackground } from './NebulaBackground'
 import type { Companion } from '../../types'
 import { aspectReading, aspectTitle, bigThree, DISCLAIMER, moonPhaseReading, patternReading, placementReading, type Reading } from '../interpret'
 import { clockText } from '../observatory'
@@ -69,9 +70,10 @@ export function ObservatoryScreen({ companion: c, mode = 'birth' }: { companion:
 
   return (
     <div className="sk-page sl-page" style={{ '--o1': o1, '--o2': o2 } as CSSProperties}>
+      <NebulaBackground />
       <p className="sk-back"><a className="link" href="#/cozmling">← Back to the Star Loft</a></p>
       {/* a living sky behind the chart: its dark sphere sits exactly behind the wheel */}
-      <CosmicVortex stage={stage} anchor={wheel} anchorRatio={WHEEL_RIM} />
+      <CosmicVortex stage={stage} anchor={wheel} anchorRatio={WHEEL_RIM} clearSky />
       <div className="sk-stage" ref={stage}>
         {mode === 'today'
           ? <TodaySky natal={sky} name={name} live={today} wheel={wheel} tabs={tabs} onChoose={bringIntoView} />

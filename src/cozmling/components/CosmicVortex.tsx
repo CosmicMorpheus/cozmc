@@ -15,13 +15,15 @@ import { createVortex, diskFor, dprFor, type Quality, type Sphere, type Vortex, 
 /** The moment shown when it is kept still. */
 const STILL_AT = 23.5
 
-export function CosmicVortex({ stage, anchor, anchorRatio = 1, seed, palette }: {
+export function CosmicVortex({ stage, anchor, anchorRatio = 1, seed, palette, clearSky = false }: {
   stage: RefObject<Element | null>
   /** the element the sphere sits behind (its centre; its half-width × anchorRatio is the sphere's radius) */
   anchor?: RefObject<Element | null>
   anchorRatio?: number
   seed?: string
   palette?: VortexPalette
+  /** let a page background behind it show through (no solid sky, no clouds) */
+  clearSky?: boolean
 }) {
   const host = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null)
 
@@ -34,7 +36,7 @@ export function CosmicVortex({ stage, anchor, anchorRatio = 1, seed, palette }: 
     const small = matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 700
     const quality: Quality = small || (navigator.hardwareConcurrency ?? 8) <= 4 ? 'low' : 'high'
     let vortex: Vortex
-    try { vortex = createVortex(canvas, { seed, palette, quality }) } catch { el.dataset.state = 'fallback'; el.classList.add('is-on'); return }
+    try { vortex = createVortex(canvas, { seed, palette, quality, clearSky }) } catch { el.dataset.state = 'fallback'; el.classList.add('is-on'); return }
 
     let still = calm.matches || saving, onStage = true, raf = 0, last = -1e9, t0 = performance.now()
     let frames = 0, spent = 0, builtW = 0, builtH = 0, sphereOnScreen = true
@@ -102,7 +104,7 @@ export function CosmicVortex({ stage, anchor, anchorRatio = 1, seed, palette }: 
       document.removeEventListener('visibilitychange', onVisibility)
       calm.removeEventListener?.('change', onCalm)
     }
-  }, [stage, anchor, anchorRatio, seed, palette])
+  }, [stage, anchor, anchorRatio, seed, palette, clearSky])
 
-  return createPortal(<div ref={host} className="cv" aria-hidden="true"><canvas ref={cv} /></div>, document.body)
+  return createPortal(<div ref={host} className={clearSky ? 'cv cv--clear' : 'cv'} aria-hidden="true"><canvas ref={cv} /></div>, document.body)
 }

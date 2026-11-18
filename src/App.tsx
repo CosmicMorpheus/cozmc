@@ -141,6 +141,8 @@ export function App() {
     try { return localStorage.getItem(BACKGROUND_MOTION) === 'paused' } catch { return false }
   })
   const playingGame = route.tab === 'arcade' && (route.sub === 'adrift' || GAMES.some(game => game.id === route.sub))
+  // pages with a background of their own (the Star Chart's nebula) follow the same Pause background choice
+  useEffect(() => { document.documentElement.toggleAttribute('data-background-paused', backgroundPaused) }, [backgroundPaused])
   const main = useRef<HTMLElement>(null)
   useEffect(() => {
     const on = () => {
