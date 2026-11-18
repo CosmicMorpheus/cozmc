@@ -323,7 +323,7 @@
 .community-hatch__first h3 { margin: 0 0 4px; font-size: 1.05em; color: #ffcf6b; letter-spacing: .04em; }
 .community-hatch__first p { margin: 0; }
 .community-hatch__first-you { margin-top: 6px !important; color: #ffcf6b; }
-.community-hatch__first-list { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 0; padding-left: 1.4em; }
+.community-hatch__first-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 18px; margin: 8px 0 0; padding: 0; list-style: decimal inside; }
 .community-hatch__first-list li { min-width: 0; }
 .community-hatch__first-list code { font-size: .92em; overflow-wrap: anywhere; }
 .community-hatch__first-list .is-you { color: #ffcf6b; }
