@@ -8,6 +8,7 @@ import { Ticker } from './components/Ticker'
 import { Unlocks } from './components/Unlocks'
 import { InstallButton } from './components/Install'
 import { CommunityButtons, PactButton, Social } from './components/Community'
+import { Motto } from './components/Motto'
 import { GiveawayChip } from './components/GiveawayStrip'
 import { DailyChip } from './components/DailyPrize'
 import { dailyLive } from './lib/dailyPrize'
@@ -258,6 +259,9 @@ export function App() {
         </div>
         </Suspense>
       </main>
+
+      {/* the motto at the foot of every page, except the Star Chart (its nebula is the page) */}
+      {!(route.tab === 'cozmling' && route.sub === 'sky') && <div className="wrap"><Motto /></div>}
 
       <footer className="foot">
         <div className="wrap foot__in">

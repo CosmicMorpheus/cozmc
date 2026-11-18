@@ -401,12 +401,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .today__by span { color: var(--dim) }
 .today__actions { position: absolute; right: clamp(16px, 3vw, 26px); top: clamp(18px, 3vw, 28px); display: flex; gap: 18px; align-items: center }
 .link--btn { display: inline-flex; align-items: center; gap: 6px }
-.motto { margin-top: clamp(64px, 9vw, 100px); display: grid; justify-items: center; gap: clamp(12px, 2.2vw, 24px); text-align: center;
-  padding: clamp(20px, 4vw, 44px) clamp(14px, 3.4vw, 38px); border: 1px solid #293c25;
-  background: radial-gradient(ellipse at 50% 100%, #10200e, transparent 56%), #030503 }
+.motto { margin-top: clamp(48px, 7vw, 80px); display: grid; justify-items: center; gap: clamp(12px, 2.2vw, 24px); text-align: center;
+  padding: clamp(20px, 4vw, 44px) clamp(14px, 3.4vw, 38px); background: #000 }   /* plain black: no frame, no glow */
 .motto p { font: 800 clamp(1.45rem, 3.4vw, 2.9rem)/1 var(--sans); font-stretch: 70%; text-transform: uppercase; text-wrap: balance }
 .motto__brick { display: block; width: min(100%, 960px) }
-.motto__brick img { display: block; width: 100%; height: auto }
+.motto__brick img, .motto__brick video { display: block; width: 100%; height: auto; background: #000 }
 .motto span { font: 700 12px/1.5 var(--pixel); color: var(--mist); text-transform: uppercase }
 
 /* ---------- about ---------- */
