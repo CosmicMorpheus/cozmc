@@ -238,109 +238,61 @@ await scenario('an adventurer from before skies existed, opened straight at the 
   await p.ctx.close()
 })
 
-/* ---------------- the Cosmic Vortex behind the birth sky ---------------- */
+/* ---------------- the Star Chart's background: the violet nebula, and nothing else ---------------- */
 
-const vortex = page => page.evaluate(() => {
-  const cv = document.querySelector('.cv'), css = cv && getComputedStyle(cv), w = document.querySelector('.sk-wheel')?.getBoundingClientRect()
-  return cv && { parent: cv.parentElement.tagName, state: cv.dataset.state, on: cv.classList.contains('is-on'), frames: +(cv.dataset.frames ?? 0), ms: +(cv.dataset.ms ?? 0), sphere: (cv.dataset.sphere ?? '').split(',').map(Number),
-    position: css.position, z: css.zIndex, events: css.pointerEvents, hidden: cv.getAttribute('aria-hidden'), fallback: css.backgroundImage !== 'none',
-    wheel: w && [w.left + w.width / 2, w.top + w.height / 2, w.width / 2] }
+const nebula = page => page.evaluate(() => {
+  const n = document.querySelector('.sk-nebula'), css = n && getComputedStyle(n), r = n?.getBoundingClientRect()
+  return n && { parent: n.parentElement.tagName, position: css.position, z: css.zIndex, events: css.pointerEvents, hidden: n.getAttribute('aria-hidden'),
+    fills: Math.round(r.width) === innerWidth && Math.round(r.height) === innerHeight,
+    video: !!n.querySelector('video'), still: !!n.querySelector('img'), vortex: document.querySelectorAll('.cv').length }
 })
-/** A few pixels from the canvas, in CSS pixels from the top left of the screen. */
-const pixels = (page, points) => page.evaluate(points => {
-  const c = document.querySelector('.cv canvas'), k = c.width / c.clientWidth, g = c.getContext('2d')
-  return points.map(([x, y]) => [...g.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data].slice(0, 3))
-}, points)
-const canvasPrint = page => page.evaluate(() => { const c = document.querySelector('.cv canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let h = 0; for (let i = 0; i < d.length; i += 4 * 211) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) >>> 0; return h })
 async function toObservatory(p) {
   const page = await p.open()
   await adopt(page, { birthday: '2026-11-05' })
   await button(page, 'Hatch now').click(); await button(page, 'Play').waitFor()
   await page.goto(`${SITE}/#/cozmling/sky`); await page.locator('.sk-wheel').waitFor()
-  await page.waitForFunction(() => document.querySelector('.cv')?.dataset.sphere, null, { timeout: 10000 })
+  await page.locator('.sk-nebula').waitFor({ state: 'attached', timeout: 10000 })
   return page
 }
 
-await scenario('the cosmic vortex: behind everything, its sphere behind the chart, moving, and nothing on the page is blocked', async () => {
+await scenario('the star chart sits on the nebula alone: no swirl, nothing blocked, the wheel on its own dark disc', async () => {
   const p = await profile({ viewport: DESK }), page = await toObservatory(p)
-  await page.waitForTimeout(1500)
-  const v = await vortex(page)
-  assert.equal(v.parent, 'BODY'); assert.equal(v.position, 'fixed'); assert.equal(v.z, '-1'); assert.equal(v.events, 'none'); assert.equal(v.hidden, 'true')
-  assert.equal(v.state, 'running'); assert.equal(v.on, true)
-  // on the Star Chart pages the nebula is the sky: the vortex is see-through (no CSS sky of its own), and the
-  // nebula fills the window behind it, so a canvas that can't draw still leaves a sky
-  assert.equal(v.fallback, false, 'the vortex lets the nebula show through')
-  const nebula = await page.evaluate(() => { const n = document.querySelector('.sk-nebula'), r = n?.getBoundingClientRect(), cs = n && getComputedStyle(n)
-    return n && { parent: n.parentElement.tagName, z: cs.zIndex, fills: r.width === innerWidth && r.height === innerHeight, beforeVortex: !!(n.compareDocumentPosition(document.querySelector('.cv')) & Node.DOCUMENT_POSITION_FOLLOWING) } })
-  assert.deepEqual(nebula, { parent: 'BODY', z: '-1', fills: true, beforeVortex: true }, 'the nebula fills the window, behind the vortex')
-  // the sphere sits exactly behind the wheel: same centre, its rim just outside the wheel's outer ring
-  assert.ok(Math.abs(v.sphere[0] - v.wheel[0]) <= 1 && Math.abs(v.sphere[1] - v.wheel[1]) <= 1, JSON.stringify(v))
-  assert.ok(Math.abs(v.sphere[2] - (v.wheel[2] * 214 / 220 + 2)) <= 1, JSON.stringify(v))
-  // the wheel is on top and still takes clicks
-  assert.ok(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.sk-wheel'), v.wheel))
+  await page.waitForTimeout(800)
+  const n = await nebula(page)
+  assert.deepEqual(n, { parent: 'BODY', position: 'fixed', z: '-1', events: 'none', hidden: 'true', fills: true, video: true, still: false, vortex: 0 }, JSON.stringify(n))
+  // the wheel is on top, takes clicks, and its centre is dark whatever the nebula is doing behind it
+  const w = await page.evaluate(() => { const r = document.querySelector('.sk-wheel').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2] })
+  assert.ok(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.sk-wheel'), w))
+  assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.sk-w-bg')).fill), 'none', 'the wheel has its own dark disc')
   await page.locator('.sk-w-pl').first().click()
   assert.match(await page.locator('.sk-reading h2').innerText(), / IN /)
-  // it really is drawn: black behind the chart, gold in the disk beside it, and it moves
-  const [centre] = await pixels(page, [[v.sphere[0], v.sphere[1]]])
-  assert.ok(centre.every(x => x < 12), `the sphere is black: ${centre}`)
-  // the disk beside the sphere: a share of the pixels there are warm gold (its rings are thin lines, so not most of them)
-  const warm = await page.evaluate(([x, y, r]) => {
-    const c = document.querySelector('.cv canvas'), k = c.width / c.clientWidth
-    const x0 = Math.max(0, Math.round((x - r * 2.4) * k)), w = Math.round(r * 1.15 * k), y0 = Math.round((y - r * 0.3) * k), h = Math.round(r * 0.6 * k)
-    const d = c.getContext('2d').getImageData(x0, y0, w, h).data
-    let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 80 && d[i + 1] > 50 && d[i] > d[i + 2] * 1.3) n++
-    return n / (d.length / 4)
-  }, v.sphere)
-  assert.ok(warm > 0.03, `gold in the disk beside the sphere: ${(warm * 100).toFixed(1)}% of pixels`)
-  // still animating (its frame count is published every 30 frames, so a slow test machine gets a few seconds)
-  const before = (await vortex(page)).frames
-  await page.waitForFunction(n => +(document.querySelector('.cv')?.dataset.frames ?? 0) > n, before, { timeout: 5000 }).catch(() => assert.fail('still animating'))
-  // it follows the chart as the page scrolls, and goes away (and stops) once the chart has gone by
-  await page.evaluate(() => scrollBy(0, 400)); await page.waitForTimeout(300)
-  const moved = await vortex(page)
-  assert.ok(Math.abs(moved.sphere[1] - moved.wheel[1]) <= 1, 'still behind the wheel after scrolling')
-  await page.evaluate(() => scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(1200)
-  const away = await vortex(page)
-  assert.equal(away.state, 'paused'); assert.equal(away.on, false)
-  const stillFrames = away.frames
-  await page.waitForTimeout(800)
-  assert.equal((await vortex(page)).frames, stillFrames, 'no frames are drawn while it is away')
-  await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(600)
-  assert.equal((await vortex(page)).state, 'running')
-  console.log(`     (drawing one frame: ${(await vortex(page)).ms} ms in this test browser, which draws without a graphics card)`)
-  // it belongs to the observatory only: back in the Star Loft it is gone
+  await shot(page, 'nebula-observatory-1280')
+  // it belongs to the Star Chart only: back in the Star Loft it is gone
   await page.getByRole('link', { name: '← Back to the Star Loft' }).click(); await button(page, 'Play').waitFor()
-  assert.equal(await page.locator('.cv').count(), 0)
-  await shot(page, 'vortex-loft-without-1280')
+  assert.equal(await page.locator('.sk-nebula').count(), 0)
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
 })
 
-await scenario('the cosmic vortex with reduced motion: one still frame that stays behind the chart, and nothing moves', async () => {
+await scenario('the nebula with reduced motion: a still picture, and nothing moves', async () => {
   const p = await profile({ viewport: PHONE, reducedMotion: 'reduce' }), page = await toObservatory(p)
-  await page.waitForTimeout(400)
-  const v = await vortex(page)
-  assert.equal(v.state, 'static'); assert.equal(v.on, true)
-  const a = await canvasPrint(page); await page.waitForTimeout(1200)
-  assert.equal(await canvasPrint(page), a, 'the picture does not change by itself')
-  await page.evaluate(() => scrollBy(0, 300)); await page.waitForTimeout(300)
-  const after = await vortex(page)
-  assert.ok(Math.abs(after.sphere[1] - after.wheel[1]) <= 1, 'redrawn behind the wheel after scrolling')
+  const n = await nebula(page)
+  assert.equal(n.video, false); assert.equal(n.still, true); assert.equal(n.vortex, 0)
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
 })
 
-await scenario('the cosmic vortex on a 360 px phone: the header, legend and panels stay readable and nothing sticks out', async () => {
+await scenario('the star chart on a 360 px phone: the header, legend and panels stay readable and nothing sticks out', async () => {
   const p = await profile({ viewport: SMALL }), page = await toObservatory(p)
-  await page.waitForTimeout(1200)
+  await page.waitForTimeout(800)
   assert.deepEqual(await sticksOut(page), [])
   const legend = await page.locator('.sk-legend').boundingBox()
   assert.ok(legend.x >= 0 && legend.x + legend.width <= 360)
   // text sits on dark: panels are nearly opaque, and the header has its own shade
   const shade = await page.evaluate(() => [getComputedStyle(document.querySelector('.sk-stage .panel')).backgroundColor, getComputedStyle(document.querySelector('.sk-head'), '::before').backgroundImage])
   assert.match(shade[0], /rgba\(4, 5, 11, 0\.8\d\)/); assert.match(shade[1], /radial-gradient/)
-  await shot(page, 'vortex-observatory-360')
-  await page.evaluate(() => scrollBy(0, 500)); await shot(page, 'vortex-observatory-360-scrolled')
+  await shot(page, 'nebula-observatory-360')
+  await page.evaluate(() => scrollBy(0, 500)); await shot(page, 'nebula-observatory-360-scrolled')
   assert.deepEqual(p.errors, [])
   await p.ctx.close()
 })
@@ -399,15 +351,14 @@ await scenario('today’s sky: the Star Loft reads it by itself; the observatory
   assert.match(await page.locator('.sk-about').innerText(), /astronomy-engine 2\.1\.19[\s\S]*doesn’t change Orbi’s needs, rewards or scores/)
   assert.deepEqual(await sticksOut(page), [])
   await shot(page, 'today-1280', true)
-  // to the birth sky and back: the same vortex carries on behind both
-  await page.evaluate(() => { document.querySelector('.cv').dataset.mark = 'same' })
+  // to the birth sky and back: the same nebula carries on behind both
+  await page.evaluate(() => { document.querySelector('.sk-nebula').dataset.mark = 'same' })
   await page.getByRole('link', { name: 'Birth sky' }).click()
   await page.waitForURL(/#\/cozmling\/sky$/); await page.locator('.sk-reading h2').filter({ hasText: /SUN IN/i }).waitFor()
   assert.match(await page.locator('h1').innerText(), /ORBI’S BIRTH SKY/i)
   await page.waitForTimeout(500)
-  const v = await vortex(page)
-  assert.equal(await page.evaluate(() => document.querySelector('.cv')?.dataset.mark), 'same'); assert.equal(v.state, 'running')
-  assert.ok(Math.abs(v.sphere[1] - v.wheel[1]) <= 1 && Math.abs(v.sphere[0] - v.wheel[0]) <= 1, 'behind the birth wheel')
+  assert.equal(await page.evaluate(() => document.querySelector('.sk-nebula')?.dataset.mark), 'same', 'the same nebula, not a new one')
+  assert.equal(await page.locator('.cv').count(), 0, 'and no swirl')
   // once today's reading is saved, the Star Loft shows it without loading the astronomy at all
   const loft = await p.ctx.newPage(), asked = []
   loft.on('request', r => { if (ENGINE_FILES.test(r.url())) asked.push(r.url()) })

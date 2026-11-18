@@ -3,11 +3,12 @@
    Moon's phase, and a plain account of how the chart was worked out and what (if anything) couldn't be.
    Today's sky (#/cozmling/sky/today): where the planets are now, and how they meet its own sky (TodaySky.tsx).
    Choosing anything shows what it might mean, in the reading box beside the wheel. Both views share one
-   stage, so the Cosmic Vortex behind it carries on, undisturbed, when the view changes. */
+   stage and one background, the violet nebula (NebulaBackground.tsx), which carries on, undisturbed, when the view
+   changes. (The Cosmic Vortex, components/CosmicVortex.tsx, used to swirl behind the wheel; Mark chose the nebula
+   alone, Nov 18, 2026. The component is kept for other pages.) */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { signInfo } from '../../domain/starprint'
 import { nameOf } from '../../domain/care'
-import { CosmicVortex } from '../../components/CosmicVortex'
 import { NebulaBackground } from './NebulaBackground'
 import type { Companion } from '../../types'
 import { aspectReading, aspectTitle, bigThree, DISCLAIMER, moonPhaseReading, patternReading, placementReading, type Reading } from '../interpret'
@@ -20,7 +21,7 @@ import { skyVisitKey } from '../../story/useDailyStory'
 import { useLiveSky } from '../useLiveSky'
 import { skyColors, useLateSky } from '../useSky'
 import { BODIES, dms, ORDINAL, POINTS } from '../zodiac'
-import { AS_TEXT as T, ASPECT_GLYPH, ChartWheel, WHEEL_RIM } from './ChartWheel'
+import { AS_TEXT as T, ASPECT_GLYPH, ChartWheel } from './ChartWheel'
 import { AboutToday, TodaySky } from './TodaySky'
 import './celestial.css'
 
@@ -72,8 +73,6 @@ export function ObservatoryScreen({ companion: c, mode = 'birth' }: { companion:
     <div className="sk-page sl-page" style={{ '--o1': o1, '--o2': o2 } as CSSProperties}>
       <NebulaBackground />
       <p className="sk-back"><a className="link" href="#/cozmling">← Back to the Star Loft</a></p>
-      {/* a living sky behind the chart: its dark sphere sits exactly behind the wheel */}
-      <CosmicVortex stage={stage} anchor={wheel} anchorRatio={WHEEL_RIM} clearSky />
       <div className="sk-stage" ref={stage}>
         {mode === 'today'
           ? <TodaySky natal={sky} name={name} live={today} wheel={wheel} tabs={tabs} onChoose={bringIntoView} />
