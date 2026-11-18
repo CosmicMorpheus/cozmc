@@ -20,17 +20,20 @@ function utcTimestamp(value) {
 
 export function readEventConfig(raw) {
   if (!raw) return null
-  const { eventId, title, opensAt, endsAt, claimUntil, goal } = JSON.parse(raw) ?? {}
+  const { eventId, title, opensAt, endsAt, claimUntil, goal, firstPlaces = 0 } = JSON.parse(raw) ?? {}
   const openMs = utcTimestamp(opensAt)
   const endMs = utcTimestamp(endsAt)
   const claimMs = utcTimestamp(claimUntil)
   if (typeof eventId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(eventId) ||
       typeof title !== 'string' || !title.trim() || title.length > 100 ||
       !(openMs < endMs && endMs < claimMs) || endMs - openMs > 14 * DAY_MS ||
-      !Number.isSafeInteger(goal) || goal < 1) throw new Error('Invalid Community Hatch preview event configuration.')
+      !Number.isSafeInteger(goal) || goal < 1 ||
+      !Number.isSafeInteger(firstPlaces) || firstPlaces < 0 || firstPlaces > 100) throw new Error('Invalid Community Hatch preview event configuration.')
 
-  const fingerprint = createHash('sha256').update(JSON.stringify([openMs, endMs, claimMs, goal, EVENT_LOOKS])).digest('hex')
-  return { event: { eventId, title: title.trim(), opensAt, endsAt, claimUntil, goal }, openMs, endMs, claimMs, fingerprint }
+  // firstPlaces: how many of the first wallets to light a lantern are named (0: none). Part of the rules once set.
+  const rules = [openMs, endMs, claimMs, goal, EVENT_LOOKS, ...(firstPlaces ? [firstPlaces] : [])]
+  const fingerprint = createHash('sha256').update(JSON.stringify(rules)).digest('hex')
+  return { event: { eventId, title: title.trim(), opensAt, endsAt, claimUntil, goal, ...(firstPlaces ? { firstPlaces } : {}) }, openMs, endMs, claimMs, fingerprint }
 }
 
 function phaseAt(config, at) {
@@ -40,6 +43,13 @@ function phaseAt(config, at) {
   return 'ended'
 }
 
+/* The first wallets to light a lantern, by when their first one was lit (ties: by address). Only for an event that
+   names first places; firstPlaces is a checked whole number (readEventConfig), so it is written into the query. */
+const firstWalletsSql = (places) => places ? `,
+    (SELECT coalesce(jsonb_agg(wallet_address ORDER BY first_lit, wallet_address), '[]'::jsonb) FROM (
+      SELECT wallet_address, min(lit_at) AS first_lit FROM cozmling_hatch_contributions WHERE event_id = $1
+      GROUP BY wallet_address ORDER BY first_lit, wallet_address LIMIT ${Number(places)}) first) AS first_wallets` : ''
+
 async function readStatus(db, config, wallet, at) {
   const { rows: [row] } = await db.query(`SELECT
     (SELECT fingerprint FROM cozmling_hatch_events WHERE event_id = $1) AS fingerprint,
@@ -47,7 +57,7 @@ async function readStatus(db, config, wallet, at) {
     EXISTS(SELECT 1 FROM cozmling_hatch_contributions WHERE event_id = $1 AND wallet_address = $2) AS eligible,
     EXISTS(SELECT 1 FROM cozmling_hatch_contributions WHERE event_id = $1 AND wallet_address = $2 AND contribution_day = $3) AS contributed_today,
     (SELECT jsonb_build_object('companionId', companion_id, 'lookId', look_id) FROM cozmling_hatch_claims
-      WHERE event_id = $1 AND wallet_address = $2) AS receipt`,
+      WHERE event_id = $1 AND wallet_address = $2) AS receipt${firstWalletsSql(config.event.firstPlaces)}`,
   [config.event.eventId, wallet, new Date(at).toISOString().slice(0, 10)])
   if (row.fingerprint && row.fingerprint !== config.fingerprint) throw new Error('Use a new event ID for changed Community Hatch rules.')
 
@@ -57,6 +67,7 @@ async function readStatus(db, config, wallet, at) {
     phase: phaseAt(config, at), total, eligible: row.eligible, contributedToday: row.contributed_today,
     lanternEligible: row.eligible && total >= config.event.goal,
     receipt: row.receipt, authenticatedWallet: wallet,
+    ...(config.event.firstPlaces ? { firstLanterns: row.first_wallets } : {}),
   }
 }
 

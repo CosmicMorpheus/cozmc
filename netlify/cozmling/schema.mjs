@@ -141,11 +141,14 @@ ALTER TABLE starprint_mints ADD CONSTRAINT starprint_mints_network_check CHECK (
 /** Which tables the database has. Production stops with database_not_migrated until scripts/db-migrate.mjs has
     applied at least this version. Raise it whenever the SQL above changes, and keep changes additive, so the
     previous code still runs on the new tables (that is what makes a site rollback safe). */
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 7
 const VERSION_SCHEMA = `
 -- hatching decided by the server: when each egg may hatch, and when it did (both by the server's clock, set once)
 ALTER TABLE cozmling_account_companions ADD COLUMN IF NOT EXISTS hatch_eligible_at timestamptz;
 ALTER TABLE cozmling_account_companions ADD COLUMN IF NOT EXISTS hatched_at timestamptz;
+
+-- Light the Grove: when each lantern was lit, so the first wallets to light one can be named (version 7)
+ALTER TABLE cozmling_hatch_contributions ADD COLUMN IF NOT EXISTS lit_at timestamptz NOT NULL DEFAULT now();
 
 -- switches that take effect at once, without a redeploy (scripts/starprint-pause.mjs sets them)
 CREATE TABLE IF NOT EXISTS cozmc_runtime_flags (

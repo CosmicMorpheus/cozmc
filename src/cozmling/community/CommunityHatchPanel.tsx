@@ -194,6 +194,7 @@ function WalletHatchPanel({
             <li><Sparkle aria-hidden="true" /><span>If the community reaches its goal, everyone who lit a lantern also gets a Grove lantern for their Star Loft.</span></li>
           </ul>
         )}
+        {status?.firstPlaces && status.firstLanterns && <FirstLanterns places={status.firstPlaces} wallets={status.firstLanterns} mine={status.authenticatedWallet} open={status.phase === 'open'} endsAt={status.endsAt} />}
         <div className="community-hatch__actions">
           {status ? <>
             {status.phase === 'upcoming' && <p>The Grove opens {eventWhen(status.opensAt)}.</p>}
@@ -245,5 +246,28 @@ function WalletHatchPanel({
         </div>
       </div>
     </section>
+  )
+}
+
+/** The first wallets to light a lantern, in order, with the player's own place if they have one. */
+function FirstLanterns({ places, wallets, mine, open, endsAt }: { places: number; wallets: string[]; mine: string | null; open: boolean; endsAt: string }) {
+  const place = mine ? wallets.indexOf(mine) + 1 : 0
+  const left = places - wallets.length
+  return (
+    <div className="community-hatch__first">
+      <h3>The first {places} lanterns</h3>
+      <p>
+        {left > 0
+          ? open ? <>The first {places} wallets to light a lantern by <time dateTime={endsAt}>{eventWhen(endsAt)}</time> are named here. {left === places ? 'No lanterns yet: be the first.' : `${left} of ${places} places left.`}</> : <>The lanterns have closed.</>
+          : <>All {places} places are taken.</>}
+        {' '}Rewards for the first {places} will be announced in the COZMC Discord.
+      </p>
+      {place > 0 && <p className="community-hatch__first-you"><strong>You lit lantern #{place}.</strong></p>}
+      {wallets.length > 0 && (
+        <ol className="community-hatch__first-list">
+          {wallets.map(w => <li key={w} title={w} className={w === mine ? 'is-you' : undefined}><code>{w.slice(0, 5)}…{w.slice(-5)}</code>{w === mine && ' (you)'}</li>)}
+        </ol>
+      )}
+    </div>
   )
 }

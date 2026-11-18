@@ -308,3 +308,22 @@
   .community-hatch__rules li { gap: 12px; padding: 8px 0 }
   .community-hatch__rules li + li { border-inline-start: 0; border-top: 1px solid #8270b54d }
 }
+
+/* The first wallets to light a lantern */
+.community-hatch__first {
+  margin: 14px clamp(9px, 1.4cqw, 18px) 0;
+  padding: 12px 16px;
+  border: 1px solid #ffb02066;
+  border-radius: 12px;
+  background: #0b061a99;
+  text-align: left;
+  font-size: clamp(14px, 1.5cqw, 16px);
+  line-height: 1.45;
+}
+.community-hatch__first h3 { margin: 0 0 4px; font-size: 1.05em; color: #ffcf6b; letter-spacing: .04em; }
+.community-hatch__first p { margin: 0; }
+.community-hatch__first-you { margin-top: 6px !important; color: #ffcf6b; }
+.community-hatch__first-list { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 0; padding-left: 1.4em; }
+.community-hatch__first-list li { min-width: 0; }
+.community-hatch__first-list code { font-size: .92em; overflow-wrap: anywhere; }
+.community-hatch__first-list .is-you { color: #ffcf6b; }

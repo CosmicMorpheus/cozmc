@@ -31,6 +31,9 @@ export type CommunityHatchStatus = {
   lanternEligible: boolean
   receipt: CommunityHatchReceipt | null
   authenticatedWallet: string | null
+  /** When the event names its first lanterns: how many places, and the wallets in them so far, first first. */
+  firstPlaces?: number
+  firstLanterns?: string[]
 }
 
 export function isCommunityHatchStatus(value: unknown): value is CommunityHatchStatus {
@@ -47,6 +50,10 @@ export function isCommunityHatchStatus(value: unknown): value is CommunityHatchS
   if (status.authenticatedWallet !== null
     && (typeof status.authenticatedWallet !== 'string' || !/^[A-Z2-7]{58}$/.test(status.authenticatedWallet))) return false
   if (status.authenticatedWallet === null && (status.eligible || status.contributedToday || status.lanternEligible || status.receipt !== null)) return false
+  if (status.firstPlaces !== undefined || status.firstLanterns !== undefined) {
+    if (!Number.isSafeInteger(status.firstPlaces) || Number(status.firstPlaces) < 1 || !Array.isArray(status.firstLanterns)) return false
+    if (status.firstLanterns.length > Number(status.firstPlaces) || status.firstLanterns.some(w => typeof w !== 'string' || !/^[A-Z2-7]{58}$/.test(w))) return false
+  }
   if (status.receipt === null) return true
   if (!status.receipt || typeof status.receipt !== 'object') return false
   const receipt = status.receipt as Record<string, unknown>
