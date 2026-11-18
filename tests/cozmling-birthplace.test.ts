@@ -130,6 +130,17 @@ test('nothing about the player’s own location is ever read', () => {
   assert.deepEqual(Object.keys(b).sort(), ['choice', 'elevationM', 'fictional', 'id', 'latitude', 'longitude', 'name', 'place', 'source', 'timeZone', 'version'], 'only the place itself is kept')
 })
 
+test('US cities are found as people write them, "City, ST", Royal Oak like any other', async () => {
+  const { placeBook } = await import('../src/cozmling/celestial/places/places')
+  const raw = (await import('../src/cozmling/celestial/places/cities.json', { with: { type: 'json' } })).default
+  const book = placeBook(raw as any)
+  for (const [q, name, region] of [['Royal Oak, MI', 'Royal Oak', 'Michigan'], ['Austin, TX', 'Austin', 'Texas'], ['Portland, OR', 'Portland', 'Oregon'],
+    ['Portland, ME', 'Portland', 'Maine'], ['Springfield, IL', 'Springfield', 'Illinois'], ['Detroit, MI', 'Detroit', 'Michigan']]) {
+    const [first] = book.search(q, 3)
+    assert.equal(`${first?.name}, ${first?.region}`, `${name}, ${region}`, q)
+  }
+})
+
 test('Royal Oak, Michigan can be chosen as a birthplace (added by hand, Nov 18, 2026)', async () => {
   const { placeBook } = await import('../src/cozmling/celestial/places/places')
   const raw = (await import('../src/cozmling/celestial/places/cities.json', { with: { type: 'json' } })).default

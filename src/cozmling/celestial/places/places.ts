@@ -36,6 +36,17 @@ const slug = (s: string) => fold(s).replace(/ /g, '-')
 /** Other names people type for a few countries. */
 const ALIASES: Record<string, string> = { 'United States of America': 'usa us america', 'United Kingdom': 'uk britain great britain england', 'Russia': 'russian federation', 'Netherlands': 'holland', 'South Korea': 'korea', 'Czech Republic': 'czechia' }
 
+/** US state abbreviations, so "Austin, TX" or "Royal Oak, MI" finds a city the way people write it. */
+const US_STATES: Record<string, string> = {
+  Alabama: 'al', Alaska: 'ak', Arizona: 'az', Arkansas: 'ar', California: 'ca', Colorado: 'co', Connecticut: 'ct', Delaware: 'de',
+  'District of Columbia': 'dc', Florida: 'fl', Georgia: 'ga', Hawaii: 'hi', Idaho: 'id', Illinois: 'il', Indiana: 'in', Iowa: 'ia',
+  Kansas: 'ks', Kentucky: 'ky', Louisiana: 'la', Maine: 'me', Maryland: 'md', Massachusetts: 'ma', Michigan: 'mi', Minnesota: 'mn',
+  Mississippi: 'ms', Missouri: 'mo', Montana: 'mt', Nebraska: 'ne', Nevada: 'nv', 'New Hampshire': 'nh', 'New Jersey': 'nj',
+  'New Mexico': 'nm', 'New York': 'ny', 'North Carolina': 'nc', 'North Dakota': 'nd', Ohio: 'oh', Oklahoma: 'ok', Oregon: 'or',
+  Pennsylvania: 'pa', 'Rhode Island': 'ri', 'South Carolina': 'sc', 'South Dakota': 'sd', Tennessee: 'tn', Texas: 'tx', Utah: 'ut',
+  Vermont: 'vt', Virginia: 'va', Washington: 'wa', 'West Virginia': 'wv', Wisconsin: 'wi', Wyoming: 'wy',
+}
+
 interface Raw { source: string; version: number; countries: string[]; zones: string[]; rows: [string, string, number, number, number, number, number][] }
 
 export function placeBook(raw: Raw): PlaceBook {
@@ -48,7 +59,8 @@ export function placeBook(raw: Raw): PlaceBook {
     if (!zoneSupported(timeZone)) continue                       // this browser can't read its clock: not offered
     const twin = (seen.get(`${name}|${ci}`) ?? 0) > 1
     places.push({ name, region, country, latitude, longitude, timeZone, population, label: twin && region ? `${name}, ${region}, ${country}` : `${name}, ${country}`, id: `${slug(country)}/${slug(name)}/${latitude},${longitude}` })
-    keys.push({ words: `${fold(name)} ${fold(region)} ${fold(country)} ${ALIASES[country] ?? ''}`.split(' ').filter(Boolean), name: fold(name) })
+    const state = country === 'United States of America' ? US_STATES[region] ?? '' : ''
+    keys.push({ words: `${fold(name)} ${fold(region)} ${state} ${fold(country)} ${ALIASES[country] ?? ''}`.split(' ').filter(Boolean), name: fold(name) })
   }
   const byZone = new Map<string, Place>()
   for (const p of places) if (p.population >= 100 && (!byZone.has(p.timeZone) || byZone.get(p.timeZone)!.population < p.population)) byZone.set(p.timeZone, p)
