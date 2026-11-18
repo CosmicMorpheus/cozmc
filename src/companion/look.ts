@@ -14,7 +14,10 @@ export const STAGE_NAME: Record<Stage, string> = { egg: 'Star Egg', sprout: 'Spr
 export interface Look { form: Form; body: number; glow: number; eyes: number }
 export type Pose = 'idle' | 'happy' | 'eat' | 'sleep' | 'sad' | 'play'
 
-export const BODIES = ['#6fe3c4', '#7cc8ff', '#c6a2ee', '#ff9ccf', '#b4f06a', '#ffb98a', '#8dff6a', '#d9d4ec']
+/* Body colours. Saved Cozmlings store an index into this list, so colours are only ever added at the end.
+   8+ arrived with the Wardrobe's wider palette: burnt orange, sunflower, coral, crimson, cocoa, silver, midnight. */
+export const BODIES = ['#6fe3c4', '#7cc8ff', '#c6a2ee', '#ff9ccf', '#b4f06a', '#ffb98a', '#8dff6a', '#d9d4ec',
+  '#cc5500', '#f2c14e', '#ff7f6b', '#d94a5c', '#9a6a4f', '#a9b2c6', '#5a6be0']
 export const GLOWS = ['#4aa8ff', '#ff5ab4', '#ffd13a', '#8dff6a', '#59e6ff', '#b06bff', '#ff6a4a', '#ffffff']
 export const EYES = ['#4a50c8', '#8a4ad8', '#2f9a7e', '#c84a7a', '#55556a']
 export const DEFAULT_LOOK: Record<Form, Look> = {

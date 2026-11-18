@@ -9,9 +9,14 @@ import { CARE_RULES, STAGE_RULES } from './care'
 import { starprintFor } from './starprint'
 
 /** Skin colours. Any adventurer can have any of them: skin never depends on the element. */
+/* In the order they're offered, around the colour wheel. The first six are the originals; the ids are saved, so an
+   id never changes (new colours are added, never renamed). */
 export const SKINS: { id: string; name: string; color: string }[] = [
-  { id: 'teal', name: 'Sea teal', color: '#5fd4c4' }, { id: 'lilac', name: 'Lilac', color: '#b9a3e8' }, { id: 'moss', name: 'Moss', color: '#a9c77a' },
-  { id: 'rose', name: 'Rose', color: '#f2a7c3' }, { id: 'sky', name: 'Sky', color: '#8fc7ff' }, { id: 'pearl', name: 'Pearl', color: '#e8e3d6' },
+  { id: 'teal', name: 'Sea teal', color: '#5fd4c4' }, { id: 'sky', name: 'Sky', color: '#8fc7ff' }, { id: 'midnight', name: 'Midnight', color: '#5a6be0' },
+  { id: 'lilac', name: 'Lilac', color: '#b9a3e8' }, { id: 'rose', name: 'Rose', color: '#f2a7c3' }, { id: 'crimson', name: 'Crimson', color: '#d94a5c' },
+  { id: 'coral', name: 'Coral', color: '#ff7f6b' }, { id: 'burnt-orange', name: 'Burnt orange', color: '#cc5500' }, { id: 'peach', name: 'Peach', color: '#ffb98a' },
+  { id: 'sunflower', name: 'Sunflower', color: '#f2c14e' }, { id: 'lime', name: 'Lime', color: '#8dff6a' }, { id: 'moss', name: 'Moss', color: '#a9c77a' },
+  { id: 'cocoa', name: 'Cocoa', color: '#9a6a4f' }, { id: 'silver', name: 'Silver', color: '#a9b2c6' }, { id: 'pearl', name: 'Pearl', color: '#e8e3d6' },
 ]
 /** New adventurers are drawn as the original Cozmling (integrations/originalScene.ts). Older records say 'layers-1'. */
 export const RENDERER = ORIGINAL_RENDERER

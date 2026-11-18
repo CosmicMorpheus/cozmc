@@ -38,7 +38,10 @@ export const ORIGINAL_HOME: HomeId = 'grove'
 export const HOME_ORDER: HomeId[] = ['grove', 'moonbase', 'loft']
 
 /** The adoption skin colours as the original's body colours (look.ts BODIES). */
-export const SKIN_BODY: Record<string, number> = { teal: 0, sky: 1, lilac: 2, rose: 3, moss: 4, pearl: 7 }
+export const SKIN_BODY: Record<string, number> = {
+  teal: 0, sky: 1, lilac: 2, rose: 3, moss: 4, peach: 5, lime: 6, pearl: 7,
+  'burnt-orange': 8, sunflower: 9, coral: 10, crimson: 11, cocoa: 12, silver: 13, midnight: 14,
+}
 /** Its antenna glows in its element's colour (look.ts GLOWS). */
 export const ELEMENT_GLOW: Record<Element, number> = { fire: 6, earth: 3, air: 2, water: 4 }
 

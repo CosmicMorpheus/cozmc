@@ -4,7 +4,8 @@ import { EVENT_LOOKS } from './event.mjs'
 import { CozmlingRequestError, transaction } from './http.mjs'
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
-const SKINS = ['teal', 'lilac', 'moss', 'rose', 'sky', 'pearl']
+// the skin colours a new Starprint may have (src/cozmling/domain/adventurer.ts SKINS; a test keeps them in step)
+export const SKINS = ['teal', 'sky', 'midnight', 'lilac', 'rose', 'crimson', 'coral', 'burnt-orange', 'peach', 'sunflower', 'lime', 'moss', 'cocoa', 'silver', 'pearl']
 const EVENT_TYPES = new Set(['adopted', 'hatched', 'care', 'arcade-run', 'customized', 'sky-read', 'story', 'choice-story', 'story-mode'])
 
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)

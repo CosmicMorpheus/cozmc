@@ -263,7 +263,7 @@ test('changing the look, skin or name never touches the Starprint or the identit
   assert.deepEqual(b.starprint, a.starprint); assert.equal(b.companionId, a.companionId); assert.deepEqual(b.care, a.care)
   assert.equal(customize(a, {}), null); assert.equal(customize(a, { look: 'a' }), null)            // nothing to change
   assert.equal(customize(a, { skin: 'plaid' }), null); assert.equal(customize(a, { name: ' !! ' }), null)
-  assert.equal(SKINS.length, 6)
+  assert.equal(SKINS.length, 15)                           // the six originals plus nine (tests/skin-colours.test.ts)
 })
 
 /* ---------------- living alongside first-version Cozmlings ---------------- */
