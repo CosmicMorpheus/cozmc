@@ -21,8 +21,14 @@ const offsetH = (tz, iso) => {
 }
 const r4 = x => Math.round(x * 1e4) / 1e4
 
+/* Places added by hand that Natural Earth doesn't list, in the same shape, checked the same way.
+   Royal Oak, Michigan: Mark's request, Nov 18, 2026 (city centre; 2020 census population 58,211). */
+const ADDED = [
+  { city: 'Royal Oak', province: 'Michigan', country: 'United States of America', lat: 42.4895, lng: -83.1446, timezone: 'America/Detroit', pop: 58211 },
+]
+
 const best = new Map(), dropped = []
-for (const c of src) {
+for (const c of [...src, ...ADDED]) {
   const name = String(c.city ?? '').trim(), tz = c.timezone
   if (!name || !tz || !zoneOk(tz) || !(Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180)) { dropped.push(name || '(no name)'); continue }
   const std = Math.min(offsetH(tz, '2026-01-15T12:00:00Z'), offsetH(tz, '2026-07-15T12:00:00Z'))

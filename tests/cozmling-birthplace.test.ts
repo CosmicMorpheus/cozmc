@@ -129,3 +129,15 @@ test('nothing about the player’s own location is ever read', () => {
   const b = toBirthplace(book.search('paris')[0], 'chosen', book)
   assert.deepEqual(Object.keys(b).sort(), ['choice', 'elevationM', 'fictional', 'id', 'latitude', 'longitude', 'name', 'place', 'source', 'timeZone', 'version'], 'only the place itself is kept')
 })
+
+test('Royal Oak, Michigan can be chosen as a birthplace (added by hand, Nov 18, 2026)', async () => {
+  const { placeBook } = await import('../src/cozmling/celestial/places/places')
+  const raw = (await import('../src/cozmling/celestial/places/cities.json', { with: { type: 'json' } })).default
+  const book = placeBook(raw as any)
+  for (const q of ['royal oak', 'Royal Oak, MI', 'royal oak michigan']) {
+    const [first] = book.search(q, 3)
+    assert.equal(first?.name, 'Royal Oak', q)
+    assert.equal(first?.timeZone, 'America/Detroit')
+    assert.equal(first?.region, 'Michigan')
+  }
+})
