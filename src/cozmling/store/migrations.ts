@@ -16,6 +16,8 @@ import { readV1 } from './validators'
 import type { Write } from './repository'
 
 export const MIGRATION_VERSION = 1
+/** The archive note on a Cozmling the player chose to start over from (see the store's setAside). */
+export const SET_ASIDE_REASON = 'the player started over with a new Cozmling'
 const KEEP_HISTORY = 6
 
 export interface StorageLike { readonly length: number; key(i: number): string | null; getItem(k: string): string | null; setItem(k: string, v: string): void }
@@ -84,6 +86,12 @@ export async function planSync(snap: Snapshot, env: Env): Promise<SyncPlan> {
     }
 
     const r = readV1(raw)                                   // the v1 value changed without v2
+    if (live?.archived?.reason === SET_ASIDE_REASON && r.ok && live.kind === 'legacy' && r.pet.born === live.legacy.pet.born) {
+      // the player started over from this Cozmling; the first version's code (the arcade, say) still saves it
+      // under its old key. Leave it set aside: note the new value, and keep the key exactly as written.
+      out.sources.push({ ...src, lastSeenHash: hash })
+      continue
+    }
     if (src.status === 'quarantined' || !mine) {
       if (!r.ok) {
         out.sources.push({ ...src, lastSeenHash: hash, reason: r.reason, history: remember(src, raw, hash, 'another unreadable value found under this key') })

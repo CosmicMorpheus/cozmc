@@ -476,3 +476,28 @@ test('with no choice made yet, the guest Cozmling shows first (as on the old pag
   const t = await page(memoryRepository())
   assert.equal(t.getState().selectedId, legacy(t, fx('wallet-guardian').storageKey)!.companionId)
 })
+
+/* ---------------- starting over ---------------- */
+
+test('starting over sets the Cozmling aside without deleting it, and the old page’s saves don’t bring it back', async () => {
+  put('guest-egg')
+  const repo = memoryRepository()
+  const s = await page(repo)
+  const pip = legacy(s, V1_KEY)!
+  const keyBefore = storage.getItem(V1_KEY)
+  const res = await s.setAside(pip.companionId)
+  assert.ok(res.ok)
+  assert.equal(s.getState().selectedId, null, 'nothing is shown, so the page offers a new adoption')
+  const kept = s.getState().companions.find(c => c.companionId === pip.companionId)!
+  assert.ok(kept.archived, 'still in the save, set aside')
+  assert.equal(storage.getItem(V1_KEY), keyBefore, 'the first-version key is left exactly as it was')
+
+  // the first version's own code (the arcade, say) saves the same Cozmling again: it stays set aside
+  clock += 60_000
+  care.cheer(null, { daily: false, best: false })
+  assert.notEqual(storage.getItem(V1_KEY), keyBefore)
+  const again = await page(repo)
+  assert.equal(legacy(again, V1_KEY), undefined, 'not brought back as a new Cozmling')
+  assert.equal(again.getState().companions.length, 1)
+  assert.equal(again.getState().selectedId, null)
+})

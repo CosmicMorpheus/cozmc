@@ -22,6 +22,7 @@ import { CompanionRenderer, type RendererHandle } from '../render/CompanionRende
 import type { AdventurerCompanion, Companion, LegacyCompanion } from '../types'
 import { CustomizePanel } from './CustomizePanel'
 import { MemoriesPanel } from './MemoriesPanel'
+import { StartOver } from './StartOver'
 import { loadSkyEngine } from '../celestial/load'
 import { playerTimeZone } from '../celestial/observatory'
 import { legacySkyOption, starprintDisagrees } from '../celestial/options'
@@ -260,6 +261,8 @@ export function StarLoftScreen({ companion: c, arrived, accountBacked, serverHat
           <div className="panel sl-savepanel">
             <SaveStatus name={name} companionId={id} accountBacked={accountBacked} />
           </div>
+
+          {!accountBacked && <StartOver companionId={id} name={name} />}
 
         </aside>
 

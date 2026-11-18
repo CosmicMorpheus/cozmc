@@ -238,3 +238,6 @@
 @container (max-width: 289px) {
   .sl__side .sl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
 }
+
+/* Start over: the two-step choice to set this Cozmling aside and adopt a new one */
+.sl-startover__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }

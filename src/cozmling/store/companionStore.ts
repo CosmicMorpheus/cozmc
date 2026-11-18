@@ -5,7 +5,7 @@
 import { settle, type Pet } from '../../companion/care'
 import type { AdventurerCompanion, Companion, JourneyEvent, Snapshot, SourceRecord } from '../types'
 import { hatchOf, V1_KEY, v1Text } from '../integrations/legacyAdapter'
-import { applyMirror, planSync, type Env, type SyncReport } from './migrations'
+import { applyMirror, planSync, SET_ASIDE_REASON, type Env, type SyncReport } from './migrations'
 import type { Repository, WriteResult } from './repository'
 import { INITIAL, type CozState } from './state'
 import { companionProblem } from './validators'
@@ -178,6 +178,17 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     return { ok: true, companion: record }
   }
 
+  /** The player starts over: this Cozmling is set aside (kept in the save, never deleted, no longer shown),
+      and the next one they have, if any, is shown instead. Its first-version key is left exactly as it is. */
+  const setAside = (companionId: string): Promise<Change> => inTurn(async () => {
+    const res = await updateNow(companionId, (c, now) => ({ ...c, archived: { at: now, reason: SET_ASIDE_REASON } }), {})
+    if (!res.ok) return res
+    const next = active(state.companions)[0]
+    if (next) await selectNow(next.companionId)
+    else set({ selectedId: null })
+    return res
+  })
+
   const select = (companionId: string): Promise<boolean> => inTurn(() => selectNow(companionId))
   async function selectNow(companionId: string): Promise<boolean> {
     const c = byId(companionId)
@@ -207,6 +218,7 @@ export function createStore(repo: Repository, env: Env, channel?: Channel, persi
     update,
     updateLegacy,
     adopt,
+    setAside,
     /** What has happened to a companion, oldest first. */
     events: (companionId: string) => repo.events(companionId),
     /** Keep an event once (a day's story, say). The same eventId is never kept twice: if this tab or another
