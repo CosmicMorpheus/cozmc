@@ -450,3 +450,8 @@
 /* "Create a new Starprint" with how many of the wallet's 10 are used */
 .sl-new { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px }
 .sl-new .sl-fine { margin-top: 0 }
+
+/* The wallet account panel: what to do, then the button, never a sentence trailing off the button */
+.wallet-access { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.wallet-access p { margin: 0; flex: 1 1 260px; max-width: 60ch; }
+.wallet-access .btn { flex: 0 0 auto; }

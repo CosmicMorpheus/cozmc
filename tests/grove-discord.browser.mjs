@@ -44,7 +44,7 @@ try {
   const link = page.getByRole('link', { name: 'Join the hatchling showcase in Discord' })
   await link.waitFor({ timeout: 10000 })
   assert.equal(await link.getAttribute('href'), invite)
-  assert.equal(invite, 'https://discord.gg/9uCVVRV8Eb')
+  assert.equal(invite, 'https://discord.gg/VBeBE7MSSq')
   assert.deepEqual(errors, [])
   console.log('Grove Discord showcase browser test passed.')
 } finally {

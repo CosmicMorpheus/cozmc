@@ -119,15 +119,30 @@ export function WalletAccess({
     <section className="panel" aria-label="Cozmling wallet account">
       <header className="panel__head"><h2>Cozmling wallet account</h2></header>
       {state.revocationPending ? (
-        <p><button className="btn btn--ghost btn--sm" disabled={state.busy} onClick={() => void state.signOut()}>{state.busy ? 'Signing out…' : 'Retry sign-out'}</button> to finish closing the account session.</p>
+        <div className="wallet-access">
+          <p>One more step to finish closing your account session.</p>
+          <button className="btn btn--ghost btn--sm" disabled={state.busy} onClick={() => void state.signOut()}>{state.busy ? 'Signing out…' : 'Retry sign-out'}</button>
+        </div>
       ) : state.verified ? (
-        <p>Wallet verified. <button className="btn btn--ghost btn--sm" disabled={state.busy} onClick={() => void state.signOut()}>Sign out of Cozmlings</button></p>
+        <div className="wallet-access">
+          <p>Wallet verified.</p>
+          <button className="btn btn--ghost btn--sm" disabled={state.busy} onClick={() => void state.signOut()}>Sign out of Cozmlings</button>
+        </div>
       ) : !address ? (
-        <p><button className="btn btn--phos" onClick={() => openConnect('cozmling')}>Connect Algorand wallet</button> to adopt and open your account.</p>
+        <div className="wallet-access">
+          <p>Connect your Algorand wallet to adopt a Cozmling and open your account.</p>
+          <button className="btn btn--phos" onClick={() => openConnect('cozmling')}>Connect wallet</button>
+        </div>
       ) : !canSign ? (
-        <p>Use Pera or Lute to sign in to Cozmlings. <button className="btn btn--ghost btn--sm" onClick={() => openConnect('cozmling')}>Choose another wallet</button></p>
+        <div className="wallet-access">
+          <p>Use Pera or Lute to sign in to Cozmlings.</p>
+          <button className="btn btn--ghost btn--sm" onClick={() => openConnect('cozmling')}>Choose another wallet</button>
+        </div>
       ) : (
-        <p><button className="btn btn--phos" disabled={state.busy} onClick={() => void state.verify()}>{state.busy ? 'Checking wallet…' : 'Verify wallet'}</button> to adopt. Verification signs a message and costs nothing.</p>
+        <div className="wallet-access">
+          <p>Verify your wallet to adopt. It signs a message and costs nothing.</p>
+          <button className="btn btn--phos" disabled={state.busy} onClick={() => void state.verify()}>{state.busy ? 'Checking wallet…' : 'Verify wallet'}</button>
+        </div>
       )}
       {state.problem && <p role="alert">{state.problem}</p>}
     </section>
